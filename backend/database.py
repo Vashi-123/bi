@@ -25,14 +25,14 @@ def get_connection():
             max_row = _CONN.execute(f"SELECT MAX(date) FROM read_parquet('{DATA_PATH}')").fetchone()
             if max_row and max_row[0]:
                 max_date = max_row[0]
-                # Filter at the view level to 6 months
+                # DEFAULT: 6 months limit as requested
                 query = f"""
                     CREATE OR REPLACE VIEW sales AS 
                     SELECT * FROM read_parquet('{DATA_PATH}') 
-                    WHERE date >= CAST('{max_date}' AS DATE) - INTERVAL '6 month'
+                    WHERE CAST(date AS DATE) >= CAST('{max_date}' AS DATE) - INTERVAL '6 month'
                 """
                 _CONN.execute(query)
-                print(f"INFO: Database initialized. Data filtered to last 6 months from {max_date}")
+                print(f"INFO: Database initialized. Window: Last 6 months from {max_date}")
             else:
                 _CONN.execute(f"CREATE OR REPLACE VIEW sales AS SELECT * FROM read_parquet('{DATA_PATH}')")
         except Exception as e:
@@ -56,27 +56,35 @@ def set_cached_data(key: str, val: any):
     with _CACHE_LOCK:
         _CACHE[key] = (val, time.time())
 
-def get_current_window():
-    """Returns the start and end dates for the 6-month default window based on max date in data."""
-    cache_key = "current_window"
-    cached = get_cached_data(cache_key)
-    if cached: return cached
-
+def get_current_window(filters=None):
+    """Returns the (start, end) dates for the current data window, respecting filters."""
     cursor = get_cursor()
-    max_row = cursor.execute("SELECT MAX(date) FROM sales").fetchone()
-    if not max_row or not max_row[0]:
-        return None, None
+    # Always get the true max date from DB
+    max_d = cursor.execute("SELECT MAX(date) FROM sales").fetchone()[0]
+    if not max_d: return None, None
     
-    max_date = max_row[0]
-    res = cursor.execute(f"""
-        SELECT 
-            CAST('{max_date}' AS DATE) as end_date,
-            CAST('{max_date}' AS DATE) - INTERVAL '6 month' as start_date
-    """).fetchone()
-    
-    out = (res[1], res[0])
-    set_cached_data(cache_key, out)
-    return out
+    # If custom filter is provided, try to extract its range
+    if filters:
+        mode = filters.get('dateMode', 'all')
+        start = filters.get('startDate')
+        end = filters.get('endDate')
+        rel_val = filters.get('relativeValue')
+        rel_unit = filters.get('relativeUnit', 'day')
+        
+        if mode == 'between' and start and end:
+            return start, end
+        elif mode == 'before' and end:
+            # For 'before', we go back from the specific end date (arbitrary 1 year or just some start)
+            return cursor.execute(f"SELECT MIN(date) FROM sales WHERE CAST(date AS DATE) <= '{end}'").fetchone()[0], end
+        elif mode == 'after' and start:
+            return start, max_d
+        elif mode == 'relative' and rel_val:
+            s = cursor.execute(f"SELECT CAST('{max_d}' AS DATE) - INTERVAL '{rel_val} {rel_unit}'").fetchone()[0]
+            return str(s), str(max_d)
+
+    # Standard fallback: Last 6 months from MAX date
+    start_d = cursor.execute(f"SELECT CAST('{max_d}' AS DATE) - INTERVAL '6 month'").fetchone()[0]
+    return str(start_d), str(max_d)
 
 def build_filter_clause(filters, prefix="WHERE"):
     """Dynamically builds a WHERE clause based on the provided filters dictionary."""
@@ -107,16 +115,22 @@ def build_date_filter_clause(filters):
     rel_val = filters.get('relativeValue')
     rel_unit = filters.get('relativeUnit', 'day')
     
-    if mode == 'between' and start and end:
-        return f"AND date BETWEEN '{start}' AND '{end}'"
-    elif mode == 'before' and end:
-        return f"AND date <= '{end}'"
-    elif mode == 'after' and start:
-        return f"AND date >= '{start}'"
-    elif mode == 'relative' and rel_val:
-        return f"AND date >= CURRENT_DATE - INTERVAL '{rel_val} {rel_unit}'"
+    # Get data max date for relative filtering
+    _, end_date = get_current_window()
     
-    return ""
+    clause = ""
+    if mode == 'between' and start and end:
+        clause = f"AND CAST(date AS DATE) BETWEEN '{start}' AND '{end}'"
+    elif mode == 'before' and end:
+        clause = f"AND CAST(date AS DATE) <= '{end}'"
+    elif mode == 'after' and start:
+        clause = f"AND CAST(date AS DATE) >= '{start}'"
+    elif mode == 'relative' and rel_val and end_date:
+        clause = f"AND CAST(date AS DATE) >= CAST('{end_date}' AS DATE) - INTERVAL '{rel_val} {rel_unit}'"
+    
+    if clause:
+        print(f"DEBUG: Date Filter applied ({mode}): {clause}")
+    return clause
 
 def get_filter_options(dimension, search=None):
     """Returns a list of unique values for a given dimension column with optional search."""
@@ -142,7 +156,7 @@ def get_kpi_data(filters=None):
     if cached: return cached
 
     cursor = get_cursor()
-    _, end_date = get_current_window() # We still need the max date (end_date)
+    _, end_date = get_current_window(filters) # Use actual window for comparison
     if not end_date:
         return {"revenue": {"value":0,"prev":0,"growth":0}, "profit": {"value":0,"prev":0,"growth":0}, "margin": {"value":0,"prev":0,"growth":0}, "qty": {"value":0,"prev":0,"growth":0}}
     
@@ -167,8 +181,8 @@ def get_kpi_data(filters=None):
         }
 
     # 3-month comparison logic (Standard)
-    current_date_filter = f"date > CAST('{end_date}' AS DATE) - INTERVAL '3 month' AND date <= '{end_date}'"
-    previous_date_filter = f"date >= CAST('{end_date}' AS DATE) - INTERVAL '6 month' AND date <= CAST('{end_date}' AS DATE) - INTERVAL '3 month'"
+    current_date_filter = f"CAST(date AS DATE) > CAST('{end_date}' AS DATE) - INTERVAL '3 month' AND CAST(date AS DATE) <= '{end_date}'"
+    previous_date_filter = f"CAST(date AS DATE) >= CAST('{end_date}' AS DATE) - INTERVAL '6 month' AND CAST(date AS DATE) <= CAST('{end_date}' AS DATE) - INTERVAL '3 month'"
 
     query = f"""
     WITH current_kpi AS (
@@ -214,7 +228,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     if cached: return cached
 
     cursor = get_cursor()
-    start_date, end_date = get_current_window()
+    start_date, end_date = get_current_window(filters)
     if not start_date: return []
 
     metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
@@ -226,9 +240,8 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
     else:
-        # Fallback to default 6-month window if no filter
-        s, e = get_current_window()
-        filter_clause = f"WHERE date >= '{s}' AND date <= '{e}' {extra_filters}"
+        # Fallback to current window window if no filter (already restricted by START/END above)
+        filter_clause = f"WHERE CAST(date AS DATE) >= '{start_date}' AND CAST(date AS DATE) <= '{end_date}' {extra_filters}"
 
     # 1. Find Top N categories
     top_n_query = f"SELECT \"{dimension}\" FROM sales {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
@@ -244,7 +257,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
         sales_d = "date_trunc('week', date)"
     elif interval == 'month':
         cal_gen = f"SELECT CAST(generate_series AS DATE) as d FROM generate_series(date_trunc('month', CAST('{start_date}' AS DATE)), date_trunc('month', CAST('{end_date}' AS DATE)), interval '1 month')"
-        sales_d = "date_trunc('month', date)"
+        sales_d = "date_trunc('month', CAST(date AS DATE))"
 
     dim_expr = f"CASE WHEN \"{dimension}\" IN ({', '.join([f"'{d}'" for d in top_dims])}) THEN \"{dimension}\" ELSE 'Other' END"
     
@@ -260,7 +273,11 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     FROM full_grid f LEFT JOIN sales_agg s ON f.d = s.cal_d AND f.dim_val = s.dim_val
     ORDER BY sort_key ASC
     """
-    df = cursor.execute(query).df()
+    try:
+        df = cursor.execute(query).df()
+    except Exception as e:
+        print(f"ERROR in get_trends SQL: {e}\nQuery: {query}")
+        return []
     
     def format_label(row):
         d = row['sort_key']
@@ -291,8 +308,8 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
     else:
-        s, e = get_current_window()
-        filter_clause = f"WHERE date >= '{s}' AND date <= '{e}' {extra_filters}"
+        s, e = get_current_window(filters)
+        filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
 
     top_n_query = f"SELECT \"{dimension}\" FROM sales {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
     top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
@@ -318,8 +335,8 @@ def get_master_table(dimension='Category', filters=None):
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
     else:
-        s, e = get_current_window()
-        filter_clause = f"WHERE date >= '{s}' AND date <= '{e}' {extra_filters}"
+        s, e = get_current_window(filters)
+        filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
     
     query = f"SELECT \"{dimension}\" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG(\"Margin_%\") as margin, SUM(Qty) as qty FROM sales {filter_clause} GROUP BY 1 ORDER BY revenue DESC"
     
@@ -340,8 +357,8 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
     else:
-        s, e = get_current_window()
-        filter_clause = f"WHERE date >= '{s}' AND date <= '{e}' {extra_filters}"
+        s, e = get_current_window(filters)
+        filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
     
     if selected_group:
         clean_group = str(selected_group).replace("'", "''")
