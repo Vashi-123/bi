@@ -128,8 +128,8 @@ def build_date_filter_clause(filters):
     elif mode == 'relative' and rel_val and end_date:
         clause = f"AND CAST(date AS DATE) >= CAST('{end_date}' AS DATE) - INTERVAL '{rel_val} {rel_unit}'"
     
-    if clause:
-        print(f"DEBUG: Date Filter applied ({mode}): {clause}")
+    if mode != 'all':
+        print(f"DEBUG: Date Filter Mode: {mode}, Clause: '{clause}'")
     return clause
 
 def get_filter_options(dimension, search=None):
@@ -151,6 +151,8 @@ def get_filter_options(dimension, search=None):
     return out
 
 def get_kpi_data(filters=None):
+    if not filters: filters = {}
+    print(f"KPI REQUEST FILTERS: {filters}")
     cache_key = f"kpi_data_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached
@@ -223,6 +225,8 @@ def get_kpi_data(filters=None):
     return out
 
 def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', filters=None):
+    if not filters: filters = {}
+    print(f"TRENDS REQUEST FILTERS: {filters}")
     cache_key = f"trends_{metric}_{dimension}_{top_n}_{interval}_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached
