@@ -60,6 +60,10 @@ def parse_filters(request_params):
 def get_options(column: str, search: Optional[str] = None):
     return {"options": database.get_filter_options(column, search=search)}
 
+@app.get("/api/filters/date-range")
+def get_date_range():
+    return database.get_overall_date_range()
+
 @app.get("/api/kpi")
 async def get_kpi(request: Request):
     filters = parse_filters(dict(request.query_params))

@@ -58,6 +58,18 @@ export default function Dashboard() {
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
+  // Initialize date filter with global range if empty
+  const { data: globalRange } = useSWR(`${API_BASE}/api/filters/date-range`, fetcher);
+  useEffect(() => {
+    if (globalRange?.min && globalRange?.max && !dateFilter.value?.start) {
+      setDateFilter({
+        mode: 'between',
+        value: { start: globalRange.min, end: globalRange.max },
+        unit: 'day'
+      });
+    }
+  }, [globalRange, dateFilter.value?.start, setDateFilter]);
+
   const filterParams = useMemo(() => {
     const params = new URLSearchParams();
     
@@ -75,7 +87,7 @@ export default function Dashboard() {
       params.append('endDate', dateFilter.value.end);
     } else if (dateFilter.mode === 'relative' && dateFilter.value) {
       params.append('relativeValue', dateFilter.value.toString());
-      params.append('relativeUnit', 'day');
+      params.append('relativeUnit', dateFilter.unit || 'day');
     } else if (dateFilter.mode === 'before' && dateFilter.value) {
       params.append('endDate', dateFilter.value);
     } else if (dateFilter.mode === 'after' && dateFilter.value) {
@@ -617,15 +629,26 @@ function DateFilterGroup() {
 
             <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 space-y-3">
                 {dateFilter.mode === 'relative' && (
-                    <div className="space-y-1.5">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">Days Count</label>
-                        <input 
-                            type="number" 
-                            value={dateFilter.value || ''} 
-                            onChange={e => setDateFilter({ ...dateFilter, value: parseInt(e.target.value) })}
-                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-1 focus:ring-[#0C0C0C] outline-none"
-                            placeholder="30"
-                        />
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">Last Period</label>
+                        <div className="flex gap-2">
+                            <input 
+                                type="number" 
+                                value={dateFilter.value || ''} 
+                                onChange={e => setDateFilter({ ...dateFilter, value: parseInt(e.target.value) })}
+                                className="w-20 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-1 focus:ring-[#0C0C0C] outline-none"
+                                placeholder="30"
+                            />
+                            <select 
+                                value={dateFilter.unit || 'day'} 
+                                onChange={e => setDateFilter({ ...dateFilter, unit: e.target.value })}
+                                className="flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold focus:ring-1 focus:ring-[#0C0C0C] outline-none appearance-none"
+                            >
+                                <option value="day">Days</option>
+                                <option value="week">Weeks</option>
+                                <option value="month">Months</option>
+                            </select>
+                        </div>
                     </div>
                 )}
 

@@ -9,13 +9,14 @@ interface DashboardState {
   dateFilter: {
     mode: 'all' | 'between' | 'relative' | 'before' | 'after';
     value: any;
+    unit?: string;
   };
   setActiveMetric: (metric: 'revenue' | 'profit' | 'margin' | 'qty') => void;
   setLegendDimension: (dim: 'type' | 'Category' | 'Currency' | 'counterparty' | 'Groupclient' | 'Product country' | 'CountryGroup' | 'Item name' | 'Product name') => void;
   setTopN: (n: number) => void;
   setSelectedGroup: (group: string | null) => void;
   setFilter: (column: string, values: string[]) => void;
-  setDateFilter: (filter: { mode: any, value: any }) => void;
+  setDateFilter: (filter: { mode: any, value: any, unit?: string }) => void;
   clearFilters: () => void;
 }
 
@@ -25,7 +26,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   topN: 5,
   selectedGroup: null,
   filters: {},
-  dateFilter: { mode: 'all', value: null },
+  dateFilter: { mode: 'between', value: { start: '', end: '' }, unit: 'day' },
   setActiveMetric: (activeMetric) => set({ activeMetric }),
   setLegendDimension: (legendDimension) => set({ legendDimension, selectedGroup: null }),
   setTopN: (topN) => set({ topN }),
@@ -34,5 +35,5 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     filters: { ...state.filters, [column]: values }
   })),
   setDateFilter: (dateFilter) => set({ dateFilter }),
-  clearFilters: () => set({ filters: {}, dateFilter: { mode: 'all', value: null } }),
+  clearFilters: () => set({ filters: {}, dateFilter: { mode: 'between', value: { start: '', end: '' }, unit: 'day' } }),
 }));
