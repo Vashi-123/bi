@@ -667,8 +667,6 @@ function DateFilterGroup() {
         </div>
     );
 }
-    );
-}
 
 function FilterGroup({ title, column, current = [], onChange }: { title: string, column: string, current: string[], onChange: (vals: string[]) => void }) {
     const [isOpen, setIsOpen] = useState(false);
