@@ -34,8 +34,8 @@ const formatValue = (number: number, includeSymbol: boolean = true) => {
     const symbol = includeSymbol ? '$' : '';
     if (number === undefined || number === null) return `${symbol}0`;
     let valStr = '';
-    if (Math.abs(number) >= 1000000) valStr = `${(number / 1000000).toFixed(1)}M`;
-    else if (Math.abs(number) >= 1000) valStr = `${(number / 1000).toFixed(1)}K`;
+    if (Math.abs(number) >= 1000000) valStr = `${(number / 1000000).toFixed(2)}M`;
+    else if (Math.abs(number) >= 1000) valStr = `${(number / 1000).toFixed(2)}K`;
     else valStr = Math.round(number).toLocaleString();
     return `${symbol}${valStr}`;
 };
