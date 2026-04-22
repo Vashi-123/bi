@@ -173,7 +173,15 @@ def get_kpi_data(filters=None):
     date_clause = build_date_filter_clause(filters)
     extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
 
-    if date_mode != 'all' and date_clause:
+    # Smart check: if 'between' is used but it covers the entire range, treat as 'all'
+    overall = get_overall_date_range()
+    is_full_range = (date_mode == 'all') or (
+        date_mode == 'between' and 
+        filters.get('startDate') == overall['min'] and 
+        filters.get('endDate') == overall['max']
+    )
+
+    if not is_full_range and date_clause:
         # CUSTOM DATE RANGE: No comparison
         query = f"""
             SELECT SUM(Amount_USD), SUM(Profit_USD), AVG("Margin_%"), SUM(Qty)

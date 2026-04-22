@@ -58,13 +58,19 @@ export default function Dashboard() {
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-  // Initialize date filter with global range if empty
+  // Initialize date filter with default 6-month window (max - 6 months to max)
   const { data: globalRange } = useSWR(`${API_BASE}/api/filters/date-range`, fetcher);
   useEffect(() => {
-    if (globalRange?.min && globalRange?.max && !dateFilter.value?.start) {
+    if (globalRange?.max && !dateFilter.value?.start) {
+      // Calculate start as max_date - 6 months (matches backend default window)
+      const maxDate = new Date(globalRange.max);
+      const startDate = new Date(maxDate);
+      startDate.setMonth(startDate.getMonth() - 6);
+      const startStr = startDate.toISOString().split('T')[0];
+      const endStr = globalRange.max;
       setDateFilter({
         mode: 'between',
-        value: { start: globalRange.min, end: globalRange.max },
+        value: { start: startStr, end: endStr },
         unit: 'day'
       });
     }
@@ -102,6 +108,22 @@ export default function Dashboard() {
   const distUrl = `${API_BASE}/api/distribution?metric=${encodeURIComponent(activeMetric === 'revenue' ? 'Amount_USD' : activeMetric === 'margin' ? 'Margin_%' : activeMetric === 'qty' ? 'Qty' : 'Profit_USD')}&dimension=${legendDimension}&top_n=${topN}&${filterParams}`;
   const masterUrl = `${API_BASE}/api/master?dimension=${legendDimension}&${filterParams}`;
   const detailUrl = `${API_BASE}/api/detail?dimension=${legendDimension}${selectedGroup ? `&selected_group=${encodeURIComponent(selectedGroup)}` : ''}&top_n=100&${filterParams}`;
+
+  const defaultStart = useMemo(() => {
+    if (!globalRange?.max) return null;
+    const maxDate = new Date(globalRange.max);
+    const startDate = new Date(maxDate);
+    startDate.setMonth(startDate.getMonth() - 6);
+    return startDate.toISOString().split('T')[0];
+  }, [globalRange]);
+
+  const isFullRange = useMemo(() => {
+    return dateFilter.mode === 'all' || (
+        dateFilter.mode === 'between' && 
+        dateFilter.value?.start === defaultStart && 
+        dateFilter.value?.end === globalRange?.max
+    );
+  }, [dateFilter, globalRange, defaultStart]);
 
   const { data: kpiData } = useSWR(kpiUrl, fetcher);
   const { data: weeklyRaw } = useSWR(trendsUrl('week'), fetcher);
@@ -159,9 +181,11 @@ export default function Dashboard() {
       <main className="relative z-10 max-w-[1600px] mx-auto p-10 space-y-12 pb-24">
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <KPICard title="Revenue Volume, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.revenue?.value} baseline={kpiData?.revenue?.prev} growth={kpiData?.revenue?.growth} active={activeMetric === 'revenue'} onClick={() => setActiveMetric('revenue')} hasComparison={dateFilter.mode === 'all'} />
-            <KPICard title="Profitability, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.profit?.value} baseline={kpiData?.profit?.prev} growth={kpiData?.profit?.growth} active={activeMetric === 'profit'} onClick={() => setActiveMetric('profit')} hasComparison={dateFilter.mode === 'all'} />
-            
+            <KPICard title="Revenue Volume, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.revenue?.value} baseline={kpiData?.revenue?.prev} growth={kpiData?.revenue?.growth} active={activeMetric === 'revenue'} onClick={() => setActiveMetric('revenue')} hasComparison={isFullRange} />
+            <KPICard title="Gross Profit, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.profit?.value} baseline={kpiData?.profit?.prev} growth={kpiData?.profit?.growth} active={activeMetric === 'profit'} onClick={() => setActiveMetric('profit')} hasComparison={isFullRange} />
+            <KPICard title="Profit Margin, %" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.margin?.value} baseline={kpiData?.margin?.prev} growth={kpiData?.margin?.growth} active={activeMetric === 'margin'} onClick={() => setActiveMetric('margin')} hasComparison={isFullRange} />
+            <KPICard title="Qty of Items Sold" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.qty?.value} baseline={kpiData?.qty?.prev} growth={kpiData?.qty?.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} hasComparison={isFullRange} />
+
             {/* Calculated Margin KPI */}
             {(() => {
                 const marginValue = kpiData?.revenue?.value > 0 ? (kpiData.profit.value / kpiData.revenue.value) * 100 : 0;
