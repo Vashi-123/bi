@@ -173,11 +173,23 @@ def get_kpi_data(filters=None):
     date_clause = build_date_filter_clause(filters)
     extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
 
-    # Smart check: if 'between' is used but it covers the entire range, treat as 'all'
+    # Smart check: if 'between' is used but it covers our default 6-month window, treat as 'all'
     overall = get_overall_date_range()
+    
+    # Calculate what the default start date should be (max - 6 months)
+    default_start = None
+    if overall['max']:
+        from datetime import datetime, timedelta
+        try:
+            max_dt = datetime.strptime(overall['max'], '%Y-%m-%d')
+            # Approximate 6 months as 183 days for maximum compatibility
+            default_start = (max_dt - timedelta(days=183)).strftime('%Y-%m-%d')
+        except:
+            pass
+
     is_full_range = (date_mode == 'all') or (
         date_mode == 'between' and 
-        filters.get('startDate') == overall['min'] and 
+        (filters.get('startDate') == overall['min'] or (default_start and filters.get('startDate') <= default_start)) and 
         filters.get('endDate') == overall['max']
     )
 
