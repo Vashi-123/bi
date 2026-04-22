@@ -118,12 +118,15 @@ export default function Dashboard() {
   }, [globalRange]);
 
   const isFullRange = useMemo(() => {
-    return dateFilter.mode === 'all' || (
-        dateFilter.mode === 'between' && 
-        dateFilter.value?.start === defaultStart && 
-        dateFilter.value?.end === globalRange?.max
-    );
-  }, [dateFilter, globalRange, defaultStart]);
+    if (dateFilter.mode === 'all') return true;
+    if (dateFilter.mode === 'between' && dateFilter.value?.start && dateFilter.value?.end) {
+        const s = new Date(dateFilter.value.start);
+        const e = new Date(dateFilter.value.end);
+        const diffDays = (e.getTime() - s.getTime()) / (1000 * 3600 * 24);
+        return diffDays >= 170 && dateFilter.value.end === globalRange?.max;
+    }
+    return false;
+  }, [dateFilter, globalRange]);
 
   const { data: kpiData } = useSWR(kpiUrl, fetcher);
   const { data: weeklyRaw } = useSWR(trendsUrl('week'), fetcher);

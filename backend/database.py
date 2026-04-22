@@ -176,22 +176,21 @@ def get_kpi_data(filters=None):
     # Smart check: if 'between' is used but it covers our default 6-month window, treat as 'all'
     overall = get_overall_date_range()
     
-    # Calculate what the default start date should be (max - 6 months)
-    default_start = None
-    if overall['max']:
-        from datetime import datetime, timedelta
+    start_str = filters.get('startDate')
+    end_str = filters.get('endDate')
+    
+    is_full_range = (date_mode == 'all')
+    if not is_full_range and date_mode == 'between' and start_str and end_str:
+        # If the range ends at the global max and lasts at least 170 days, treat as full range
         try:
-            max_dt = datetime.strptime(overall['max'], '%Y-%m-%d')
-            # Approximate 6 months as 183 days for maximum compatibility
-            default_start = (max_dt - timedelta(days=183)).strftime('%Y-%m-%d')
+            from datetime import datetime
+            s_dt = datetime.strptime(start_str, '%Y-%m-%d')
+            e_dt = datetime.strptime(end_str, '%Y-%m-%d')
+            diff_days = (e_dt - s_dt).days
+            if diff_days >= 170 and end_str == overall['max']:
+                is_full_range = True
         except:
             pass
-
-    is_full_range = (date_mode == 'all') or (
-        date_mode == 'between' and 
-        (filters.get('startDate') == overall['min'] or (default_start and filters.get('startDate') <= default_start)) and 
-        filters.get('endDate') == overall['max']
-    )
 
     if not is_full_range and date_clause:
         # CUSTOM DATE RANGE: No comparison
