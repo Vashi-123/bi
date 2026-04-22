@@ -556,13 +556,16 @@ function FilterSidebar({ onClose }: { onClose: () => void }) {
 
 function DateFilterGroup() {
     const { dateFilter, setDateFilter } = useDashboardStore();
+    const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+    
     const modes = [
-        { id: 'all', label: 'All Time', icon: ClockIcon },
-        { id: 'relative', label: 'Last X Days', icon: CalendarDaysIcon },
         { id: 'between', label: 'Between', icon: CalendarIcon },
+        { id: 'relative', label: 'Last X Days', icon: CalendarDaysIcon },
         { id: 'before', label: 'Before', icon: ChevronRightIcon },
         { id: 'after', label: 'After', icon: ArrowRightIcon },
     ];
+
+    const currentMode = modes.find(m => m.id === dateFilter.mode) || modes[0];
 
     const setMode = (mode: any) => {
         let defaultValue = null;
@@ -570,84 +573,107 @@ function DateFilterGroup() {
         if (mode === 'between') defaultValue = { start: '', end: '' };
         if (mode === 'before' || mode === 'after') defaultValue = '';
         setDateFilter({ mode, value: defaultValue });
+        setIsSelectorOpen(false);
+    };
+
+    const handleReset = () => {
+        setDateFilter({ mode: 'between', value: { start: '', end: '' } });
     };
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-900 rounded-lg">
-                    <CalendarIcon className="w-4 h-4 text-white" />
+            <div className="flex items-center justify-between">
+                <div 
+                    onClick={() => setIsSelectorOpen(!isSelectorOpen)}
+                    className="flex items-center gap-3 cursor-pointer group"
+                >
+                    <div className="p-2 bg-slate-900 rounded-lg group-hover:bg-[#0C0C0C] transition-colors">
+                        <currentMode.icon className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date Filter</h3>
+                        <p className="text-sm font-extrabold text-[#0C0C0C] flex items-center gap-2">
+                            {currentMode.label}
+                            <ChevronRightIcon className={`w-3.5 h-3.5 transition-transform duration-300 ${isSelectorOpen ? 'rotate-90' : ''}`} />
+                        </p>
+                    </div>
                 </div>
-                <h3 className="text-sm font-extrabold text-[#0C0C0C] uppercase tracking-wider">Date Filter</h3>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-                {modes.map(m => (
-                    <button
-                        key={m.id}
-                        onClick={() => setMode(m.id)}
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-[10px] font-bold transition-all duration-200 border
-                                   ${dateFilter.mode === m.id 
-                                     ? 'bg-[#0C0C0C] text-white border-[#0C0C0C] shadow-lg scale-[1.02]' 
-                                     : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}
-                    >
-                        <m.icon className={`w-3.5 h-3.5 ${dateFilter.mode === m.id ? 'text-white' : 'text-slate-400'}`} />
-                        {m.label}
-                    </button>
-                ))}
-            </div>
-
-            {dateFilter.mode !== 'all' && (
-                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
-                    {dateFilter.mode === 'relative' && (
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Days Count</label>
-                            <input 
-                                type="number" 
-                                value={dateFilter.value || ''} 
-                                onChange={e => setDateFilter({ ...dateFilter, value: parseInt(e.target.value) })}
-                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
-                                placeholder="e.g. 30"
-                            />
-                        </div>
-                    )}
-
-                    {dateFilter.mode === 'between' && (
-                        <div className="grid grid-cols-1 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">From</label>
-                                <input 
-                                    type="date" 
-                                    value={dateFilter.value?.start || ''} 
-                                    onChange={e => setDateFilter({ ...dateFilter, value: { ...dateFilter.value, start: e.target.value } })}
-                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase">To</label>
-                                <input 
-                                    type="date" 
-                                    value={dateFilter.value?.end || ''} 
-                                    onChange={e => setDateFilter({ ...dateFilter, value: { ...dateFilter.value, end: e.target.value } })}
-                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {(dateFilter.mode === 'before' || dateFilter.mode === 'after') && (
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Specific Date</label>
-                            <input 
-                                type="date" 
-                                value={dateFilter.value || ''} 
-                                onChange={e => setDateFilter({ ...dateFilter, value: e.target.value })}
-                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
-                            />
-                        </div>
-                    )}
+            {isSelectorOpen && (
+                <div className="grid grid-cols-1 gap-1.5 p-2 bg-slate-50 rounded-2xl border border-slate-100 animate-in fade-in slide-in-from-top-1 duration-200">
+                    {modes.map(m => (
+                        <button
+                            key={m.id}
+                            onClick={() => setMode(m.id)}
+                            className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-xs font-bold transition-all
+                                       ${dateFilter.mode === m.id 
+                                         ? 'bg-white text-[#0C0C0C] shadow-sm' 
+                                         : 'text-slate-500 hover:bg-white hover:text-[#0C0C0C]'}`}
+                        >
+                            <m.icon className={`w-4 h-4 ${dateFilter.mode === m.id ? 'text-[#0C0C0C]' : 'text-slate-400'}`} />
+                            {m.label}
+                        </button>
+                    ))}
                 </div>
             )}
+
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-5">
+                {dateFilter.mode === 'relative' && (
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Days Count</label>
+                        <input 
+                            type="number" 
+                            value={dateFilter.value || ''} 
+                            onChange={e => setDateFilter({ ...dateFilter, value: parseInt(e.target.value) })}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                            placeholder="e.g. 30"
+                        />
+                    </div>
+                )}
+
+                {dateFilter.mode === 'between' && (
+                    <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">From</label>
+                            <input 
+                                type="date" 
+                                value={dateFilter.value?.start || ''} 
+                                onChange={e => setDateFilter({ ...dateFilter, value: { ...dateFilter.value, start: e.target.value } })}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">To</label>
+                            <input 
+                                type="date" 
+                                value={dateFilter.value?.end || ''} 
+                                onChange={e => setDateFilter({ ...dateFilter, value: { ...dateFilter.value, end: e.target.value } })}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {(dateFilter.mode === 'before' || dateFilter.mode === 'after') && (
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Specific Date</label>
+                        <input 
+                            type="date" 
+                            value={dateFilter.value || ''} 
+                            onChange={e => setDateFilter({ ...dateFilter, value: e.target.value })}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                        />
+                    </div>
+                )}
+
+                <button 
+                    onClick={handleReset}
+                    className="w-full py-2.5 text-[11px] font-extrabold text-slate-400 hover:text-[#0C0C0C] uppercase tracking-widest border-t border-slate-200 transition-colors pt-4"
+                >
+                    Reset Filter
+                </button>
+            </div>
         </div>
     );
 }

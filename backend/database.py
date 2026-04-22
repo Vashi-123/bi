@@ -78,7 +78,23 @@ def get_current_window():
     set_cached_data(cache_key, out)
     return out
 
-    return f" {prefix} " + " AND ".join(clauses)
+def build_filter_clause(filters, prefix="WHERE"):
+    """Dynamically builds a WHERE clause based on the provided filters dictionary."""
+    if not filters:
+        return ""
+    
+    clauses = []
+    for col, values in filters.items():
+        if values and isinstance(values, list):
+            val_str = ", ".join(["'" + str(v).replace("'", "''") + "'" for v in values])
+            clauses.append(f"\"{col}\" IN ({val_str})")
+        elif values and not isinstance(values, dict): # Avoid including date params as standard filters
+             clauses.append(f"\"{col}\" = '" + str(values).replace("'", "''") + "'")
+    
+    if not clauses:
+        return ""
+    
+    return f"{prefix} " + " AND ".join(clauses)
 
 def build_date_filter_clause(filters):
     """Builds a date-specific SQL clause based on the dateFilter parameters."""
@@ -203,9 +219,16 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
 
     metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
     col = metric_map.get(metric, metric)
+    
     date_clause = build_date_filter_clause(filters)
     extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
-    filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    
+    if date_clause:
+        filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    else:
+        # Fallback to default 6-month window if no filter
+        s, e = get_current_window()
+        filter_clause = f"WHERE date >= '{s}' AND date <= '{e}' {extra_filters}"
 
     # 1. Find Top N categories
     top_n_query = f"SELECT \"{dimension}\" FROM sales {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
@@ -261,9 +284,15 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     cursor = get_cursor()
     metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
     col = metric_map.get(metric, metric)
+    
     date_clause = build_date_filter_clause(filters)
     extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
-    filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    
+    if date_clause:
+        filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    else:
+        s, e = get_current_window()
+        filter_clause = f"WHERE date >= '{s}' AND date <= '{e}' {extra_filters}"
 
     top_n_query = f"SELECT \"{dimension}\" FROM sales {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
     top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
@@ -285,7 +314,12 @@ def get_master_table(dimension='Category', filters=None):
     cursor = get_cursor()
     date_clause = build_date_filter_clause(filters)
     extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
-    filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    
+    if date_clause:
+        filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    else:
+        s, e = get_current_window()
+        filter_clause = f"WHERE date >= '{s}' AND date <= '{e}' {extra_filters}"
     
     query = f"SELECT \"{dimension}\" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG(\"Margin_%\") as margin, SUM(Qty) as qty FROM sales {filter_clause} GROUP BY 1 ORDER BY revenue DESC"
     
@@ -302,7 +336,12 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     cursor = get_cursor()
     date_clause = build_date_filter_clause(filters)
     extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
-    filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    
+    if date_clause:
+        filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    else:
+        s, e = get_current_window()
+        filter_clause = f"WHERE date >= '{s}' AND date <= '{e}' {extra_filters}"
     
     if selected_group:
         clean_group = str(selected_group).replace("'", "''")
