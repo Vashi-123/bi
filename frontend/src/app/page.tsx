@@ -250,7 +250,7 @@ export default function Dashboard() {
                             {Array.isArray(masterData) && masterData.map((item: any) => (
                                 <TableRow 
                                     key={item.name} 
-                                    className={`cursor-pointer transition-all border-transparent border-l-4 ${selectedGroup === item.name ? 'bg-slate-50/50 border-l-[#0C0C0C]' : 'hover:bg-slate-50/30 border-l-transparent'}`}
+                                    className={`cursor-pointer transition-all border-b border-slate-100/50 border-l-4 ${selectedGroup === item.name ? 'bg-slate-50/50 border-l-slate-400' : 'hover:bg-slate-50/30 border-l-transparent'}`}
                                     onClick={() => setSelectedGroup(item.name === selectedGroup ? null : item.name)}
                                 >
                                     <TableCell className="text-sm !text-[#0C0C0C] py-4">{item.name}</TableCell>
@@ -279,7 +279,7 @@ export default function Dashboard() {
                         </TableHead>
                         <TableBody>
                             {Array.isArray(detailData) && detailData.map((item: any) => (
-                                <TableRow key={item.name} className="hover:bg-slate-50/30 transition-colors">
+                                <TableRow key={item.name} className="hover:bg-slate-50/30 transition-colors border-b border-slate-50">
                                     <TableCell className="text-sm !text-[#0C0C0C] py-4 max-w-[200px] truncate">{item.name}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.profit)}</TableCell>
@@ -374,7 +374,7 @@ function ChartSection({ title, label, data, categories, minColWidth = 60, barCat
         </Flex>
 
         <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/30 p-10 border border-slate-50 relative overflow-hidden group transition-all">
-            <div className="absolute top-0 left-0 w-1 h-full bg-[#0C0C0C] opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div ref={containerRef} className="h-[450px] overflow-x-auto scrollbar-hide">
                 {Array.isArray(data) && data.length > 0 && (
                     <div style={{ minWidth: `${Math.max(800, data.length * minColWidth)}px`, height: '100%' }}>
