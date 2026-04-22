@@ -1,6 +1,35 @@
-.venv/
+# Node
+node_modules/
+.next/
+out/
+build/
+.pnpm-store/
+
+# Python
+venv/
 __pycache__/
-.DS_Store
+*.pyc
 .ipynb_checkpoints/
-*.csv
-*.xlsx
+.pytest_cache/
+
+# Data & Database (IMPORTANT)
+*.parquet
+*.db
+*.duckdb
+project_data/
+processed/
+onedrive_folder/
+
+# Environment
+.env
+.env.local
+.env.production
+.env.development
+
+# Logs
+*.log
+pm2_logs/
+
+# OS files
+.DS_Store
+Thumbs.db

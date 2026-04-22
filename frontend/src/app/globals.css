@@ -1,0 +1,39 @@
+@import "tailwindcss";
+@source "../../node_modules/@tremor/react";
+@source "../**/*.{js,ts,jsx,tsx,mdx}";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Premium Muted Swiss Palette */
+  --color-p-blue: #1d4ed8;
+  --color-p-slate: #334155;
+  --color-p-indigo: #4338ca;
+  --color-p-emerald: #047857;
+  --color-p-amber: #b45309;
+  --color-p-rose: #be123c;
+  --color-p-violet: #6d28d9;
+  --color-p-cyan: #0e7490;
+  --color-p-orange: #c2410c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
