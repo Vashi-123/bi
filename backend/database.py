@@ -78,23 +78,29 @@ def get_current_window():
     set_cached_data(cache_key, out)
     return out
 
-def build_filter_clause(filters, prefix="WHERE"):
-    """Dynamically builds a WHERE clause based on the provided filters dictionary."""
-    if not filters:
-        return ""
-    
-    clauses = []
-    for col, values in filters.items():
-        if values and isinstance(values, list):
-            val_str = ", ".join(["'" + str(v).replace("'", "''") + "'" for v in values])
-            clauses.append(f"\"{col}\" IN ({val_str})")
-        elif values:
-             clauses.append(f"\"{col}\" = '" + str(values).replace("'", "''") + "'")
-    
-    if not clauses:
-        return ""
-    
     return f" {prefix} " + " AND ".join(clauses)
+
+def build_date_filter_clause(filters):
+    """Builds a date-specific SQL clause based on the dateFilter parameters."""
+    mode = filters.get('dateMode', 'all')
+    if mode == 'all' or not mode:
+        return ""
+    
+    start = filters.get('startDate')
+    end = filters.get('endDate')
+    rel_val = filters.get('relativeValue')
+    rel_unit = filters.get('relativeUnit', 'day')
+    
+    if mode == 'between' and start and end:
+        return f"AND date BETWEEN '{start}' AND '{end}'"
+    elif mode == 'before' and end:
+        return f"AND date <= '{end}'"
+    elif mode == 'after' and start:
+        return f"AND date >= '{start}'"
+    elif mode == 'relative' and rel_val:
+        return f"AND date >= CURRENT_DATE - INTERVAL '{rel_val} {rel_unit}'"
+    
+    return ""
 
 def get_filter_options(dimension, search=None):
     """Returns a list of unique values for a given dimension column with optional search."""
@@ -124,10 +130,29 @@ def get_kpi_data(filters=None):
     if not end_date:
         return {"revenue": {"value":0,"prev":0,"growth":0}, "profit": {"value":0,"prev":0,"growth":0}, "margin": {"value":0,"prev":0,"growth":0}, "qty": {"value":0,"prev":0,"growth":0}}
     
-    # 3-month comparison logic
+    # Check for custom date filter
+    date_mode = filters.get('dateMode', 'all')
+    date_clause = build_date_filter_clause(filters)
+    extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
+
+    if date_mode != 'all' and date_clause:
+        # CUSTOM DATE RANGE: No comparison
+        query = f"""
+            SELECT SUM(Amount_USD), SUM(Profit_USD), AVG("Margin_%"), SUM(Qty)
+            FROM sales WHERE 1=1 {date_clause} {extra_filters}
+        """
+        res = cursor.execute(query).fetchone()
+        return {
+            "revenue": {"value": res[0] or 0, "prev": None, "growth": 0},
+            "profit": {"value": res[1] or 0, "prev": None, "growth": 0},
+            "margin": {"value": res[2] or 0, "prev": None, "growth": 0},
+            "qty": {"value": res[3] or 0, "prev": None, "growth": 0},
+            "meta": {"current_period": "Custom Selection", "prev_period": None}
+        }
+
+    # 3-month comparison logic (Standard)
     current_date_filter = f"date > CAST('{end_date}' AS DATE) - INTERVAL '3 month' AND date <= '{end_date}'"
     previous_date_filter = f"date >= CAST('{end_date}' AS DATE) - INTERVAL '6 month' AND date <= CAST('{end_date}' AS DATE) - INTERVAL '3 month'"
-    extra_filters = build_filter_clause(filters, prefix="AND")
 
     query = f"""
     WITH current_kpi AS (
@@ -178,7 +203,9 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
 
     metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
     col = metric_map.get(metric, metric)
-    filter_clause = f"WHERE date >= '{start_date}' AND date <= '{end_date}'" + build_filter_clause(filters, prefix="AND")
+    date_clause = build_date_filter_clause(filters)
+    extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
+    filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
 
     # 1. Find Top N categories
     top_n_query = f"SELECT \"{dimension}\" FROM sales {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
@@ -232,12 +259,11 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     if cached: return cached
 
     cursor = get_cursor()
-    start_date, end_date = get_current_window()
-    if not start_date: return []
-
     metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
     col = metric_map.get(metric, metric)
-    filter_clause = f"WHERE date >= '{start_date}' AND date <= '{end_date}'" + build_filter_clause(filters, prefix="AND")
+    date_clause = build_date_filter_clause(filters)
+    extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
+    filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
 
     top_n_query = f"SELECT \"{dimension}\" FROM sales {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
     top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
@@ -257,10 +283,10 @@ def get_master_table(dimension='Category', filters=None):
     if cached: return cached
 
     cursor = get_cursor()
-    start_date, end_date = get_current_window()
-    if not start_date or not end_date: return []
-
-    filter_clause = f"WHERE date >= '{start_date}' AND date <= '{end_date}'" + build_filter_clause(filters, prefix="AND")
+    date_clause = build_date_filter_clause(filters)
+    extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
+    filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    
     query = f"SELECT \"{dimension}\" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG(\"Margin_%\") as margin, SUM(Qty) as qty FROM sales {filter_clause} GROUP BY 1 ORDER BY revenue DESC"
     
     df = cursor.execute(query).df()
@@ -274,10 +300,10 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     if cached: return cached
 
     cursor = get_cursor()
-    start_date, end_date = get_current_window()
-    if not start_date: return []
-
-    filter_clause = f"WHERE date >= '{start_date}' AND date <= '{end_date}'" + build_filter_clause(filters, prefix="AND")
+    date_clause = build_date_filter_clause(filters)
+    extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
+    filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    
     if selected_group:
         clean_group = str(selected_group).replace("'", "''")
         filter_clause += f" AND \"{dimension}\" = '{clean_group}'"

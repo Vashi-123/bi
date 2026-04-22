@@ -40,13 +40,20 @@ def parse_filters(request_params):
         val = request_params.get(col)
         if val:
             try:
-                # Expecting comma-separated values or JSON array
                 if val.startswith('['):
                     filters[col] = json.loads(val)
                 else:
                     filters[col] = val.split(',')
             except:
                 filters[col] = [val]
+    
+    # Date Filter parameters
+    filters['dateMode'] = request_params.get('dateMode', 'all')
+    filters['startDate'] = request_params.get('startDate')
+    filters['endDate'] = request_params.get('endDate')
+    filters['relativeValue'] = request_params.get('relativeValue')
+    filters['relativeUnit'] = request_params.get('relativeUnit', 'day')
+    
     return filters
 
 @app.get("/api/filters/options")

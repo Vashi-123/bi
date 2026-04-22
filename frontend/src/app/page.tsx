@@ -6,7 +6,8 @@ import {
     TableBody, TableCell, Badge, Flex
 } from '@tremor/react';
 import { 
-    SearchIcon, FilterIcon, UserIcon, XIcon, CheckCircle2Icon
+    SearchIcon, FilterIcon, UserIcon, XIcon, CheckCircle2Icon, 
+    CalendarIcon, ClockIcon, ArrowRightIcon, ChevronRightIcon, CalendarDaysIcon
 } from 'lucide-react';
 import { 
     ComposedChart, Bar, Line, XAxis, YAxis, Tooltip as ReTooltip, 
@@ -30,14 +31,19 @@ const getColor = (index: number, total: number) => {
     return RANK_COLORS[RANK_COLORS.length - 1]; // Fallback if list is long
 };
 
-const formatValue = (number: number, includeSymbol: boolean = true) => {
+const formatValue = (number: number, includeSymbol = true) => {
+    if (number === undefined || number === null) return includeSymbol ? '$0' : '0';
+    
+    const isNeg = number < 0;
+    const absNumber = Math.abs(number);
     const symbol = includeSymbol ? '$' : '';
-    if (number === undefined || number === null) return `${symbol}0`;
+    
     let valStr = '';
-    if (Math.abs(number) >= 1000000) valStr = `${(number / 1000000).toFixed(2)}M`;
-    else if (Math.abs(number) >= 1000) valStr = `${(number / 1000).toFixed(2)}K`;
-    else valStr = Math.round(number).toLocaleString();
-    return `${symbol}${valStr}`;
+    if (absNumber >= 1000000) valStr = `${(absNumber / 1000000).toFixed(2)}M`;
+    else if (absNumber >= 1000) valStr = `${(absNumber / 1000).toFixed(2)}K`;
+    else valStr = Math.round(absNumber).toLocaleString();
+    
+    return isNeg ? `-${symbol}${valStr}` : `${symbol}${valStr}`;
 };
 
 export default function Dashboard() {
@@ -46,23 +52,44 @@ export default function Dashboard() {
     legendDimension, setLegendDimension, 
     topN, setTopN, 
     selectedGroup, setSelectedGroup,
+    dateFilter, setDateFilter,
     filters, setFilter, clearFilters 
   } = useDashboardStore();
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const filterParams = useMemo(() => {
-    return Object.entries(filters)
-      .filter(([_, values]) => values && values.length > 0)
-      .map(([col, values]) => `${encodeURIComponent(col)}=${encodeURIComponent(JSON.stringify(values))}`)
-      .join('&');
-  }, [filters]);
+    const params = new URLSearchParams();
+    
+    // Standard filters
+    Object.entries(filters).forEach(([col, values]) => {
+      if (values && values.length > 0) {
+        params.append(col, JSON.stringify(values));
+      }
+    });
 
-  const kpiUrl = `${API_BASE}/api/kpi?${filterParams ? `${filterParams}` : ''}`;
-  const trendsUrl = (interval: string) => `${API_BASE}/api/trends?metric=${encodeURIComponent(activeMetric === 'revenue' ? 'Amount_USD' : activeMetric === 'margin' ? 'Margin_%' : activeMetric === 'qty' ? 'Qty' : 'Profit_USD')}&dimension=${legendDimension}&top_n=${topN}&interval=${interval}${filterParams ? `&${filterParams}` : ''}`;
-  const distUrl = `${API_BASE}/api/distribution?metric=${encodeURIComponent(activeMetric === 'revenue' ? 'Amount_USD' : activeMetric === 'margin' ? 'Margin_%' : activeMetric === 'qty' ? 'Qty' : 'Profit_USD')}&dimension=${legendDimension}&top_n=${topN}${filterParams ? `&${filterParams}` : ''}`;
-  const masterUrl = `${API_BASE}/api/master?dimension=${legendDimension}${filterParams ? `&${filterParams}` : ''}`;
-  const detailUrl = `${API_BASE}/api/detail?dimension=${legendDimension}${selectedGroup ? `&selected_group=${encodeURIComponent(selectedGroup)}` : ''}&top_n=100${filterParams ? `&${filterParams}` : ''}`;
+    // Date filters
+    params.append('dateMode', dateFilter.mode);
+    if (dateFilter.mode === 'between' && dateFilter.value?.start && dateFilter.value?.end) {
+      params.append('startDate', dateFilter.value.start);
+      params.append('endDate', dateFilter.value.end);
+    } else if (dateFilter.mode === 'relative' && dateFilter.value) {
+      params.append('relativeValue', dateFilter.value.toString());
+      params.append('relativeUnit', 'day');
+    } else if (dateFilter.mode === 'before' && dateFilter.value) {
+      params.append('endDate', dateFilter.value);
+    } else if (dateFilter.mode === 'after' && dateFilter.value) {
+      params.append('startDate', dateFilter.value);
+    }
+
+    return params.toString();
+  }, [filters, dateFilter]);
+
+  const kpiUrl = `${API_BASE}/api/kpi?${filterParams}`;
+  const trendsUrl = (interval: string) => `${API_BASE}/api/trends?metric=${encodeURIComponent(activeMetric === 'revenue' ? 'Amount_USD' : activeMetric === 'margin' ? 'Margin_%' : activeMetric === 'qty' ? 'Qty' : 'Profit_USD')}&dimension=${legendDimension}&top_n=${topN}&interval=${interval}&${filterParams}`;
+  const distUrl = `${API_BASE}/api/distribution?metric=${encodeURIComponent(activeMetric === 'revenue' ? 'Amount_USD' : activeMetric === 'margin' ? 'Margin_%' : activeMetric === 'qty' ? 'Qty' : 'Profit_USD')}&dimension=${legendDimension}&top_n=${topN}&${filterParams}`;
+  const masterUrl = `${API_BASE}/api/master?dimension=${legendDimension}&${filterParams}`;
+  const detailUrl = `${API_BASE}/api/detail?dimension=${legendDimension}${selectedGroup ? `&selected_group=${encodeURIComponent(selectedGroup)}` : ''}&top_n=100&${filterParams}`;
 
   const { data: kpiData } = useSWR(kpiUrl, fetcher);
   const { data: weeklyRaw } = useSWR(trendsUrl('week'), fetcher);
@@ -120,8 +147,8 @@ export default function Dashboard() {
       <main className="relative z-10 max-w-[1600px] mx-auto p-10 space-y-12 pb-24">
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <KPICard title="Revenue Volume, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.revenue?.value} baseline={kpiData?.revenue?.prev} growth={kpiData?.revenue?.growth} active={activeMetric === 'revenue'} onClick={() => setActiveMetric('revenue')} />
-            <KPICard title="Profitability, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.profit?.value} baseline={kpiData?.profit?.prev} growth={kpiData?.profit?.growth} active={activeMetric === 'profit'} onClick={() => setActiveMetric('profit')} />
+            <KPICard title="Revenue Volume, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.revenue?.value} baseline={kpiData?.revenue?.prev} growth={kpiData?.revenue?.growth} active={activeMetric === 'revenue'} onClick={() => setActiveMetric('revenue')} hasComparison={dateFilter.mode === 'all'} />
+            <KPICard title="Profitability, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.profit?.value} baseline={kpiData?.profit?.prev} growth={kpiData?.profit?.growth} active={activeMetric === 'profit'} onClick={() => setActiveMetric('profit')} hasComparison={dateFilter.mode === 'all'} />
             
             {/* Calculated Margin KPI */}
             {(() => {
@@ -140,11 +167,12 @@ export default function Dashboard() {
                         active={activeMetric === 'margin'} 
                         onClick={() => setActiveMetric('margin')} 
                         isPercent={true} 
+                        hasComparison={dateFilter.mode === 'all'}
                     />
                 );
             })()}
 
-            <KPICard title="Quantity Sold" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.qty?.value} baseline={kpiData?.qty?.prev} growth={kpiData?.qty?.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} />
+            <KPICard title="Quantity Sold" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.qty?.value} baseline={kpiData?.qty?.prev} growth={kpiData?.qty?.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} hasComparison={dateFilter.mode === 'all'} />
         </div>
 
         {/* Global Controls */}
@@ -330,7 +358,7 @@ export default function Dashboard() {
 
 // --- SUBCOMPONENTS ---
 
-function KPICard({ title, period, baselinePeriod, value, baseline, growth, active, onClick, isPercent = false, isCurrency = true }: any) {
+function KPICard({ title, period, baselinePeriod, value, baseline, growth, active, onClick, isPercent = false, isCurrency = true, hasComparison = true }: any) {
   const isPos = growth >= 0;
   return (
     <div 
@@ -353,16 +381,18 @@ function KPICard({ title, period, baselinePeriod, value, baseline, growth, activ
                 {value ? (isPercent ? `${value.toFixed(2)}%` : formatValue(value, isCurrency)) : '--'}
             </h3>
 
-            <div className="flex items-center gap-4 border-t border-slate-50 pt-5">
-                <div className="flex flex-col">
-                    <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">{baselinePeriod}</span>
-                    <span className="text-xs font-bold text-slate-500">{baseline ? (isPercent ? `${baseline.toFixed(2)}%` : formatValue(baseline, isCurrency)) : '--'}</span>
+            {hasComparison && (
+                <div className="flex items-center gap-4 border-t border-slate-50 pt-5">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">{baselinePeriod}</span>
+                        <span className="text-xs font-bold text-slate-500">{baseline ? (isPercent ? `${baseline.toFixed(2)}%` : formatValue(baseline, isCurrency)) : '--'}</span>
+                    </div>
+                    <div className="flex-1" />
+                    <div className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 ${isPos ? 'bg-emerald-100/80 text-emerald-700' : 'bg-rose-100/80 text-rose-700'}`}>
+                        <span className="text-xs font-extrabold">{isPos ? '+' : ''}{growth ? `${growth.toFixed(2)}%` : '0.00%'}</span>
+                    </div>
                 </div>
-                <div className="flex-1" />
-                <div className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 ${isPos ? 'bg-emerald-100/80 text-emerald-700' : 'bg-rose-100/80 text-rose-700'}`}>
-                    <span className="text-xs font-extrabold">{isPos ? '+' : ''}{growth ? `${growth.toFixed(2)}%` : '0.00%'}</span>
-                </div>
-            </div>
+            )}
         </div>
     </div>
   );
@@ -507,6 +537,8 @@ function FilterSidebar({ onClose }: { onClose: () => void }) {
                 <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-full transition-all text-slate-400 hover:text-slate-800"><XIcon className="w-5 h-5" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-8 space-y-10 scrollbar-hide">
+                <DateFilterGroup />
+                <div className="h-px bg-slate-50 mx-[-32px]" />
                 <FilterGroup title="Category" column="Category" current={filters['Category']} onChange={vals => setFilter('Category', vals)} />
                 <FilterGroup title="Product" column="Product name" current={filters['Product name']} onChange={vals => setFilter('Product name', vals)} />
                 <FilterGroup title="SKU" column="Item name" current={filters['Item name']} onChange={vals => setFilter('Item name', vals)} />
@@ -518,6 +550,104 @@ function FilterSidebar({ onClose }: { onClose: () => void }) {
                 <button onClick={clearFilters} className="flex-1 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">Clear All</button>
                 <button onClick={onClose} className="flex-[2] py-3 bg-[#0C0C0C] text-white rounded-xl text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-black/20 hover:bg-black transition-all">Apply Filters</button>
             </div>
+        </div>
+    );
+}
+
+function DateFilterGroup() {
+    const { dateFilter, setDateFilter } = useDashboardStore();
+    const modes = [
+        { id: 'all', label: 'All Time', icon: ClockIcon },
+        { id: 'relative', label: 'Last X Days', icon: CalendarDaysIcon },
+        { id: 'between', label: 'Between', icon: CalendarIcon },
+        { id: 'before', label: 'Before', icon: ChevronRightIcon },
+        { id: 'after', label: 'After', icon: ArrowRightIcon },
+    ];
+
+    const setMode = (mode: any) => {
+        let defaultValue = null;
+        if (mode === 'relative') defaultValue = 30;
+        if (mode === 'between') defaultValue = { start: '', end: '' };
+        if (mode === 'before' || mode === 'after') defaultValue = '';
+        setDateFilter({ mode, value: defaultValue });
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-900 rounded-lg">
+                    <CalendarIcon className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="text-sm font-extrabold text-[#0C0C0C] uppercase tracking-wider">Date Filter</h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+                {modes.map(m => (
+                    <button
+                        key={m.id}
+                        onClick={() => setMode(m.id)}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-[10px] font-bold transition-all duration-200 border
+                                   ${dateFilter.mode === m.id 
+                                     ? 'bg-[#0C0C0C] text-white border-[#0C0C0C] shadow-lg scale-[1.02]' 
+                                     : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}
+                    >
+                        <m.icon className={`w-3.5 h-3.5 ${dateFilter.mode === m.id ? 'text-white' : 'text-slate-400'}`} />
+                        {m.label}
+                    </button>
+                ))}
+            </div>
+
+            {dateFilter.mode !== 'all' && (
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                    {dateFilter.mode === 'relative' && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Days Count</label>
+                            <input 
+                                type="number" 
+                                value={dateFilter.value || ''} 
+                                onChange={e => setDateFilter({ ...dateFilter, value: parseInt(e.target.value) })}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                                placeholder="e.g. 30"
+                            />
+                        </div>
+                    )}
+
+                    {dateFilter.mode === 'between' && (
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">From</label>
+                                <input 
+                                    type="date" 
+                                    value={dateFilter.value?.start || ''} 
+                                    onChange={e => setDateFilter({ ...dateFilter, value: { ...dateFilter.value, start: e.target.value } })}
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">To</label>
+                                <input 
+                                    type="date" 
+                                    value={dateFilter.value?.end || ''} 
+                                    onChange={e => setDateFilter({ ...dateFilter, value: { ...dateFilter.value, end: e.target.value } })}
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {(dateFilter.mode === 'before' || dateFilter.mode === 'after') && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase">Specific Date</label>
+                            <input 
+                                type="date" 
+                                value={dateFilter.value || ''} 
+                                onChange={e => setDateFilter({ ...dateFilter, value: e.target.value })}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                            />
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
