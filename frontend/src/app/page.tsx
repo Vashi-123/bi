@@ -237,27 +237,27 @@ export default function Dashboard() {
             <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden">
                 <div className="max-h-[450px] overflow-y-auto pr-2 scrollbar-hide">
                     <Table>
-                        <TableHead>
-                            <TableRow className="border-b border-slate-50">
-                                <TableHeaderCell className="text-xs font-black !text-[#0C0C0C] uppercase tracking-wider">Group Name</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-xs font-black !text-[#0C0C0C] uppercase tracking-wider">Revenue</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-xs font-black !text-[#0C0C0C] uppercase tracking-wider">Profit</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-xs font-black !text-[#0C0C0C] uppercase tracking-wider">Margin</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-xs font-black !text-[#0C0C0C] uppercase tracking-wider">Qty</TableHeaderCell>
+                        <TableHead className="bg-slate-50/80">
+                            <TableRow className="border-b border-slate-100">
+                                <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Group Name</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Revenue</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Profit</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Margin</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {Array.isArray(masterData) && masterData.map((item: any) => (
                                 <TableRow 
                                     key={item.name} 
-                                    className={`cursor-pointer transition-all border-transparent border-l-4 ${selectedGroup === item.name ? 'bg-slate-50 border-l-[#0C0C0C]' : 'hover:bg-slate-50 border-l-transparent'}`}
+                                    className={`cursor-pointer transition-all border-transparent border-l-4 ${selectedGroup === item.name ? 'bg-slate-50/50 border-l-[#0C0C0C]' : 'hover:bg-slate-50/30 border-l-transparent'}`}
                                     onClick={() => setSelectedGroup(item.name === selectedGroup ? null : item.name)}
                                 >
-                                    <TableCell className="font-black !text-[#0C0C0C] text-sm">{item.name}</TableCell>
-                                    <TableCell className="text-right font-medium text-sm !text-[#0C0C0C]">{formatValue(item.revenue)}</TableCell>
-                                    <TableCell className="text-right font-medium text-sm !text-[#0C0C0C]">{formatValue(item.profit)}</TableCell>
-                                    <TableCell className="text-right font-medium text-sm !text-[#0C0C0C]">{item.margin.toFixed(1)}%</TableCell>
-                                    <TableCell className="text-right font-medium text-sm !text-[#0C0C0C]">{Math.round(item.qty).toLocaleString()}</TableCell>
+                                    <TableCell className="text-sm !text-[#0C0C0C] py-4">{item.name}</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.profit)}</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{item.margin.toFixed(1)}%</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -268,23 +268,23 @@ export default function Dashboard() {
             <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden">
                 <div className="max-h-[450px] overflow-y-auto pr-2 scrollbar-hide">
                     <Table>
-                        <TableHead>
-                            <TableRow className="border-b border-slate-50">
-                                <TableHeaderCell className="text-xs font-black !text-[#0C0C0C] uppercase tracking-wider">SKU Name</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-xs font-black !text-[#0C0C0C] uppercase tracking-wider">Revenue</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-xs font-black !text-[#0C0C0C] uppercase tracking-wider">Profit</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-xs font-black !text-[#0C0C0C] uppercase tracking-wider">Margin</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-xs font-black !text-[#0C0C0C] uppercase tracking-wider">Qty</TableHeaderCell>
+                        <TableHead className="bg-slate-50/80">
+                            <TableRow className="border-b border-slate-100">
+                                <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Revenue</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Profit</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Margin</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {Array.isArray(detailData) && detailData.map((item: any) => (
-                                <TableRow key={item.name} className="hover:bg-slate-50 transition-colors">
-                                    <TableCell className="font-black !text-[#0C0C0C] text-sm max-w-[200px] truncate">{item.name}</TableCell>
-                                    <TableCell className="text-right font-medium text-sm !text-[#0C0C0C]">{formatValue(item.revenue)}</TableCell>
-                                    <TableCell className="text-right font-medium text-sm !text-[#0C0C0C]">{formatValue(item.profit)}</TableCell>
-                                    <TableCell className="text-right font-medium text-sm !text-[#0C0C0C]">{item.margin?.toFixed(1)}%</TableCell>
-                                    <TableCell className="text-right font-medium text-sm !text-[#0C0C0C]">{Math.round(item.qty).toLocaleString()}</TableCell>
+                                <TableRow key={item.name} className="hover:bg-slate-50/30 transition-colors">
+                                    <TableCell className="text-sm !text-[#0C0C0C] py-4 max-w-[200px] truncate">{item.name}</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.profit)}</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{item.margin?.toFixed(1)}%</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
                                 </TableRow>
                             ))}
                             {(!detailData || detailData.length === 0) && (
