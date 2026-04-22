@@ -150,11 +150,17 @@ def get_filter_options(dimension, search=None):
     set_cached_data(cache_key, out)
     return out
 
+_OVERALL_DATE_RANGE = None
+
 def get_overall_date_range():
-    """Returns the absolute min and max dates in the dataset."""
+    """Returns the absolute min and max dates in the dataset. Cached after first call."""
+    global _OVERALL_DATE_RANGE
+    if _OVERALL_DATE_RANGE is not None:
+        return _OVERALL_DATE_RANGE
     cursor = get_cursor()
-    res = cursor.execute(f"SELECT MIN(date), MAX(date) FROM read_parquet('{DATA_PATH}')").fetchone()
-    return {"min": str(res[0]) if res[0] else None, "max": str(res[1]) if res[1] else None}
+    res = cursor.execute("SELECT MIN(CAST(date AS DATE)), MAX(CAST(date AS DATE)) FROM sales").fetchone()
+    _OVERALL_DATE_RANGE = {"min": str(res[0]) if res[0] else None, "max": str(res[1]) if res[1] else None}
+    return _OVERALL_DATE_RANGE
 
 def get_kpi_data(filters=None):
     if not filters: filters = {}
