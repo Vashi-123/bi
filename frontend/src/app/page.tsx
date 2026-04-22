@@ -122,7 +122,28 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <KPICard title="Revenue Volume, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.revenue?.value} baseline={kpiData?.revenue?.prev} growth={kpiData?.revenue?.growth} active={activeMetric === 'revenue'} onClick={() => setActiveMetric('revenue')} />
             <KPICard title="Profitability, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.profit?.value} baseline={kpiData?.profit?.prev} growth={kpiData?.profit?.growth} active={activeMetric === 'profit'} onClick={() => setActiveMetric('profit')} />
-            <KPICard title="Margin Performance" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.margin?.value} baseline={kpiData?.margin?.prev} growth={kpiData?.margin?.growth} active={activeMetric === 'margin'} onClick={() => setActiveMetric('margin')} isPercent={true} />
+            
+            {/* Calculated Margin KPI */}
+            {(() => {
+                const marginValue = kpiData?.revenue?.value > 0 ? (kpiData.profit.value / kpiData.revenue.value) * 100 : 0;
+                const prevMargin = kpiData?.revenue?.prev > 0 ? (kpiData.profit.prev / kpiData.revenue.prev) * 100 : 0;
+                const marginGrowth = prevMargin !== 0 ? ((marginValue - prevMargin) / Math.abs(prevMargin)) * 100 : 0;
+                
+                return (
+                    <KPICard 
+                        title="Margin Performance" 
+                        period={kpiData?.meta?.current_period} 
+                        baselinePeriod={kpiData?.meta?.prev_period} 
+                        value={marginValue} 
+                        baseline={prevMargin} 
+                        growth={marginGrowth} 
+                        active={activeMetric === 'margin'} 
+                        onClick={() => setActiveMetric('margin')} 
+                        isPercent={true} 
+                    />
+                );
+            })()}
+
             <KPICard title="Quantity Sold" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.qty?.value} baseline={kpiData?.qty?.prev} growth={kpiData?.qty?.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} />
         </div>
 

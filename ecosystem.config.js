@@ -2,14 +2,12 @@ module.exports = {
   apps: [
     {
       name: 'powerbi-backend',
-      script: 'backend/server.py',
-      cwd: './',
-      interpreter: './venv/bin/python',
+      script: './venv/bin/python',
+      args: '-m uvicorn server:app --host 0.0.0.0 --port 8000',
+      cwd: './backend',
       env: {
         DATA_PATH: '/home/usman/project_data/processed/final_df/**/*.parquet'
-      },
-      watch: ['backend'],
-      autorestart: true
+      }
     },
     {
       name: 'powerbi-frontend',
@@ -18,9 +16,20 @@ module.exports = {
       cwd: './frontend',
       env: {
         NODE_ENV: 'production',
-        NEXT_PUBLIC_API_URL: 'http://192.168.55.112:8000'
-      },
-      autorestart: true
+        NEXT_PUBLIC_API_URL: 'http://192.168.55.112:8000',
+        PORT: 3000
+      }
+    },
+    {
+      name: 'powerbi-frontend-dev',
+      script: 'npm',
+      args: 'run start',
+      cwd: '/home/usman/powerbi-dev/frontend',
+      env: {
+        NODE_ENV: 'production',
+        NEXT_PUBLIC_API_URL: 'http://192.168.55.112:8000',
+        PORT: 3001
+      }
     }
   ]
 };
