@@ -244,7 +244,7 @@ export default function Dashboard() {
                                         <div className="w-3.5 h-3.5 rounded-full shadow-md border-2 border-white" style={{ backgroundColor: color }} />
                                         <span className="text-[11px] font-bold text-slate-400 group-hover:text-[#0C0C0C] uppercase tracking-tight transition-colors">{item.dimension_value}</span>
                                     </div>
-                                    <div className="text-sm font-extrabold text-[#0C0C0C]">{((item.value / total) * 100).toFixed(1)}%</div>
+                                    <div className="text-sm font-extrabold text-[#0C0C0C]">{((item.value / total) * 100).toFixed(2)}%</div>
                                 </div>
                             );
                         })}
@@ -277,7 +277,7 @@ export default function Dashboard() {
                                     <TableCell className="text-sm !text-[#0C0C0C] py-4">{item.name}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.profit)}</TableCell>
-                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{item.margin.toFixed(1)}%</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{item.margin.toFixed(2)}%</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
                                 </TableRow>
                             ))}
@@ -304,7 +304,7 @@ export default function Dashboard() {
                                     <TableCell className="text-sm !text-[#0C0C0C] py-4 max-w-[200px] truncate">{item.name}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.profit)}</TableCell>
-                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{item.margin?.toFixed(1)}%</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{item.margin?.toFixed(2)}%</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
                                 </TableRow>
                             ))}
@@ -350,17 +350,17 @@ function KPICard({ title, period, baselinePeriod, value, baseline, growth, activ
             </div>
             
             <h3 className="text-4xl font-extrabold tracking-tight text-[#0C0C0C] leading-none">
-                {value ? (isPercent ? `${value.toFixed(1)}%` : formatValue(value, isCurrency)) : '--'}
+                {value ? (isPercent ? `${value.toFixed(2)}%` : formatValue(value, isCurrency)) : '--'}
             </h3>
 
             <div className="flex items-center gap-4 border-t border-slate-50 pt-5">
                 <div className="flex flex-col">
                     <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">{baselinePeriod}</span>
-                    <span className="text-xs font-bold text-slate-500">{baseline ? (isPercent ? `${baseline.toFixed(1)}%` : formatValue(baseline, isCurrency)) : '--'}</span>
+                    <span className="text-xs font-bold text-slate-500">{baseline ? (isPercent ? `${baseline.toFixed(2)}%` : formatValue(baseline, isCurrency)) : '--'}</span>
                 </div>
                 <div className="flex-1" />
                 <div className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 ${isPos ? 'bg-emerald-100/80 text-emerald-700' : 'bg-rose-100/80 text-rose-700'}`}>
-                    <span className="text-xs font-extrabold">{isPos ? '+' : ''}{growth ? `${growth.toFixed(1)}%` : '0%'}</span>
+                    <span className="text-xs font-extrabold">{isPos ? '+' : ''}{growth ? `${growth.toFixed(2)}%` : '0.00%'}</span>
                 </div>
             </div>
         </div>
@@ -435,7 +435,7 @@ function ChartSection({ title, label, data, categories, minColWidth = 60, barCat
                                                                     <span className="text-xs font-black text-[#0C0C0C]">{formatValue(entry.value, isCurrency)}</span>
                                                                     {catGrowth !== undefined && (
                                                                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${catGrowth >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
-                                                                            {catGrowth >= 0 ? '+' : ''}{catGrowth.toFixed(1)}%
+                                                                            {catGrowth >= 0 ? '+' : ''}{catGrowth.toFixed(2)}%
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -446,7 +446,7 @@ function ChartSection({ title, label, data, categories, minColWidth = 60, barCat
                                                 <div className="bg-slate-50 rounded-xl p-4 flex justify-between items-center border border-slate-100">
                                                     <div className="flex items-center gap-3"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">TOTAL</p><p className="text-xl font-bold text-[#0C0C0C]">{formatValue(total, isCurrency)}</p></div>
                                                     <div className={`px-3 py-1 rounded-md text-[11px] font-bold ${growth >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                                                        {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
+                                                        {growth >= 0 ? '+' : ''}{growth.toFixed(2)}%
                                                     </div>
                                                 </div>
                                             </div>
@@ -480,7 +480,7 @@ function ChartSection({ title, label, data, categories, minColWidth = 60, barCat
                                         return (
                                             <g>
                                                 <rect x={x - 22} y={y - 30} width={44} height={20} rx={10} fill={isPos ? '#d1fae5' : '#fee2e2'} />
-                                                <text x={x} y={y - 16} fill={isPos ? '#047857' : '#b91c1c'} textAnchor="middle" className="text-[9px] font-bold leading-none">{isPos ? '+' : ''}{value.toFixed(1)}%</text>
+                                                <text x={x} y={y - 16} fill={isPos ? '#047857' : '#b91c1c'} textAnchor="middle" className="text-[9px] font-bold leading-none">{isPos ? '+' : ''}{value.toFixed(2)}%</text>
                                             </g>
                                         );
                                     }}/>
