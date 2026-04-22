@@ -537,14 +537,15 @@ function FilterSidebar({ onClose }: { onClose: () => void }) {
                 <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-full transition-all text-slate-400 hover:text-slate-800"><XIcon className="w-5 h-5" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-8 space-y-10 scrollbar-hide">
-                <DateFilterGroup />
-                <div className="h-px bg-slate-50 mx-[-32px]" />
                 <FilterGroup title="Category" column="Category" current={filters['Category']} onChange={vals => setFilter('Category', vals)} />
                 <FilterGroup title="Product" column="Product name" current={filters['Product name']} onChange={vals => setFilter('Product name', vals)} />
                 <FilterGroup title="SKU" column="Item name" current={filters['Item name']} onChange={vals => setFilter('Item name', vals)} />
                 <FilterGroup title="Country" column="Product country" current={filters['Product country']} onChange={vals => setFilter('Product country', vals)} />
                 <FilterGroup title="Counterparty" column="counterparty" current={filters['counterparty']} onChange={vals => setFilter('counterparty', vals)} />
                 <FilterGroup title="Sales Type" column="type" current={filters['type']} onChange={vals => setFilter('type', vals)} />
+                
+                <div className="h-px bg-slate-50 mx-[-32px]" />
+                <DateFilterGroup />
             </div>
             <div className="p-8 border-t border-slate-100 flex gap-4 bg-slate-50">
                 <button onClick={clearFilters} className="flex-1 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">Clear All</button>
@@ -576,105 +577,96 @@ function DateFilterGroup() {
         setIsSelectorOpen(false);
     };
 
-    const handleReset = () => {
-        setDateFilter({ mode: 'between', value: { start: '', end: '' } });
-    };
-
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div 
                     onClick={() => setIsSelectorOpen(!isSelectorOpen)}
-                    className="flex items-center gap-3 cursor-pointer group"
+                    className="flex items-center gap-2 cursor-pointer group"
                 >
-                    <div className="p-2 bg-slate-900 rounded-lg group-hover:bg-[#0C0C0C] transition-colors">
-                        <currentMode.icon className="w-4 h-4 text-white" />
+                    <div className="p-1.5 bg-slate-900 rounded-md group-hover:bg-[#0C0C0C] transition-colors">
+                        <currentMode.icon className="w-3 h-3 text-white" />
                     </div>
                     <div>
-                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date Filter</h3>
-                        <p className="text-sm font-extrabold text-[#0C0C0C] flex items-center gap-2">
+                        <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Date Filter</h3>
+                        <p className="text-[11px] font-extrabold text-[#0C0C0C] flex items-center gap-1.5">
                             {currentMode.label}
-                            <ChevronRightIcon className={`w-3.5 h-3.5 transition-transform duration-300 ${isSelectorOpen ? 'rotate-90' : ''}`} />
+                            <ChevronRightIcon className={`w-3 h-3 transition-transform duration-300 ${isSelectorOpen ? 'rotate-90' : ''}`} />
                         </p>
                     </div>
                 </div>
             </div>
 
             {isSelectorOpen && (
-                <div className="grid grid-cols-1 gap-1.5 p-2 bg-slate-50 rounded-2xl border border-slate-100 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="grid grid-cols-1 gap-1 p-1 bg-slate-50 rounded-xl border border-slate-100">
                     {modes.map(m => (
                         <button
                             key={m.id}
                             onClick={() => setMode(m.id)}
-                            className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-xs font-bold transition-all
+                            className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[10px] font-bold transition-all
                                        ${dateFilter.mode === m.id 
                                          ? 'bg-white text-[#0C0C0C] shadow-sm' 
                                          : 'text-slate-500 hover:bg-white hover:text-[#0C0C0C]'}`}
                         >
-                            <m.icon className={`w-4 h-4 ${dateFilter.mode === m.id ? 'text-[#0C0C0C]' : 'text-slate-400'}`} />
+                            <m.icon className={`w-3 h-3 ${dateFilter.mode === m.id ? 'text-[#0C0C0C]' : 'text-slate-400'}`} />
                             {m.label}
                         </button>
                     ))}
                 </div>
             )}
 
-            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-5">
+            <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-100 space-y-3">
                 {dateFilter.mode === 'relative' && (
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Days Count</label>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">Days Count</label>
                         <input 
                             type="number" 
                             value={dateFilter.value || ''} 
                             onChange={e => setDateFilter({ ...dateFilter, value: parseInt(e.target.value) })}
-                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
-                            placeholder="e.g. 30"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-1 focus:ring-[#0C0C0C] outline-none"
+                            placeholder="30"
                         />
                     </div>
                 )}
 
                 {dateFilter.mode === 'between' && (
-                    <div className="grid grid-cols-1 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">From</label>
+                    <div className="grid grid-cols-1 gap-3">
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">From</label>
                             <input 
                                 type="date" 
                                 value={dateFilter.value?.start || ''} 
                                 onChange={e => setDateFilter({ ...dateFilter, value: { ...dateFilter.value, start: e.target.value } })}
-                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-1 focus:ring-[#0C0C0C] outline-none"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">To</label>
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">To</label>
                             <input 
                                 type="date" 
                                 value={dateFilter.value?.end || ''} 
                                 onChange={e => setDateFilter({ ...dateFilter, value: { ...dateFilter.value, end: e.target.value } })}
-                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-1 focus:ring-[#0C0C0C] outline-none"
                             />
                         </div>
                     </div>
                 )}
 
                 {(dateFilter.mode === 'before' || dateFilter.mode === 'after') && (
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase">Specific Date</label>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">Date</label>
                         <input 
                             type="date" 
                             value={dateFilter.value || ''} 
                             onChange={e => setDateFilter({ ...dateFilter, value: e.target.value })}
-                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-[#0C0C0C] outline-none"
+                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold focus:ring-1 focus:ring-[#0C0C0C] outline-none"
                         />
                     </div>
                 )}
-
-                <button 
-                    onClick={handleReset}
-                    className="w-full py-2.5 text-[11px] font-extrabold text-slate-400 hover:text-[#0C0C0C] uppercase tracking-widest border-t border-slate-200 transition-colors pt-4"
-                >
-                    Reset Filter
-                </button>
             </div>
         </div>
+    );
+}
     );
 }
 
@@ -699,6 +691,12 @@ function FilterGroup({ title, column, current = [], onChange }: { title: string,
                         <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-300 group-hover:text-[#FF843B] transition-colors" />
                         <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-slate-50 border-none rounded-lg pl-9 pr-3 py-2.5 text-xs font-bold placeholder:text-slate-300 focus:ring-1 focus:ring-[#FF843B]/20 transition-all" />
                     </div>
+                    {options.length > 0 && (
+                        <div className="flex justify-between items-center px-1">
+                            <button onClick={() => onChange(options)} className="text-[10px] font-bold text-slate-400 hover:text-[#0C0C0C] uppercase tracking-wider transition-colors">Select All</button>
+                            <button onClick={() => onChange([])} className="text-[10px] font-bold text-slate-400 hover:text-rose-500 uppercase tracking-wider transition-colors">Clear</button>
+                        </div>
+                    )}
                     <div className="max-h-60 overflow-y-auto space-y-1 pr-2 scrollbar-hide text-[#0C0C0C]">
                         {isValidating && options.length === 0 && <div className="py-8 flex justify-center"><div className="w-4 h-4 border-2 border-[#FF843B] border-t-transparent rounded-full animate-spin" /></div>}
                         {Array.isArray(options) && options.map((opt: string) => (
