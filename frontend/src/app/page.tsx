@@ -188,30 +188,6 @@ export default function Dashboard() {
             <KPICard title="Gross Profit, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.profit?.value} baseline={kpiData?.profit?.prev} growth={kpiData?.profit?.growth} active={activeMetric === 'profit'} onClick={() => setActiveMetric('profit')} hasComparison={isFullRange} />
             <KPICard title="Profit Margin, %" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.margin?.value} baseline={kpiData?.margin?.prev} growth={kpiData?.margin?.growth} active={activeMetric === 'margin'} onClick={() => setActiveMetric('margin')} hasComparison={isFullRange} />
             <KPICard title="Qty of Items Sold" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.qty?.value} baseline={kpiData?.qty?.prev} growth={kpiData?.qty?.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} hasComparison={isFullRange} />
-
-            {/* Calculated Margin KPI */}
-            {(() => {
-                const marginValue = kpiData?.revenue?.value > 0 ? (kpiData.profit.value / kpiData.revenue.value) * 100 : 0;
-                const prevMargin = kpiData?.revenue?.prev > 0 ? (kpiData.profit.prev / kpiData.revenue.prev) * 100 : 0;
-                const marginGrowth = prevMargin !== 0 ? ((marginValue - prevMargin) / Math.abs(prevMargin)) * 100 : 0;
-                
-                return (
-                    <KPICard 
-                        title="Margin Performance" 
-                        period={kpiData?.meta?.current_period} 
-                        baselinePeriod={kpiData?.meta?.prev_period} 
-                        value={marginValue} 
-                        baseline={prevMargin} 
-                        growth={marginGrowth} 
-                        active={activeMetric === 'margin'} 
-                        onClick={() => setActiveMetric('margin')} 
-                        isPercent={true} 
-                        hasComparison={dateFilter.mode === 'all'}
-                    />
-                );
-            })()}
-
-            <KPICard title="Quantity Sold" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.qty?.value} baseline={kpiData?.qty?.prev} growth={kpiData?.qty?.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} hasComparison={dateFilter.mode === 'all'} />
         </div>
 
         {/* Global Controls */}
