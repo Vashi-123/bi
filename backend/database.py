@@ -226,29 +226,35 @@ def get_kpi_data(filters=None):
     if not filters: filters = {}
     cursor = get_cursor()
     
+    mode = filters.get('dateMode', 'all')
     curr_s, curr_e = get_current_window(filters)
     prev_s, prev_e = get_prev_window(filters)
     
     extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
     
-    # Current Period Query
-    curr_query = f"""
-        SELECT SUM(Amount_USD), SUM(Profit_USD), AVG("Margin_%"), SUM(Qty)
-        FROM sales WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}
-    """
-    c_res = cursor.execute(curr_query).fetchone()
+    # 1. Base query depends on mode
+    if mode == 'all':
+        # Truly all data, no date filter
+        curr_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM sales WHERE 1=1 {extra_filters}"
+        curr_label = "All Time"
+        p_res = [0, 0, 0, 0]
+        prev_label = None
+    else:
+        # Filtered period
+        curr_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM sales WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}"
+        curr_label = format_period_label(curr_s, curr_e)
+        
+        # Comparison logic
+        p_res = [0, 0, 0, 0]
+        prev_label = None
+        if prev_s and prev_e:
+            global_min = cursor.execute("SELECT MIN(date) FROM sales").fetchone()[0]
+            if pandas.to_datetime(prev_s) >= pandas.to_datetime(global_min):
+                prev_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM sales WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
+                p_res = cursor.execute(prev_query).fetchone()
+                prev_label = format_period_label(prev_s, prev_e)
     
-    # Previous Period Query
-    p_res = [0, 0, 0, 0]
-    if prev_s and prev_e:
-        # Check if we have data before curr_s
-        global_min = cursor.execute("SELECT MIN(date) FROM sales").fetchone()[0]
-        if pandas.to_datetime(prev_s) >= pandas.to_datetime(global_min):
-            prev_query = f"""
-                SELECT SUM(Amount_USD), SUM(Profit_USD), AVG("Margin_%"), SUM(Qty)
-                FROM sales WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}
-            """
-            p_res = cursor.execute(prev_query).fetchone()
+    c_res = cursor.execute(curr_query).fetchone()
     
     def calc_growth(curr, prev):
         if not prev or prev == 0: return 0
@@ -260,8 +266,8 @@ def get_kpi_data(filters=None):
         "margin": {"value": c_res[2] or 0, "prev": p_res[2] or 0, "growth": calc_growth(c_res[2] or 0, p_res[2] or 0)},
         "qty": {"value": c_res[3] or 0, "prev": p_res[3] or 0, "growth": calc_growth(c_res[3] or 0, p_res[3] or 0)},
         "meta": {
-            "current_period": format_period_label(curr_s, curr_e),
-            "prev_period": format_period_label(prev_s, prev_e) if p_res[0] else None
+            "current_period": curr_label,
+            "prev_period": prev_label
         }
     }
 
@@ -352,39 +358,6 @@ def get_overall_date_range():
     res = cursor.execute("SELECT MIN(CAST(date AS DATE)), MAX(CAST(date AS DATE)) FROM sales").fetchone()
     _OVERALL_DATE_RANGE = {"min": str(res[0]) if res[0] else None, "max": str(res[1]) if res[1] else None}
     return _OVERALL_DATE_RANGE
-
-    previous_kpi AS (
-        SELECT SUM(Amount_USD) as rev, SUM(Profit_USD) as prof, AVG("Margin_%") as marg, SUM(Qty) as qty
-        FROM sales WHERE {previous_date_filter} {extra_filters}
-    )
-    SELECT c.rev, c.prof, c.marg, c.qty, p.rev, p.prof, p.marg, p.qty
-    FROM current_kpi c, previous_kpi p
-    """
-    res = cursor.execute(query).fetchone()
-    
-    # Get human-readable date labels
-    date_info = cursor.execute(f"""
-        SELECT 
-            strftime(CAST('{end_date}' AS DATE) - INTERVAL '3 month', '%b %Y') || ' - ' || strftime(CAST('{end_date}' AS DATE), '%b %Y') as current_range,
-            strftime(CAST('{end_date}' AS DATE) - INTERVAL '6 month', '%b %Y') || ' - ' || strftime(CAST('{end_date}' AS DATE) - INTERVAL '3 month', '%b %Y') as prev_range
-    """).fetchone()
-
-    def calc_growth(cur, prev):
-        if not prev or prev == 0: return 0
-        return ((cur - prev) / prev) * 100
-
-    out = {
-        "revenue": {"value": res[0] or 0, "prev": res[4] or 0, "growth": calc_growth(res[0], res[4])},
-        "profit": {"value": res[1] or 0, "prev": res[5] or 0, "growth": calc_growth(res[1], res[5])},
-        "margin": {"value": res[2] or 0, "prev": res[6] or 0, "growth": calc_growth(res[2], res[6])},
-        "qty": {"value": res[3] or 0, "prev": res[7] or 0, "growth": calc_growth(res[3], res[7])},
-        "meta": {
-            "current_period": date_info[0] if date_info else "",
-            "prev_period": date_info[1] if date_info else ""
-        }
-    }
-    set_cached_data(cache_key, out)
-    return out
 
 def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', filters=None):
     if not filters: filters = {}
@@ -481,7 +454,8 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
     if not top_dims: return []
 
-    dim_expr = f"CASE WHEN \"{dimension}\" IN ({', '.join([f"'{d}'" for d in top_dims])}) THEN \"{dimension}\" ELSE 'Other' END"
+    top_dims_escaped = [d.replace("'", "''") for d in top_dims]
+    dim_expr = f"CASE WHEN \"{dimension}\" IN ({', '.join([f"'{d}'" for d in top_dims_escaped])}) THEN \"{dimension}\" ELSE 'Other' END"
     query = f"SELECT {dim_expr} as dimension_value, SUM({col}) as value FROM sales {filter_clause} GROUP BY 1 ORDER BY value DESC"
     
     df = cursor.execute(query).df()

@@ -30,15 +30,17 @@ export function KPICard({
                     {value ? (isPercent ? `${value.toFixed(2)}%` : formatValue(value, isCurrency)) : '--'}
                 </h3>
 
-                {hasComparison && (
+                {(hasComparison && baselinePeriod) && (
                     <div className="flex items-center gap-4 border-t border-slate-50 pt-5">
                         <div className="flex flex-col">
                             <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">{baselinePeriod}</span>
-                            <span className="text-xs font-bold text-slate-500">{baseline ? (isPercent ? `${baseline.toFixed(2)}%` : formatValue(baseline, isCurrency)) : '--'}</span>
+                            <span className="text-xs font-bold text-slate-500">
+                                {(baseline !== null && baseline !== undefined) ? (isPercent ? `${baseline.toFixed(2)}%` : formatValue(baseline, isCurrency)) : '--'}
+                            </span>
                         </div>
                         <div className="flex-1" />
                         <div className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 ${isPos ? 'bg-emerald-100/80 text-emerald-700' : 'bg-rose-100/80 text-rose-700'}`}>
-                            <span className="text-xs font-extrabold">{isPos ? '+' : ''}{growth ? `${growth.toFixed(2)}%` : '0.00%'}</span>
+                            <span className="text-xs font-extrabold">{isPos ? '+' : ''}{(growth !== null && growth !== undefined) ? `${growth.toFixed(2)}%` : '0.00%'}</span>
                         </div>
                     </div>
                 )}
