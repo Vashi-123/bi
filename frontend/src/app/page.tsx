@@ -2,7 +2,7 @@
 
 import { useDashboardStore } from '@/store/useDashboardStore';
 import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex } from '@tremor/react';
-import { FilterIcon, UserIcon } from 'lucide-react';
+import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import useSWR from 'swr';
 import { useEffect, useState, useMemo } from 'react';
@@ -26,6 +26,8 @@ export default function Dashboard() {
   } = useDashboardStore();
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedTable, setExpandedTable] = useState<'master' | 'detail' | null>(null);
+  const [fullscreenTable, setFullscreenTable] = useState<'master' | 'detail' | null>(null);
 
   // Initialize date filter with default 6-month window (max - 6 months to max)
   const { data: globalRange } = useSWR(`${API_BASE}/api/filters/date-range`, fetcher);
@@ -269,11 +271,35 @@ export default function Dashboard() {
         </div>
 
         {/* Details Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden">
-                <div className="max-h-[450px] overflow-y-auto pr-2 scrollbar-hide">
-                    <Table>
-                        <TableHead className="bg-slate-50/80">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            {/* Master Table */}
+            <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500
+                            ${expandedTable === 'master' ? 'lg:col-span-2' : expandedTable === 'detail' ? 'hidden' : ''}`}>
+                <div className="flex justify-between items-center mb-6">
+                    <div className="space-y-1">
+                        <Title className="text-xl font-bold text-[#0C0C0C]">Main Analytics</Title>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Grouped by {legendDimension}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')}
+                            className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] group"
+                            title={expandedTable === 'master' ? "Collapse" : "Expand to Width"}
+                        >
+                            {expandedTable === 'master' ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </button>
+                        <button 
+                            onClick={() => setFullscreenTable('master')}
+                            className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
+                            title="Fullscreen"
+                        >
+                            <Expand className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+                <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
+                    <Table className="min-w-[600px]">
+                        <TableHead className="bg-slate-50/80 sticky top-0 z-10">
                             <TableRow className="border-b border-slate-100">
                                 <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Group Name</TableHeaderCell>
                                 <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Revenue</TableHeaderCell>
@@ -283,13 +309,15 @@ export default function Dashboard() {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {Array.isArray(masterData) && masterData.map((item: any) => (
+                            {masterLoading ? (
+                                <TableRow><TableCell colSpan={5} className="py-20 text-center"><div className="inline-block w-6 h-6 border-2 border-[#0C0C0C] border-t-transparent rounded-full animate-spin" /></TableCell></TableRow>
+                            ) : Array.isArray(masterData) && masterData.map((item: any) => (
                                 <TableRow 
                                     key={item.name} 
                                     className={`cursor-pointer transition-all border-b border-slate-100/50 border-l-4 ${selectedGroup === item.name ? 'bg-slate-50/50 border-l-slate-400' : 'hover:bg-slate-50/30 border-l-transparent'}`}
                                     onClick={() => setSelectedGroup(item.name === selectedGroup ? null : item.name)}
                                 >
-                                    <TableCell className="text-sm !text-[#0C0C0C] py-4">{item.name}</TableCell>
+                                    <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.profit)}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{item.margin?.toFixed(2) ?? '0.00'}%</TableCell>
@@ -301,10 +329,34 @@ export default function Dashboard() {
                 </div>
             </Card>
 
-            <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden">
-                <div className="max-h-[450px] overflow-y-auto pr-2 scrollbar-hide">
-                    <Table>
-                        <TableHead className="bg-slate-50/80">
+            {/* Detail Table */}
+            <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500
+                            ${expandedTable === 'detail' ? 'lg:col-span-2' : expandedTable === 'master' ? 'hidden' : ''}`}>
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')}
+                            className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
+                            title={expandedTable === 'detail' ? "Collapse" : "Expand to Width"}
+                        >
+                            {expandedTable === 'detail' ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </button>
+                        <div className="space-y-1">
+                            <Title className="text-xl font-bold text-[#0C0C0C]">SKU Performance</Title>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedGroup || 'Global Detail View'}</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => setFullscreenTable('detail')}
+                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
+                        title="Fullscreen"
+                    >
+                        <Expand className="w-4 h-4" />
+                    </button>
+                </div>
+                <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
+                    <Table className="min-w-[700px]">
+                        <TableHead className="bg-slate-50/80 sticky top-0 z-10">
                             <TableRow className="border-b border-slate-100">
                                 <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
                                 <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Revenue</TableHeaderCell>
@@ -314,17 +366,18 @@ export default function Dashboard() {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {Array.isArray(detailData) && detailData.map((item: any) => (
+                            {detailLoading ? (
+                                <TableRow><TableCell colSpan={5} className="py-20 text-center"><div className="inline-block w-6 h-6 border-2 border-[#0C0C0C] border-t-transparent rounded-full animate-spin" /></TableCell></TableRow>
+                            ) : (Array.isArray(detailData) && detailData.length > 0) ? detailData.map((item: any) => (
                                 <TableRow key={item.name} className="hover:bg-slate-50/30 transition-colors border-b border-slate-50">
-                                    <TableCell className="text-sm !text-[#0C0C0C] py-4 max-w-[200px] truncate">{item.name}</TableCell>
+                                    <TableCell className="text-sm !text-[#0C0C0C] py-4 max-w-[300px] truncate font-bold" title={item.name}>{item.name}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.profit)}</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{item.margin?.toFixed(2) ?? '0.00'}%</TableCell>
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
                                 </TableRow>
-                            ))}
-                            {(!detailData || detailData.length === 0) && (
-                                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-400 italic font-bold">Select a group to see SKU details</TableCell></TableRow>
+                            )) : (
+                                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-400 italic font-bold">Select a group in the left table to see SKU details</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
@@ -337,6 +390,57 @@ export default function Dashboard() {
             <div className="fixed inset-0 z-[100] flex justify-end">
                 <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-[2px]" onClick={() => setSidebarOpen(false)} />
                 <FilterSidebar onClose={() => setSidebarOpen(false)} />
+            </div>
+        )}
+
+        {/* Fullscreen Table Overlay */}
+        {fullscreenTable && (
+            <div className="fixed inset-0 z-[200] bg-white flex flex-col p-10 animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center mb-8 shrink-0">
+                    <div className="space-y-1">
+                        <h2 className="text-3xl font-black text-[#0C0C0C] tracking-tighter">
+                            {fullscreenTable === 'master' ? 'Main Analytics Exploration' : 'SKU Performance Deep Dive'}
+                        </h2>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">
+                            {fullscreenTable === 'master' ? `Grouped by ${legendDimension}` : (selectedGroup || 'Global Detail View')}
+                        </p>
+                    </div>
+                    <button 
+                        onClick={() => setFullscreenTable(null)}
+                        className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all text-slate-400 hover:text-slate-900"
+                    >
+                        <X className="w-8 h-8" />
+                    </button>
+                </div>
+                
+                <div className="flex-1 overflow-auto border border-slate-100 rounded-3xl p-8 shadow-inner bg-slate-50/30">
+                    <Table className="min-w-full">
+                        <TableHead className="bg-white sticky top-[-32px] z-20 shadow-sm">
+                            <TableRow className="border-b border-slate-100">
+                                <TableHeaderCell className="text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">
+                                    {fullscreenTable === 'master' ? 'Group Name' : 'SKU Name'}
+                                </TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Revenue</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Profit</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Margin</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Qty</TableHeaderCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody className="bg-white">
+                            {(fullscreenTable === 'master' ? masterData : detailData)?.map((item: any) => (
+                                <TableRow key={item.name} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
+                                    <TableCell className={`text-base !text-[#0C0C0C] py-6 font-bold ${fullscreenTable === 'detail' ? 'max-w-[600px] truncate' : ''}`} title={item.name}>
+                                        {item.name}
+                                    </TableCell>
+                                    <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{formatValue(item.revenue)}</TableCell>
+                                    <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{formatValue(item.profit)}</TableCell>
+                                    <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{item.margin?.toFixed(2) ?? '0.00'}%</TableCell>
+                                    <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{Math.round(item.qty).toLocaleString()}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
         )}
       </main>
