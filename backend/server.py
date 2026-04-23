@@ -41,18 +41,17 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Enable GZip compression
-app.add_middleware(GZipMiddleware, minimum_size=1000)
-
-# CORS: Restrict to known origins in production
-ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
+# CORS: Must be added BEFORE GZip so preflight OPTIONS requests are handled first
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=False,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS", "PUT", "PATCH"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Enable GZip compression
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 # --- Global Exception Handler ---
