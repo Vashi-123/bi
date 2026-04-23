@@ -309,20 +309,20 @@ export default function Dashboard() {
             <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500
                             ${expandedTable === 'master' ? 'lg:col-span-2' : expandedTable === 'detail' ? 'hidden' : ''}`}>
                 {/* Action Buttons at the Edge */}
-                <div className="absolute top-2 right-6 flex items-center gap-1 z-20">
-                    <button 
-                        onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')}
-                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] group"
-                        title={expandedTable === 'master' ? "Collapse" : "Expand to Width"}
-                    >
-                        {expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
-                    </button>
+                <div className="absolute top-1 right-6 flex items-center gap-1 z-20">
                     <button 
                         onClick={() => setFullscreenTable('master')}
                         className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
                         title="Fullscreen"
                     >
                         <Expand className="w-4 h-4" />
+                    </button>
+                    <button 
+                        onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')}
+                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] group"
+                        title={expandedTable === 'master' ? "Collapse" : "Expand to Width"}
+                    >
+                        {expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
                     </button>
                 </div>
 
@@ -364,14 +364,14 @@ export default function Dashboard() {
                 {/* Action Buttons at the Edges */}
                 <button 
                     onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')}
-                    className="absolute top-2 left-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
+                    className="absolute top-1 left-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
                     title={expandedTable === 'detail' ? "Collapse" : "Expand to Width"}
                 >
                     {expandedTable === 'detail' ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
                 </button>
                 <button 
                     onClick={() => setFullscreenTable('detail')}
-                    className="absolute top-2 right-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
+                    className="absolute top-1 right-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
                     title="Fullscreen"
                 >
                     <Expand className="w-4 h-4" />
