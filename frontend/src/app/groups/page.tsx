@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import useSWR, { mutate } from 'swr';
 import { API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
-import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Users, Globe, UserIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Users, Globe, UserIcon, Pencil } from 'lucide-react';
 import Link from 'next/link';
 
 type GroupType = 'counterparties' | 'countries';
@@ -181,9 +181,9 @@ export default function GroupsPage() {
                         <Title className="text-xl font-bold mb-8 text-[#0C0C0C]">
                             {activeType === 'counterparties' ? 'Client' : 'Country'} Mappings
                         </Title>
-                        <div className="overflow-x-auto">
+                        <div className="max-h-[450px] overflow-y-auto pr-2">
                             <Table>
-                                <TableHead className="bg-slate-50/80 sticky top-0 z-10">
+                                <TableHead className="bg-white sticky top-0 z-10 shadow-sm">
                                     <TableRow className="border-b border-slate-100">
                                         <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Group Name</TableHeaderCell>
                                         <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Count</TableHeaderCell>
@@ -211,12 +211,26 @@ export default function GroupsPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <button 
-                                                    onClick={() => handleDeleteGroup(name)}
-                                                    className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex justify-end gap-1">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setNewGroupName(name);
+                                                            setSelectedItems(items);
+                                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                        }}
+                                                        className="p-2.5 hover:bg-indigo-50 text-slate-300 hover:text-indigo-500 rounded-xl transition-all"
+                                                        title="Edit group"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDeleteGroup(name)}
+                                                        className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"
+                                                        title="Delete group"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
