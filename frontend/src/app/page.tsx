@@ -275,23 +275,21 @@ export default function Dashboard() {
             {/* Master Table */}
             <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500
                             ${expandedTable === 'master' ? 'lg:col-span-2' : expandedTable === 'detail' ? 'hidden' : ''}`}>
-                {/* Action Buttons at the Edge */}
-                <div className="absolute top-6 right-6 flex items-center gap-1 z-20">
-                    <button 
-                        onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')}
-                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] group"
-                        title={expandedTable === 'master' ? "Collapse" : "Expand to Width"}
-                    >
-                        {expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
-                    </button>
-                    <button 
-                        onClick={() => setFullscreenTable('master')}
-                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
-                        title="Fullscreen"
-                    >
-                        <Expand className="w-4 h-4" />
-                    </button>
-                </div>
+                {/* Action Buttons at the Edges */}
+                <button 
+                    onClick={() => setFullscreenTable('master')}
+                    className="absolute top-3 left-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
+                    title="Fullscreen"
+                >
+                    <Expand className="w-4 h-4" />
+                </button>
+                <button 
+                    onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')}
+                    className="absolute top-3 right-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] group z-20"
+                    title={expandedTable === 'master' ? "Collapse" : "Expand to Width"}
+                >
+                    {expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
+                </button>
 
                 <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
                     <Table className="min-w-[600px]">
@@ -328,23 +326,21 @@ export default function Dashboard() {
             {/* Detail Table */}
             <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500
                             ${expandedTable === 'detail' ? 'lg:col-span-2' : expandedTable === 'master' ? 'hidden' : ''}`}>
-                {/* Action Buttons at the Edge */}
-                <div className="absolute top-6 left-6 flex items-center gap-1 z-20">
-                    <button 
-                        onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')}
-                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
-                        title={expandedTable === 'detail' ? "Collapse" : "Expand to Width"}
-                    >
-                        {expandedTable === 'detail' ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
-                    </button>
-                    <button 
-                        onClick={() => setFullscreenTable('detail')}
-                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
-                        title="Fullscreen"
-                    >
-                        <Expand className="w-4 h-4" />
-                    </button>
-                </div>
+                {/* Action Buttons at the Edges */}
+                <button 
+                    onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')}
+                    className="absolute top-3 left-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
+                    title={expandedTable === 'detail' ? "Collapse" : "Expand to Width"}
+                >
+                    {expandedTable === 'detail' ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
+                </button>
+                <button 
+                    onClick={() => setFullscreenTable('detail')}
+                    className="absolute top-3 right-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
+                    title="Fullscreen"
+                >
+                    <Expand className="w-4 h-4" />
+                </button>
 
                 <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
                     <Table className="min-w-[700px]">
@@ -377,65 +373,66 @@ export default function Dashboard() {
             </Card>
         </div>
 
-        {/* Filter Sidebar */}
-        {isSidebarOpen && (
-            <div className="fixed inset-0 z-[100] flex justify-end">
-                <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-[2px]" onClick={() => setSidebarOpen(false)} />
-                <FilterSidebar onClose={() => setSidebarOpen(false)} />
-            </div>
-        )}
-
-        {/* Fullscreen Table Overlay */}
-        {fullscreenTable && (
-            <div className="fixed inset-0 z-[200] bg-white flex flex-col p-10 animate-in zoom-in-95 duration-200">
-                <div className="flex justify-between items-center mb-8 shrink-0">
-                    <div className="space-y-1">
-                        <h2 className="text-3xl font-black text-[#0C0C0C] tracking-tighter">
-                            {fullscreenTable === 'master' ? 'Main Analytics Exploration' : 'SKU Performance Deep Dive'}
-                        </h2>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">
-                            {fullscreenTable === 'master' ? `Grouped by ${legendDimension}` : (selectedGroup || 'Global Detail View')}
-                        </p>
-                    </div>
-                    <button 
-                        onClick={() => setFullscreenTable(null)}
-                        className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all text-slate-400 hover:text-slate-900"
-                    >
-                        <X className="w-8 h-8" />
-                    </button>
-                </div>
-                
-                <div className="flex-1 overflow-auto border border-slate-100 rounded-3xl p-8 shadow-inner bg-slate-50/30">
-                    <Table className="min-w-full">
-                        <TableHead className="bg-white sticky top-[-32px] z-20 shadow-sm">
-                            <TableRow className="border-b border-slate-100">
-                                <TableHeaderCell className="text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">
-                                    {fullscreenTable === 'master' ? 'Group Name' : 'SKU Name'}
-                                </TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Revenue</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Profit</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Margin</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Qty</TableHeaderCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody className="bg-white">
-                            {(fullscreenTable === 'master' ? masterData : detailData)?.map((item: any) => (
-                                <TableRow key={item.name} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
-                                    <TableCell className={`text-base !text-[#0C0C0C] py-6 font-bold ${fullscreenTable === 'detail' ? 'max-w-[600px] truncate' : ''}`} title={item.name}>
-                                        {item.name}
-                                    </TableCell>
-                                    <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{formatValue(item.revenue)}</TableCell>
-                                    <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{formatValue(item.profit)}</TableCell>
-                                    <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{item.margin?.toFixed(2) ?? '0.00'}%</TableCell>
-                                    <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{Math.round(item.qty).toLocaleString()}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </div>
-        )}
       </main>
+
+      {/* Filter Sidebar */}
+      {isSidebarOpen && (
+          <div className="fixed inset-0 z-[100] flex justify-end">
+              <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-[2px]" onClick={() => setSidebarOpen(false)} />
+              <FilterSidebar onClose={() => setSidebarOpen(false)} />
+          </div>
+      )}
+
+      {/* Fullscreen Table Overlay */}
+      {fullscreenTable && (
+          <div className="fixed inset-0 z-[200] bg-white flex flex-col p-10 animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center mb-8 shrink-0">
+                  <div className="space-y-1">
+                      <h2 className="text-3xl font-black text-[#0C0C0C] tracking-tighter">
+                          {fullscreenTable === 'master' ? 'Main Analytics Exploration' : 'SKU Performance Deep Dive'}
+                      </h2>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">
+                          {fullscreenTable === 'master' ? `Grouped by ${legendDimension}` : (selectedGroup || 'Global Detail View')}
+                      </p>
+                  </div>
+                  <button 
+                      onClick={() => setFullscreenTable(null)}
+                      className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all text-slate-400 hover:text-slate-900"
+                  >
+                      <X className="w-5 h-5" />
+                  </button>
+              </div>
+              
+              <div className="flex-1 overflow-auto border border-slate-100 rounded-3xl p-8 shadow-inner bg-slate-50/30">
+                  <Table className="min-w-full">
+                      <TableHead className="bg-white sticky top-[-32px] z-20 shadow-sm">
+                          <TableRow className="border-b border-slate-100">
+                              <TableHeaderCell className="text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">
+                                  {fullscreenTable === 'master' ? 'Group Name' : 'SKU Name'}
+                              </TableHeaderCell>
+                              <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Revenue</TableHeaderCell>
+                              <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Profit</TableHeaderCell>
+                              <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Margin</TableHeaderCell>
+                              <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Qty</TableHeaderCell>
+                          </TableRow>
+                      </TableHead>
+                      <TableBody className="bg-white">
+                          {(fullscreenTable === 'master' ? masterData : detailData)?.map((item: any) => (
+                              <TableRow key={item.name} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
+                                  <TableCell className={`text-base !text-[#0C0C0C] py-6 font-bold ${fullscreenTable === 'detail' ? 'max-w-[600px] truncate' : ''}`} title={item.name}>
+                                      {item.name}
+                                  </TableCell>
+                                  <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{formatValue(item.revenue)}</TableCell>
+                                  <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{formatValue(item.profit)}</TableCell>
+                                  <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{item.margin?.toFixed(2) ?? '0.00'}%</TableCell>
+                                  <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{Math.round(item.qty).toLocaleString()}</TableCell>
+                              </TableRow>
+                          ))}
+                      </TableBody>
+                  </Table>
+              </div>
+          </div>
+      )}
     </div>
   );
 }
