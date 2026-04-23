@@ -425,12 +425,9 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
 
     dim_expr = f"CASE WHEN \"{dimension}\" IN ({', '.join([f"'{d}'" for d in top_dims])}) THEN \"{dimension}\" ELSE 'Other' END"
     
-    # Use distinct values from top_dims to avoid duplicates in unnest
-    unique_dims = list(dict.fromkeys(top_dims + ['Other']))
-    
     query = f"""
     WITH calendar AS ({cal_gen}),
-    dims AS (SELECT unnest([{', '.join([f"'{d}'" for d in unique_dims])}]) as dim_val),
+    dims AS (SELECT unnest([{', '.join([f"'{d}'" for d in top_dims + ['Other']])}]) as dim_val),
     full_grid AS (SELECT c.d, d.dim_val FROM calendar c, dims d),
     sales_agg AS (
         SELECT CAST({sales_d} AS DATE) as cal_d, {dim_expr} as dim_val, SUM({col}) as val
