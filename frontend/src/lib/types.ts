@@ -66,6 +66,7 @@ export interface ChartSectionProps {
   minColWidth?: number;
   barCategoryGap?: string;
   isCurrency?: boolean;
+  view?: 'combined' | 'multiples';
 }
 
 // --- Formatted Trend Data ---

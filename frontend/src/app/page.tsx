@@ -2,7 +2,7 @@
 
 import { useDashboardStore } from '@/store/useDashboardStore';
 import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex } from '@tremor/react';
-import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus } from 'lucide-react';
+import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus, Layout, LayoutGrid } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import useSWR from 'swr';
 import { useEffect, useState, useMemo } from 'react';
@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [expandedTable, setExpandedTable] = useState<'master' | 'detail' | null>(null);
   const [fullscreenTable, setFullscreenTable] = useState<'master' | 'detail' | null>(null);
+  const [chartView, setChartView] = useState<'combined' | 'multiples'>('combined');
 
   // Initialize date filter with default 6-month window (max - 6 months to max)
   const { data: globalRange } = useSWR(`${API_BASE}/api/filters/date-range`, fetcher);
@@ -217,6 +218,23 @@ export default function Dashboard() {
                 </select>
             </div>
             <div className="w-px h-5 bg-slate-100" />
+            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
+                <button 
+                    onClick={() => setChartView('combined')}
+                    className={`p-1.5 rounded-lg transition-all ${chartView === 'combined' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
+                    title="Combined View"
+                >
+                    <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button 
+                    onClick={() => setChartView('multiples')}
+                    className={`p-1.5 rounded-lg transition-all ${chartView === 'multiples' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
+                    title="Small Multiples"
+                >
+                    <Layout className="w-4 h-4" />
+                </button>
+            </div>
+            <div className="w-px h-5 bg-slate-100" />
             <div className="flex items-center gap-3">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dimension:</span>
                 <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={legendDimension} onChange={e => setLegendDimension(e.target.value as any)}>
@@ -232,9 +250,9 @@ export default function Dashboard() {
 
         {/* Trends */}
         <section className="space-y-12">
-            <ChartSection title="Weekly Trend" label="Weekly Analysis" data={weeklyData} categories={sharedCategories} minColWidth={130} barCategoryGap="20%" isCurrency={isCurrencyMetric} />
-            <ChartSection title="Monthly Trend" label="Monthly Overview" data={monthlyData} categories={sharedCategories} minColWidth={50} barCategoryGap="25%" isCurrency={isCurrencyMetric} />
-            <ChartSection title="Daily Trend" label="Day-by-Day" data={dailyData} categories={sharedCategories} minColWidth={60} barCategoryGap="15%" isCurrency={isCurrencyMetric} />
+            <ChartSection title="Weekly Trend" label="Weekly Analysis" data={weeklyData} categories={sharedCategories} minColWidth={130} barCategoryGap="20%" isCurrency={isCurrencyMetric} view={chartView} />
+            <ChartSection title="Monthly Trend" label="Monthly Overview" data={monthlyData} categories={sharedCategories} minColWidth={50} barCategoryGap="25%" isCurrency={isCurrencyMetric} view={chartView} />
+            <ChartSection title="Daily Trend" label="Day-by-Day" data={dailyData} categories={sharedCategories} minColWidth={60} barCategoryGap="15%" isCurrency={isCurrencyMetric} view={chartView} />
         </section>
 
         {/* Distribution Row */}
