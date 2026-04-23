@@ -248,11 +248,11 @@ def get_kpi_data(filters=None):
         p_res = [0, 0, 0, 0]
         prev_label = None
         if prev_s and prev_e:
-            global_min = cursor.execute("SELECT MIN(date) FROM sales").fetchone()[0]
-            if pandas.to_datetime(prev_s) >= pandas.to_datetime(global_min):
-                prev_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM sales WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
-                p_res = cursor.execute(prev_query).fetchone()
-                prev_label = format_period_label(prev_s, prev_e)
+            prev_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM sales WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
+            p_res = cursor.execute(prev_query).fetchone()
+            # If query returns None for all (which fetchone might do if no rows match), p_res might be [None, None, None, None]
+            if p_res is None: p_res = [0, 0, 0, 0]
+            prev_label = format_period_label(prev_s, prev_e)
     
     c_res = cursor.execute(curr_query).fetchone()
     

@@ -80,33 +80,8 @@ export default function Dashboard() {
 
   // --- Smart Comparison Detection ---
   const canCompare = useMemo(() => {
-    if (dateFilter.mode === 'all') return false;
-    if (!globalRange?.min || !globalRange?.max) return false;
-
-    let start: Date;
-    let end: Date;
-
-    if (dateFilter.mode === 'between' && dateFilter.value?.start && dateFilter.value?.end) {
-        start = new Date(dateFilter.value.start);
-        end = new Date(dateFilter.value.end);
-    } else if (dateFilter.mode === 'relative' && dateFilter.value) {
-        end = new Date(globalRange.max);
-        start = new Date(end);
-        const val = Number(dateFilter.value);
-        if (dateFilter.unit === 'month') start.setMonth(end.getMonth() - val);
-        else if (dateFilter.unit === 'week') start.setDate(end.getDate() - val * 7);
-        else start.setDate(end.getDate() - val);
-    } else {
-        return false;
-    }
-
-    const durationMs = end.getTime() - start.getTime();
-    const prevStart = new Date(start.getTime() - durationMs);
-    const globalMin = new Date(globalRange.min);
-
-    // Allow comparison if the previous period starts at or after our first data point
-    return prevStart >= globalMin;
-  }, [dateFilter, globalRange]);
+    return dateFilter.mode !== 'all';
+  }, [dateFilter.mode]);
 
   // --- Data Fetching ---
   const { data: kpiData, isLoading: kpiLoading } = useSWR(kpiUrl, fetcher);
