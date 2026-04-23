@@ -224,7 +224,7 @@ export default function Dashboard() {
                     <option value="Product name">Product</option>
                     <option value="Item name">SKU</option>
                     <option value="Product country">Country</option>
-                    <option value="counterparty">Counterparty</option>
+                    <option value="counterparty">Client</option>
                     <option value="type">Sales Type</option>
                 </select>
             </div>

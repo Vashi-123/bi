@@ -96,13 +96,27 @@ def refresh_groups_table():
         df_c = pandas.DataFrame(country_flattened)
         conn.execute("INSERT INTO custom_country_groups SELECT * FROM df_c")
     
-    # Create Enriched View: Use Custom Groups for both Client and Country
-    conn.execute("""
+    # 3. Create Enriched View dynamically to avoid errors if columns don't exist
+    cols_res = conn.execute("DESCRIBE sales_raw").fetchall()
+    existing_cols = [row[0] for row in cols_res]
+    
+    exclude_cols = []
+    if 'Groupclient' in existing_cols:
+        exclude_cols.append('Groupclient')
+    if 'CountryGroup' in existing_cols:
+        exclude_cols.append('CountryGroup')
+        
+    exclude_clause = f"EXCLUDE ({', '.join(exclude_cols)})" if exclude_cols else ""
+    
+    gc_fallback = "s.Groupclient" if "Groupclient" in existing_cols else "NULL"
+    cg_fallback = "s.CountryGroup" if "CountryGroup" in existing_cols else "NULL"
+    
+    conn.execute(f"""
         CREATE OR REPLACE VIEW sales AS 
         SELECT 
-            s.* EXCLUDE (Groupclient, CountryGroup),
-            COALESCE(g.group_name, s.Groupclient, s.counterparty) as Groupclient,
-            COALESCE(cg.group_name, s.CountryGroup, 'Other') as CountryGroup
+            s.* {exclude_clause},
+            COALESCE(g.group_name, {gc_fallback}, s.counterparty) as Groupclient,
+            COALESCE(cg.group_name, {cg_fallback}, 'Other') as CountryGroup
         FROM sales_raw s
         LEFT JOIN custom_groups g ON s.counterparty = g.counterparty
         LEFT JOIN custom_country_groups cg ON s."Product country" = cg.country_code
