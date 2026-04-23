@@ -80,7 +80,7 @@ export default function Dashboard() {
   // Single distribution fetch with top_n=100 — used for both rating (full) and donut (sliced)
   const fullDistUrl = `${API_BASE}/api/distribution?metric=${metricParam}&dimension=${legendDimension}&top_n=100&${filterParams}`;
   const masterUrl = `${API_BASE}/api/master?dimension=${legendDimension}&${filterParams}`;
-  const detailUrl = `${API_BASE}/api/detail?dimension=${legendDimension}${selectedGroup ? `&selected_group=${encodeURIComponent(selectedGroup)}` : ''}&top_n=100&${filterParams}`;
+  const detailUrl = `${API_BASE}/api/detail?dimension=${legendDimension}${selectedGroup ? `&selected_group=${encodeURIComponent(selectedGroup)}` : ''}&top_n=5000&${filterParams}`;
 
   // --- Smart Comparison Detection ---
   const isFullRange = useMemo(() => {
@@ -213,7 +213,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-3 ml-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Show Top:</span>
                 <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={topN} onChange={e => setTopN(parseInt(e.target.value))}>
-                    {[3,5].map(v => <option key={v} value={v}>Top {v}</option>)}
+                    {[3, 5].map(v => <option key={v} value={v}>Top {v}</option>)}
                 </select>
             </div>
             <div className="w-px h-5 bg-slate-100" />
