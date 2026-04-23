@@ -257,10 +257,14 @@ def get_filter_options(dimension, search=None):
         where_clause += f" AND \"{dimension}\" ILIKE '%{clean_search}%'"
     
     query = f"SELECT DISTINCT \"{dimension}\" FROM sales {where_clause} ORDER BY \"{dimension}\" ASC LIMIT 100"
-    res = cursor.execute(query).fetchall()
-    out = [row[0] for row in res]
-    set_cached_data(cache_key, out)
-    return out
+    try:
+        res = cursor.execute(query).fetchall()
+        out = [row[0] for row in res if row[0] is not None]
+        set_cached_data(cache_key, out)
+        return out
+    except Exception as e:
+        logger.error(f"Error getting filter options for {dimension}: {e}")
+        return []
 
 _OVERALL_DATE_RANGE = None
 
