@@ -6,8 +6,7 @@ export const RANK_COLORS = ["#8F3F48", "#638994", "#FF843B", "#79783F", "#A68B7A
 export const MIN_COLOR = "#0C0C0C";
 
 export const getColor = (index: number, total: number): string => {
-    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-    return colors[index % colors.length];
+    return RANK_COLORS[index % RANK_COLORS.length];
 };
 
 // --- SWR Fetcher ---
