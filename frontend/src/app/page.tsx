@@ -38,7 +38,7 @@ export default function Dashboard() {
     if (globalRange?.max && dateFilter.mode === 'between' && dateFilter.value?.start === '') {
       const maxDate = new Date(globalRange.max);
       const startDate = new Date(maxDate);
-      startDate.setMonth(startDate.getMonth() - 6);
+      startDate.setMonth(startDate.getMonth() - 3);
       const startStr = startDate.toISOString().split('T')[0];
       const endStr = globalRange.max;
       setDateFilter({
@@ -84,15 +84,33 @@ export default function Dashboard() {
   const detailUrl = `${API_BASE}/api/detail?dimension=${legendDimension}${selectedGroup ? `&selected_group=${encodeURIComponent(selectedGroup)}` : ''}&top_n=5000&${filterParams}`;
 
   // --- Smart Comparison Detection ---
-  const isFullRange = useMemo(() => {
-    if (dateFilter.mode === 'all') return true;
+  const canCompare = useMemo(() => {
+    if (dateFilter.mode === 'all') return false;
+    if (!globalRange?.min || !globalRange?.max) return false;
+
+    let start: Date;
+    let end: Date;
+
     if (dateFilter.mode === 'between' && dateFilter.value?.start && dateFilter.value?.end) {
-        const s = new Date(dateFilter.value.start);
-        const e = new Date(dateFilter.value.end);
-        const diffDays = (e.getTime() - s.getTime()) / (1000 * 3600 * 24);
-        return diffDays >= 170 && dateFilter.value.end === globalRange?.max;
+        start = new Date(dateFilter.value.start);
+        end = new Date(dateFilter.value.end);
+    } else if (dateFilter.mode === 'relative' && dateFilter.value) {
+        end = new Date(globalRange.max);
+        start = new Date(end);
+        const val = Number(dateFilter.value);
+        if (dateFilter.unit === 'month') start.setMonth(end.getMonth() - val);
+        else if (dateFilter.unit === 'week') start.setDate(end.getDate() - val * 7);
+        else start.setDate(end.getDate() - val);
+    } else {
+        return false;
     }
-    return false;
+
+    const durationMs = end.getTime() - start.getTime();
+    const prevStart = new Date(start.getTime() - durationMs);
+    const globalMin = new Date(globalRange.min);
+
+    // Allow comparison if the previous period starts at or after our first data point
+    return prevStart >= globalMin;
   }, [dateFilter, globalRange]);
 
   // --- Data Fetching ---
@@ -213,16 +231,80 @@ export default function Dashboard() {
       </nav>
 
       <main className="relative z-10 max-w-[1600px] mx-auto p-10 space-y-12 pb-24">
+        {/* Quick Date Filters */}
+        <div className="flex justify-end mb-6">
+            <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/10">
+                {[
+                    { label: 'All', mode: 'all', val: null, unit: 'day' },
+                    { label: '3 Months', mode: 'relative', val: 3, unit: 'month' },
+                    { label: '1 Month', mode: 'relative', val: 1, unit: 'month' }
+                ].map((btn) => {
+                    const isActive = (btn.mode === 'all' && dateFilter.mode === 'all') || 
+                                   (btn.mode === 'relative' && dateFilter.mode === 'relative' && dateFilter.value === btn.val && dateFilter.unit === btn.unit);
+                    return (
+                        <button
+                            key={btn.label}
+                            onClick={() => setDateFilter({ mode: btn.mode as any, value: btn.val as any, unit: btn.unit as any })}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${
+                                isActive 
+                                ? 'bg-[#0C0C0C] text-white shadow-xl shadow-slate-900/20' 
+                                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                            }`}
+                        >
+                            {btn.label}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+
         {/* KPI Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {kpiLoading ? (
                 <>{Array.from({length: 4}).map((_, i) => <KPICardSkeleton key={i} />)}</>
             ) : (
                 <>
-                    <KPICard title="Revenue Volume, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.revenue?.value} baseline={kpiData?.revenue?.prev} growth={kpiData?.revenue?.growth} active={activeMetric === 'revenue'} onClick={() => setActiveMetric('revenue')} hasComparison={isFullRange} />
-                    <KPICard title="Gross Profit, USD" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.profit?.value} baseline={kpiData?.profit?.prev} growth={kpiData?.profit?.growth} active={activeMetric === 'profit'} onClick={() => setActiveMetric('profit')} hasComparison={isFullRange} />
-                    <KPICard title="Profit Margin, %" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.margin?.value} baseline={kpiData?.margin?.prev} growth={kpiData?.margin?.growth} active={activeMetric === 'margin'} onClick={() => setActiveMetric('margin')} isPercent={true} isCurrency={false} hasComparison={isFullRange} />
-                    <KPICard title="Qty of Items Sold" period={kpiData?.meta?.current_period} baselinePeriod={kpiData?.meta?.prev_period} value={kpiData?.qty?.value} baseline={kpiData?.qty?.prev} growth={kpiData?.qty?.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} hasComparison={isFullRange} />
+                    <KPICard 
+                        title="Total Revenue" 
+                        period={kpiData?.meta.current_period}
+                        baselinePeriod={kpiData?.meta.prev_period}
+                        value={kpiData?.revenue.value} 
+                        baseline={kpiData?.revenue.prev} 
+                        growth={kpiData?.revenue.growth}
+                        active={activeMetric === 'revenue'}
+                        onClick={() => setActiveMetric('revenue')}
+                        isCurrency={true}
+                        hasComparison={canCompare}
+                    />
+                    <KPICard 
+                        title="Net Profit" 
+                        value={kpiData?.profit.value} 
+                        baseline={kpiData?.profit.prev} 
+                        growth={kpiData?.profit.growth}
+                        active={activeMetric === 'profit'}
+                        onClick={() => setActiveMetric('profit')}
+                        isCurrency={true}
+                        hasComparison={canCompare}
+                    />
+                    <KPICard 
+                        title="Profit Margin" 
+                        value={kpiData?.margin.value} 
+                        baseline={kpiData?.margin.prev} 
+                        growth={kpiData?.margin.growth}
+                        active={activeMetric === 'margin'}
+                        onClick={() => setActiveMetric('margin')}
+                        isPercent={true}
+                        hasComparison={canCompare}
+                    />
+                    <KPICard 
+                        title="Total Qty" 
+                        value={kpiData?.qty.value} 
+                        baseline={kpiData?.qty.prev} 
+                        growth={kpiData?.qty.growth}
+                        active={activeMetric === 'qty'}
+                        onClick={() => setActiveMetric('qty')}
+                        hasComparison={canCompare}
+                    />
                 </>
             )}
         </div>
