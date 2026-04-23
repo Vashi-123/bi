@@ -198,6 +198,9 @@ export function FilterSidebar({ onClose }: { onClose: () => void }) {
                 <FilterGroup title="Country" column="Product country" current={filters['Product country']} onChange={vals => setFilter('Product country', vals)} />
                 <FilterGroup title="Counterparty" column="counterparty" current={filters['counterparty']} onChange={vals => setFilter('counterparty', vals)} />
                 <FilterGroup title="Sales Type" column="type" current={filters['type']} onChange={vals => setFilter('type', vals)} />
+                <div className="h-px bg-slate-50 mx-[-32px]" />
+                <FilterGroup title="Client Group" column="Groupclient" current={filters['Groupclient']} onChange={vals => setFilter('Groupclient', vals)} />
+                <FilterGroup title="Country Group" column="CountryGroup" current={filters['CountryGroup']} onChange={vals => setFilter('CountryGroup', vals)} />
                 
                 <div className="h-px bg-slate-50 mx-[-32px]" />
                 <DateFilterGroup />
