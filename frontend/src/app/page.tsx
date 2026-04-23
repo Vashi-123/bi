@@ -108,9 +108,27 @@ export default function Dashboard() {
   const ratingData = fullDistData;
   const distData = useMemo(() => {
     if (!Array.isArray(fullDistData)) return [];
-    const topItems = fullDistData.filter((d: any) => d.dimension_value !== 'Other').slice(0, topN);
-    const otherItem = fullDistData.find((d: any) => d.dimension_value === 'Other');
-    return otherItem ? [...topItems, otherItem] : topItems;
+    
+    const total = fullDistData.reduce((acc: number, curr: any) => acc + curr.value, 0) || 1;
+    const threshold = total * 0.01; // 1% threshold
+
+    const topItems = fullDistData
+        .filter((d: any) => d.dimension_value !== 'Other')
+        .slice(0, topN);
+
+    const mainItems = topItems.filter((d: any) => d.value >= threshold);
+    const smallItems = topItems.filter((d: any) => d.value < threshold);
+    const droppedItems = fullDistData.filter((d: any) => d.dimension_value !== 'Other').slice(topN);
+    const serverOther = fullDistData.find((d: any) => d.dimension_value === 'Other')?.value || 0;
+
+    const aggregatedOtherValue = serverOther + 
+                                 smallItems.reduce((acc, curr) => acc + curr.value, 0) + 
+                                 droppedItems.reduce((acc, curr) => acc + curr.value, 0);
+
+    return [
+        ...mainItems,
+        { dimension_value: 'Other', value: aggregatedOtherValue }
+    ].filter(item => item.value > 0);
   }, [fullDistData, topN]);
 
   // --- Data Transforms ---
@@ -309,7 +327,7 @@ export default function Dashboard() {
                             </ResponsiveContainer>
                         </div>
                     </div>
-                    <div className="w-full md:w-1/2 space-y-3">
+                    <div className="w-full md:w-1/2 flex-1 overflow-y-auto pr-2 scrollbar-thin space-y-3">
                         {Array.isArray(distData) && distData.map((item: any, i: number) => {
                             const total = distData.reduce((acc: number, curr: any) => acc + curr.value, 0) || 1;
                             const color = getColor(i, distData.length);
