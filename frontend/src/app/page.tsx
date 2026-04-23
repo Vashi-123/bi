@@ -2,7 +2,7 @@
 
 import { useDashboardStore } from '@/store/useDashboardStore';
 import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex } from '@tremor/react';
-import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X } from 'lucide-react';
+import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import useSWR from 'swr';
 import { useEffect, useState, useMemo } from 'react';
@@ -275,28 +275,24 @@ export default function Dashboard() {
             {/* Master Table */}
             <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500
                             ${expandedTable === 'master' ? 'lg:col-span-2' : expandedTable === 'detail' ? 'hidden' : ''}`}>
-                <div className="flex justify-between items-center mb-6">
-                    <div className="space-y-1">
-                        <Title className="text-xl font-bold text-[#0C0C0C]">Main Analytics</Title>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Grouped by {legendDimension}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button 
-                            onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')}
-                            className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] group"
-                            title={expandedTable === 'master' ? "Collapse" : "Expand to Width"}
-                        >
-                            {expandedTable === 'master' ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                        </button>
-                        <button 
-                            onClick={() => setFullscreenTable('master')}
-                            className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
-                            title="Fullscreen"
-                        >
-                            <Expand className="w-4 h-4" />
-                        </button>
-                    </div>
+                {/* Action Buttons at the Edge */}
+                <div className="absolute top-6 right-6 flex items-center gap-1 z-20">
+                    <button 
+                        onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')}
+                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] group"
+                        title={expandedTable === 'master' ? "Collapse" : "Expand to Width"}
+                    >
+                        {expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
+                    </button>
+                    <button 
+                        onClick={() => setFullscreenTable('master')}
+                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
+                        title="Fullscreen"
+                    >
+                        <Expand className="w-4 h-4" />
+                    </button>
                 </div>
+
                 <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
                     <Table className="min-w-[600px]">
                         <TableHead className="bg-slate-50/80 sticky top-0 z-10">
@@ -332,20 +328,15 @@ export default function Dashboard() {
             {/* Detail Table */}
             <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500
                             ${expandedTable === 'detail' ? 'lg:col-span-2' : expandedTable === 'master' ? 'hidden' : ''}`}>
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                        <button 
-                            onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')}
-                            className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
-                            title={expandedTable === 'detail' ? "Collapse" : "Expand to Width"}
-                        >
-                            {expandedTable === 'detail' ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                        </button>
-                        <div className="space-y-1">
-                            <Title className="text-xl font-bold text-[#0C0C0C]">SKU Performance</Title>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedGroup || 'Global Detail View'}</p>
-                        </div>
-                    </div>
+                {/* Action Buttons at the Edge */}
+                <div className="absolute top-6 left-6 flex items-center gap-1 z-20">
+                    <button 
+                        onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')}
+                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
+                        title={expandedTable === 'detail' ? "Collapse" : "Expand to Width"}
+                    >
+                        {expandedTable === 'detail' ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
+                    </button>
                     <button 
                         onClick={() => setFullscreenTable('detail')}
                         className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
@@ -354,6 +345,7 @@ export default function Dashboard() {
                         <Expand className="w-4 h-4" />
                     </button>
                 </div>
+
                 <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
                     <Table className="min-w-[700px]">
                         <TableHead className="bg-slate-50/80 sticky top-0 z-10">
