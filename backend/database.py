@@ -68,46 +68,64 @@ def get_connection():
 def refresh_groups_table():
     """Loads groups from JSON and refreshes the DuckDB 'groups' table and 'sales' view."""
     conn = get_connection()
-    groups = load_groups()
+    data = load_groups()
     
-    # Flatten groups for SQL
-    flattened = []
-    for gname, counterparties in groups.items():
+    # 1. Counterparty Groups
+    cp_groups = data.get('counterparties', {})
+    cp_flattened = []
+    for gname, counterparties in cp_groups.items():
         for cp in counterparties:
-            flattened.append({'counterparty': cp, 'group_name': gname})
+            cp_flattened.append({'counterparty': cp, 'group_name': gname})
     
     conn.execute("CREATE TABLE IF NOT EXISTS custom_groups (counterparty VARCHAR, group_name VARCHAR)")
     conn.execute("DELETE FROM custom_groups")
+    if cp_flattened:
+        df_cp = pandas.DataFrame(cp_flattened)
+        conn.execute("INSERT INTO custom_groups SELECT * FROM df_cp")
+
+    # 2. Country Groups
+    country_groups = data.get('countries', {})
+    country_flattened = []
+    for gname, codes in country_groups.items():
+        for code in codes:
+            country_flattened.append({'country_code': code, 'group_name': gname})
     
-    if flattened:
-        df = pandas.DataFrame(flattened)
-        conn.execute("INSERT INTO custom_groups SELECT * FROM df")
-        logger.info(f"Loaded {len(flattened)} custom group mappings.")
+    conn.execute("CREATE TABLE IF NOT EXISTS custom_country_groups (country_code VARCHAR, group_name VARCHAR)")
+    conn.execute("DELETE FROM custom_country_groups")
+    if country_flattened:
+        df_c = pandas.DataFrame(country_flattened)
+        conn.execute("INSERT INTO custom_country_groups SELECT * FROM df_c")
     
-    # Create Enriched View: Use Custom Group if available, else original Groupclient
+    # Create Enriched View: Use Custom Groups for both Client and Country
     conn.execute("""
         CREATE OR REPLACE VIEW sales AS 
         SELECT 
-            s.* EXCLUDE (Groupclient),
-            COALESCE(g.group_name, s.Groupclient, 'Unassigned') as Groupclient
+            s.* EXCLUDE (Groupclient, CountryGroup),
+            COALESCE(g.group_name, s.Groupclient, s.counterparty) as Groupclient,
+            COALESCE(cg.group_name, s.CountryGroup, 'Other') as CountryGroup
         FROM sales_raw s
         LEFT JOIN custom_groups g ON s.counterparty = g.counterparty
+        LEFT JOIN custom_country_groups cg ON s."Product country" = cg.country_code
     """)
 
 def load_groups():
     if not os.path.exists(GROUPS_FILE):
-        return {}
+        return {"counterparties": {}, "countries": {}}
     try:
         with open(GROUPS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            data = json.load(f)
+            # Support both old and new format during transition
+            if "counterparties" not in data and "countries" not in data:
+                return {"counterparties": data, "countries": {}}
+            return data
     except Exception as e:
         logger.error(f"Error loading groups: {e}")
-        return {}
+        return {"counterparties": {}, "countries": {}}
 
-def save_groups(groups):
+def save_groups(data):
     try:
         with open(GROUPS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(groups, f, ensure_ascii=False, indent=2)
+            json.dump(data, f, ensure_ascii=False, indent=2)
         refresh_groups_table()
         return True
     except Exception as e:
@@ -118,6 +136,12 @@ def get_unique_counterparties():
     """Returns all unique counterparties from the raw dataset."""
     cursor = get_cursor()
     res = cursor.execute("SELECT DISTINCT counterparty FROM sales_raw WHERE counterparty IS NOT NULL ORDER BY 1").fetchall()
+    return [r[0] for r in res]
+
+def get_unique_countries():
+    """Returns all unique country codes from the raw dataset."""
+    cursor = get_cursor()
+    res = cursor.execute("SELECT DISTINCT \"Product country\" FROM sales_raw WHERE \"Product country\" IS NOT NULL ORDER BY 1").fetchall()
     return [r[0] for r in res]
 
 def get_cursor():

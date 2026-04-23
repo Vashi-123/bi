@@ -172,25 +172,32 @@ def get_group_counterparties():
     """Returns unique counterparties for group creation."""
     return {"counterparties": database.get_unique_counterparties()}
 
+@app.get("/api/groups/countries")
+def get_group_countries():
+    """Returns unique countries for group creation."""
+    return {"countries": database.get_unique_countries()}
+
 @app.get("/api/groups")
 def get_groups():
     """Returns all custom groups."""
     return database.load_groups()
 
 @app.post("/api/groups")
-async def save_group(request: Request):
+async def save_group(request: Request, group_type: str = Query(default='counterparties')):
     """Saves a custom group mapping."""
     try:
         body = await request.json()
-        # Expecting { "group_name": "...", "counterparties": [...] }
         name = body.get("name")
-        cps = body.get("counterparties")
-        if not name or not cps:
-            return JSONResponse(status_code=400, content={"error": "Missing name or counterparties"})
+        items = body.get("items") # Renamed from counterparties to be generic
+        if not name or not items:
+            return JSONResponse(status_code=400, content={"error": "Missing name or items"})
         
-        current_groups = database.load_groups()
-        current_groups[name] = cps
-        if database.save_groups(current_groups):
+        data = database.load_groups()
+        if group_type not in data:
+            data[group_type] = {}
+            
+        data[group_type][name] = items
+        if database.save_groups(data):
             return {"status": "ok"}
         else:
             return JSONResponse(status_code=500, content={"error": "Failed to save groups"})
@@ -198,12 +205,12 @@ async def save_group(request: Request):
         return JSONResponse(status_code=400, content={"error": str(e)})
 
 @app.delete("/api/groups/{name}")
-def delete_group(name: str):
+def delete_group(name: str, group_type: str = Query(default='counterparties')):
     """Deletes a custom group."""
-    current_groups = database.load_groups()
-    if name in current_groups:
-        del current_groups[name]
-        if database.save_groups(current_groups):
+    data = database.load_groups()
+    if group_type in data and name in data[group_type]:
+        del data[group_type][name]
+        if database.save_groups(data):
             return {"status": "ok"}
     return JSONResponse(status_code=404, content={"error": "Group not found"})
 

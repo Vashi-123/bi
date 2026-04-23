@@ -1,0 +1,71 @@
+{
+  "counterparties": {
+    "Playerok": [
+      "Playerok | Evgeny Reezin | USDT",
+      "Playerok | Ivan Fedorov | USDT",
+      "Playerok | Viktor Corev | USDT",
+      "Playerok | Roman Vontbin | USDT",
+      "Playerok | Denis Linkov | USDT",
+      "Playerok | Alina Aurorina | USDT",
+      "Playerok | Alexey Novikov | USDT",
+      "Playerok | Anton Fluxov | USDT",
+      "Playerok | Anna Masterpina | USDT",
+      "Playerok | Roman Loopov | USDT",
+      "Playerok | Menergy Ivanov | USDT",
+      "Playerok | Valery Pavlov | USDT",
+      "Playerok | Ilia Neovsky | USDT",
+      "Playerok | Pavel Barelkin | USDT",
+      "Playerok | Dmitry Sokolov | USDT",
+      "Playerok | Sergey Bombinin | USDT",
+      "Playerok | Dmitry Lynxov | USDT",
+      "Playerok | Pavel Nodev | USDT",
+      "Playerok | Darya Maronova | USDT",
+      "Playerok | Anton Colombov | USDT",
+      "Playerok | Nikita Kovalev | USDT",
+      "Playerok | Nikita Linchov | USDT",
+      "Playerok | Sergey Zenov | USDT",
+      "Playerok | Marina Mimimova | USDT",
+      "Playerok | Vasiliy Gornyy | USDT",
+      "Playerok | Denis Dosantov | USDT",
+      "Playerok | Viktor Fruestov | USDT",
+      "Playerok | Andrey Bytev | USDT",
+      "Playerok | Anton Unitov | USDT",
+      "Playerok | Kirill Pathov | USDT",
+      "Playerok | Olga Skirtova | USDT",
+      "Playerok | Kirill Fantasin | USDT",
+      "Playerok | Andrey Gridov | USDT",
+      "Playerok | Dmitry Modev | USDT",
+      "Playerok | USDT"
+    ],
+    "Pyyplbot": [
+      "Pyyplbot.com | API",
+      "Pyyplbot.com 2 | API"
+    ],
+    "Kupikod": [
+      "Kupikod | Steam | USDT",
+      "Kupikod | API | USDT",
+      "Kupikod | Portal | USDT",
+      "Kupikod | PUBG | USDT"
+    ],
+    "Gifty": [
+      "Gifty Code LLC | USDT",
+      "Gifty Code | API"
+    ],
+    "Brolexy": [
+      "BROLEXY GROUP LTD. | USDT",
+      "Brolexy UAB | Bank"
+    ]
+  },
+  "countries": {
+    "Europe": ["AT", "BE", "FI", "IE", "LU", "PT", "DE", "ES", "FR", "IT", "NL", "PL", "GB", "RU", "NO", "CY", "GR", "ME", "RS", "UA", "CH", "CZ", "RO", "HR", "HU", "SK", "LT", "AL", "SE", "EU"],
+    "Asia": ["TR", "KZ", "AE", "AF", "BD", "IN", "LK", "TH", "LB", "JP", "SA", "CN", "HK", "IQ", "MM", "ID", "AZ", "TJ", "BH", "MY", "SG", "KG", "UZ", "BT", "KH", "PH", "GE", "QA", "VN", "LA", "PK", "NP", "OM", "KW", "PS", "JO", "YE", "KR", "TW", "AM"],
+    "Africa": ["NG", "AO", "CD", "GM", "SL", "TD", "KE", "MG", "MW", "NE", "RW", "TZ", "UG", "ZM", "CV", "GH", "BW", "GN", "ZA", "MR", "KM", "DZ", "BI", "ZW", "EG", "TN", "SZ", "ET", "SN", "MA", "BJ", "BF", "CF", "CI", "ML", "TG", "MZ", "CM", "GW", "LR", "SD"],
+    "North_America": ["US", "CA", "MX"],
+    "South_America": ["BR", "AR", "CO"],
+    "Oceania": ["AU", "NZ"],
+    "CIS": ["RU", "AZ", "AM", "BY", "KZ", "KG", "TJ", "UZ"],
+    "MENA": ["DZ", "BH", "EG", "IQ", "JO", "KW", "LB", "MA", "OM", "PS", "QA", "SA", "TN", "AE", "YE"],
+    "GCC": ["BH", "KW", "OM", "QA", "SA", "AE"],
+    "LATAM": ["AR", "BR", "CO", "MX"]
+  }
+}
