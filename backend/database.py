@@ -1,5 +1,6 @@
 import duckdb
 import os
+import json
 import re
 from datetime import datetime
 import pandas
@@ -31,6 +32,7 @@ _CONN = None
 _CACHE = {}
 _CACHE_LOCK = Lock()
 CACHE_TTL = 300  # 5 minutes
+GROUPS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "groups.json")
 
 def get_connection():
     global _CONN
@@ -44,18 +46,79 @@ def get_connection():
                 max_date = max_row[0]
                 # DEFAULT: 6 months limit as requested
                 query = f"""
-                    CREATE OR REPLACE VIEW sales AS 
+                    CREATE OR REPLACE VIEW sales_raw AS 
                     SELECT * FROM read_parquet('{DATA_PATH}') 
                     WHERE CAST(date AS DATE) >= CAST('{max_date}' AS DATE) - INTERVAL '6 month'
                 """
                 _CONN.execute(query)
                 logger.info(f"Database initialized. Window: Last 6 months from {max_date}")
             else:
-                _CONN.execute(f"CREATE OR REPLACE VIEW sales AS SELECT * FROM read_parquet('{DATA_PATH}')")
+                _CONN.execute(f"CREATE OR REPLACE VIEW sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}')")
+            
+            # Load custom groups if they exist
+            refresh_groups_table()
+
         except Exception as e:
             logger.warning(f"Could not pre-filter data: {e}")
-            _CONN.execute(f"CREATE OR REPLACE VIEW sales AS SELECT * FROM read_parquet('{DATA_PATH}')")
+            _CONN.execute(f"CREATE OR REPLACE VIEW sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}')")
+            _CONN.execute("CREATE TABLE IF NOT EXISTS custom_groups (counterparty VARCHAR, group_name VARCHAR)")
+            _CONN.execute("CREATE OR REPLACE VIEW sales AS SELECT * FROM sales_raw")
     return _CONN
+
+def refresh_groups_table():
+    """Loads groups from JSON and refreshes the DuckDB 'groups' table and 'sales' view."""
+    conn = get_connection()
+    groups = load_groups()
+    
+    # Flatten groups for SQL
+    flattened = []
+    for gname, counterparties in groups.items():
+        for cp in counterparties:
+            flattened.append({'counterparty': cp, 'group_name': gname})
+    
+    conn.execute("CREATE TABLE IF NOT EXISTS custom_groups (counterparty VARCHAR, group_name VARCHAR)")
+    conn.execute("DELETE FROM custom_groups")
+    
+    if flattened:
+        df = pandas.DataFrame(flattened)
+        conn.execute("INSERT INTO custom_groups SELECT * FROM df")
+        logger.info(f"Loaded {len(flattened)} custom group mappings.")
+    
+    # Create Enriched View: Use Custom Group if available, else original Groupclient
+    conn.execute("""
+        CREATE OR REPLACE VIEW sales AS 
+        SELECT 
+            s.* EXCLUDE (Groupclient),
+            COALESCE(g.group_name, s.Groupclient, 'Unassigned') as Groupclient
+        FROM sales_raw s
+        LEFT JOIN custom_groups g ON s.counterparty = g.counterparty
+    """)
+
+def load_groups():
+    if not os.path.exists(GROUPS_FILE):
+        return {}
+    try:
+        with open(GROUPS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading groups: {e}")
+        return {}
+
+def save_groups(groups):
+    try:
+        with open(GROUPS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(groups, f, ensure_ascii=False, indent=2)
+        refresh_groups_table()
+        return True
+    except Exception as e:
+        logger.error(f"Error saving groups: {e}")
+        return False
+
+def get_unique_counterparties():
+    """Returns all unique counterparties from the raw dataset."""
+    cursor = get_cursor()
+    res = cursor.execute("SELECT DISTINCT counterparty FROM sales_raw WHERE counterparty IS NOT NULL ORDER BY 1").fetchall()
+    return [r[0] for r in res]
 
 def get_cursor():
     """Returns a thread-local cursor from the global connection."""

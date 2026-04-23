@@ -2,12 +2,13 @@
 
 import { useDashboardStore } from '@/store/useDashboardStore';
 import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex } from '@tremor/react';
-import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download } from 'lucide-react';
+import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import useSWR from 'swr';
 import { useEffect, useState, useMemo } from 'react';
 
 // --- Modular Imports ---
+import Link from 'next/link';
 import { API_BASE, fetcher, getColor, METRIC_DB_MAP } from '@/lib/constants';
 import { formatValue, formatTrend } from '@/lib/formatters';
 import { KPICard } from '@/components/KPICard';

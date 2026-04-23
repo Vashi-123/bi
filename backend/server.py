@@ -165,6 +165,49 @@ async def get_detail(
     return database.get_detail_table(dimension, selected_group, top_n, filters=filters)
 
 
+# --- Group Management ---
+
+@app.get("/api/groups/counterparties")
+def get_group_counterparties():
+    """Returns unique counterparties for group creation."""
+    return {"counterparties": database.get_unique_counterparties()}
+
+@app.get("/api/groups")
+def get_groups():
+    """Returns all custom groups."""
+    return database.load_groups()
+
+@app.post("/api/groups")
+async def save_group(request: Request):
+    """Saves a custom group mapping."""
+    try:
+        body = await request.json()
+        # Expecting { "group_name": "...", "counterparties": [...] }
+        name = body.get("name")
+        cps = body.get("counterparties")
+        if not name or not cps:
+            return JSONResponse(status_code=400, content={"error": "Missing name or counterparties"})
+        
+        current_groups = database.load_groups()
+        current_groups[name] = cps
+        if database.save_groups(current_groups):
+            return {"status": "ok"}
+        else:
+            return JSONResponse(status_code=500, content={"error": "Failed to save groups"})
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+@app.delete("/api/groups/{name}")
+def delete_group(name: str):
+    """Deletes a custom group."""
+    current_groups = database.load_groups()
+    if name in current_groups:
+        del current_groups[name]
+        if database.save_groups(current_groups):
+            return {"status": "ok"}
+    return JSONResponse(status_code=404, content={"error": "Group not found"})
+
+
 # --- Health Check ---
 
 @app.get("/api/health")
