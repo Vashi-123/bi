@@ -26,14 +26,16 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                     <h2 className="text-2xl font-bold tracking-tight text-[#0C0C0C]">{title}</h2>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{label} TREND ANALYSIS</p>
                 </div>
-                <div className="hidden md:flex gap-6 items-center bg-white px-4 py-1.5 rounded-lg border border-slate-100 shadow-sm">
-                    {Array.isArray(categories) && categories.map((cat, i) => (
-                        <div key={cat} className="flex items-center gap-2 group cursor-default">
-                            <div className="w-3 h-3 rounded-sm shadow-sm border border-white" style={{ backgroundColor: getColor(i, categories.length) }} />
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-[#0C0C0C] transition-colors">{cat}</span>
-                        </div>
-                    ))}
-                </div>
+                {view === 'combined' && (
+                    <div className="hidden md:flex gap-6 items-center bg-white px-4 py-1.5 rounded-lg border border-slate-100 shadow-sm">
+                        {Array.isArray(categories) && categories.map((cat, i) => (
+                            <div key={cat} className="flex items-center gap-2 group cursor-default">
+                                <div className="w-3 h-3 rounded-sm shadow-sm border border-white" style={{ backgroundColor: getColor(i, categories.length) }} />
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-[#0C0C0C] transition-colors">{cat}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </Flex>
 
             <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/30 p-10 border border-slate-50 relative overflow-hidden group transition-all">
