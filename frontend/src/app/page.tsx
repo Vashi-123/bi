@@ -2,7 +2,7 @@
 
 import { useDashboardStore } from '@/store/useDashboardStore';
 import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex } from '@tremor/react';
-import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft } from 'lucide-react';
+import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import useSWR from 'swr';
 import { useEffect, useState, useMemo } from 'react';
@@ -32,7 +32,8 @@ export default function Dashboard() {
   // Initialize date filter with default 6-month window (max - 6 months to max)
   const { data: globalRange } = useSWR(`${API_BASE}/api/filters/date-range`, fetcher);
   useEffect(() => {
-    if (globalRange?.max && !dateFilter.value?.start) {
+    // Only initialize if we have the range data, we are in 'between' mode, and dates are still empty strings
+    if (globalRange?.max && dateFilter.mode === 'between' && dateFilter.value?.start === '') {
       const maxDate = new Date(globalRange.max);
       const startDate = new Date(maxDate);
       startDate.setMonth(startDate.getMonth() - 6);
@@ -44,7 +45,7 @@ export default function Dashboard() {
         unit: 'day'
       });
     }
-  }, [globalRange, dateFilter.value?.start, setDateFilter]);
+  }, [globalRange, dateFilter.mode, dateFilter.value?.start, setDateFilter]);
 
   // --- URL Building ---
   const filterParams = useMemo(() => {
@@ -122,6 +123,38 @@ export default function Dashboard() {
   }, [distData, topN]);
 
   const isCurrencyMetric = activeMetric !== 'qty' && activeMetric !== 'margin';
+  
+  // --- Export Function ---
+  const handleExport = () => {
+      const data = fullscreenTable === 'master' ? masterData : detailData;
+      if (!data || !Array.isArray(data) || data.length === 0) return;
+
+      const headers = fullscreenTable === 'master' 
+          ? ['Group Name', 'Revenue', 'Profit', 'Margin (%)', 'Qty']
+          : ['SKU Name', 'Revenue', 'Profit', 'Margin (%)', 'Qty'];
+
+      const rows = data.map((item: any) => [
+          `"${item.name.replace(/"/g, '""')}"`, // Escape quotes
+          item.revenue,
+          item.profit,
+          item.margin?.toFixed(2),
+          item.qty
+      ]);
+
+      const csvContent = "\uFEFF" + [ // BOM for Excel UTF-8 support
+          headers.join(','),
+          ...rows.map(r => r.join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `giftery_${fullscreenTable}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
 
   return (
     <div className="min-h-screen text-[#0C0C0C] font-sans selection:bg-blue-100 selection:text-blue-900 bg-[#F8FAFC]">
@@ -275,21 +308,23 @@ export default function Dashboard() {
             {/* Master Table */}
             <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500
                             ${expandedTable === 'master' ? 'lg:col-span-2' : expandedTable === 'detail' ? 'hidden' : ''}`}>
-                {/* Action Buttons at the Edges */}
-                <button 
-                    onClick={() => setFullscreenTable('master')}
-                    className="absolute top-3 left-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
-                    title="Fullscreen"
-                >
-                    <Expand className="w-4 h-4" />
-                </button>
-                <button 
-                    onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')}
-                    className="absolute top-3 right-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] group z-20"
-                    title={expandedTable === 'master' ? "Collapse" : "Expand to Width"}
-                >
-                    {expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
-                </button>
+                {/* Action Buttons at the Edge */}
+                <div className="absolute top-2 right-6 flex items-center gap-1 z-20">
+                    <button 
+                        onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')}
+                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] group"
+                        title={expandedTable === 'master' ? "Collapse" : "Expand to Width"}
+                    >
+                        {expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}
+                    </button>
+                    <button 
+                        onClick={() => setFullscreenTable('master')}
+                        className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"
+                        title="Fullscreen"
+                    >
+                        <Expand className="w-4 h-4" />
+                    </button>
+                </div>
 
                 <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
                     <Table className="min-w-[600px]">
@@ -329,14 +364,14 @@ export default function Dashboard() {
                 {/* Action Buttons at the Edges */}
                 <button 
                     onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')}
-                    className="absolute top-3 left-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
+                    className="absolute top-2 left-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
                     title={expandedTable === 'detail' ? "Collapse" : "Expand to Width"}
                 >
                     {expandedTable === 'detail' ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
                 </button>
                 <button 
                     onClick={() => setFullscreenTable('detail')}
-                    className="absolute top-3 right-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
+                    className="absolute top-2 right-6 p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C] z-20"
                     title="Fullscreen"
                 >
                     <Expand className="w-4 h-4" />
@@ -386,21 +421,22 @@ export default function Dashboard() {
       {/* Fullscreen Table Overlay */}
       {fullscreenTable && (
           <div className="fixed inset-0 z-[200] bg-white flex flex-col p-10 animate-in zoom-in-95 duration-200">
-              <div className="flex justify-between items-center mb-8 shrink-0">
-                  <div className="space-y-1">
-                      <h2 className="text-3xl font-black text-[#0C0C0C] tracking-tighter">
-                          {fullscreenTable === 'master' ? 'Main Analytics Exploration' : 'SKU Performance Deep Dive'}
-                      </h2>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">
-                          {fullscreenTable === 'master' ? `Grouped by ${legendDimension}` : (selectedGroup || 'Global Detail View')}
-                      </p>
+              <div className="flex justify-end items-center mb-8 shrink-0">
+                  <div className="flex items-center gap-3">
+                      <button 
+                          onClick={handleExport}
+                          className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-[#0C0C0C] hover:text-white rounded-xl transition-all text-slate-500 text-sm font-bold border border-slate-100"
+                      >
+                          <Download className="w-4 h-4" />
+                          Export to Excel (CSV)
+                      </button>
+                      <button 
+                          onClick={() => setFullscreenTable(null)}
+                          className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all text-slate-400 hover:text-slate-900"
+                      >
+                          <X className="w-5 h-5" />
+                      </button>
                   </div>
-                  <button 
-                      onClick={() => setFullscreenTable(null)}
-                      className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all text-slate-400 hover:text-slate-900"
-                  >
-                      <X className="w-5 h-5" />
-                  </button>
               </div>
               
               <div className="flex-1 overflow-auto border border-slate-100 rounded-3xl p-8 shadow-inner bg-slate-50/30">
