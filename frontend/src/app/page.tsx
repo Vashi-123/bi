@@ -33,16 +33,6 @@ export default function Dashboard() {
 
   // Initialize date filter with default 6-month window (max - 6 months to max)
   const { data: globalRange } = useSWR(`${API_BASE}/api/filters/date-range`, fetcher);
-  useEffect(() => {
-    // Initialize with 3 months relative filter when global max is available
-    if (globalRange?.max && dateFilter.mode === 'between' && dateFilter.value?.start === '') {
-      setDateFilter({
-        mode: 'relative',
-        value: 3,
-        unit: 'month'
-      });
-    }
-  }, [globalRange, dateFilter.mode, dateFilter.value?.start, setDateFilter]);
 
   // --- URL Building ---
   const filterParams = useMemo(() => {

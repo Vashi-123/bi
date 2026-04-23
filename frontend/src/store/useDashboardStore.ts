@@ -29,7 +29,7 @@ interface DashboardState {
 
 // --- Store ---
 
-const DEFAULT_DATE_FILTER: DateFilter = { mode: 'between', value: { start: '', end: '' }, unit: 'day' };
+const DEFAULT_DATE_FILTER: DateFilter = { mode: 'relative', value: 3, unit: 'month' };
 
 export const useDashboardStore = create<DashboardState>((set) => ({
   activeMetric: 'revenue',
