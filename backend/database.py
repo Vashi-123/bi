@@ -75,7 +75,7 @@ def refresh_groups_table():
     cp_flattened = []
     for gname, counterparties in cp_groups.items():
         for cp in counterparties:
-            cp_flattened.append({'counterparty': cp, 'group_name': gname})
+            cp_flattened.append({'counterparty': cp.strip().lower(), 'group_name': gname})
     
     conn.execute("CREATE TABLE IF NOT EXISTS custom_groups (counterparty VARCHAR, group_name VARCHAR)")
     conn.execute("DELETE FROM custom_groups")
@@ -88,7 +88,7 @@ def refresh_groups_table():
     country_flattened = []
     for gname, codes in country_groups.items():
         for code in codes:
-            country_flattened.append({'country_code': code, 'group_name': gname})
+            country_flattened.append({'country_code': code.strip().upper(), 'group_name': gname})
     
     conn.execute("CREATE TABLE IF NOT EXISTS custom_country_groups (country_code VARCHAR, group_name VARCHAR)")
     conn.execute("DELETE FROM custom_country_groups")
@@ -118,8 +118,8 @@ def refresh_groups_table():
             COALESCE(g.group_name, {gc_fallback}, s.counterparty) as Groupclient,
             COALESCE(cg.group_name, {cg_fallback}, 'Other') as CountryGroup
         FROM sales_raw s
-        LEFT JOIN custom_groups g ON s.counterparty = g.counterparty
-        LEFT JOIN custom_country_groups cg ON s."Product country" = cg.country_code
+        LEFT JOIN custom_groups g ON LOWER(TRIM(s.counterparty)) = g.counterparty
+        LEFT JOIN custom_country_groups cg ON UPPER(TRIM(s."Product country")) = cg.country_code
     """)
 
 def load_groups():
