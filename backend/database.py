@@ -174,35 +174,96 @@ def set_cached_data(key: str, val: any):
     with _CACHE_LOCK:
         _CACHE[key] = (val, time.time())
 
-def get_current_window(filters=None):
-    """Returns the (start, end) dates for the current data window, respecting filters."""
+def get_current_window(filters):
     cursor = get_cursor()
-    # Always get the true max date from DB
-    max_d = cursor.execute("SELECT MAX(date) FROM sales").fetchone()[0]
-    if not max_d: return None, None
-    
-    # If custom filter is provided, try to extract its range
-    if filters:
-        mode = filters.get('dateMode', 'all')
-        start = filters.get('startDate')
-        end = filters.get('endDate')
-        rel_val = filters.get('relativeValue')
-        rel_unit = filters.get('relativeUnit', 'day')
-        
-        if mode == 'between' and start and end:
-            return start, end
-        elif mode == 'before' and end:
-            # For 'before', we go back from the specific end date (arbitrary 1 year or just some start)
-            return cursor.execute(f"SELECT MIN(date) FROM sales WHERE CAST(date AS DATE) <= '{end}'").fetchone()[0], end
-        elif mode == 'after' and start:
-            return start, max_d
-        elif mode == 'relative' and rel_val:
-            s = cursor.execute(f"SELECT CAST('{max_d}' AS DATE) - INTERVAL '{rel_val} {rel_unit}'").fetchone()[0]
-            return str(s), str(max_d)
+    max_res = cursor.execute("SELECT MAX(date) FROM sales").fetchone()
+    if not max_res or not max_res[0]: return None, None
+    max_d = max_res[0]
 
-    # Standard fallback: Last 6 months from MAX date
-    start_d = cursor.execute(f"SELECT CAST('{max_d}' AS DATE) - INTERVAL '6 month'").fetchone()[0]
-    return str(start_d), str(max_d)
+    mode = filters.get('dateMode', 'all')
+    if mode == 'all':
+        min_d = cursor.execute("SELECT MIN(date) FROM sales").fetchone()[0]
+        return min_d.strftime('%Y-%m-%d'), max_d.strftime('%Y-%m-%d')
+    
+    if mode == 'between':
+        return filters.get('startDate'), filters.get('endDate')
+    
+    if mode == 'relative':
+        val = int(filters.get('relativeValue', 3))
+        unit = filters.get('relativeUnit', 'month')
+        
+        if unit == 'month': start_dt = max_d - pandas.Timedelta(days=30*val)
+        elif unit == 'week': start_dt = max_d - pandas.Timedelta(days=7*val)
+        else: start_dt = max_d - pandas.Timedelta(days=val)
+        
+        return start_dt.strftime('%Y-%m-%d'), max_d.strftime('%Y-%m-%d')
+    
+    return filters.get('startDate'), filters.get('endDate')
+
+def get_prev_window(filters):
+    s, e = get_current_window(filters)
+    if not s or not e: return None, None
+    
+    start_dt = pandas.to_datetime(s)
+    end_dt = pandas.to_datetime(e)
+    duration = end_dt - start_dt
+    
+    prev_end = (start_dt - pandas.Timedelta(days=1))
+    prev_start = (prev_end - duration)
+    
+    return prev_start.strftime('%Y-%m-%d'), prev_end.strftime('%Y-%m-%d')
+
+def format_period_label(start, end):
+    if not start or not end: return "All Time"
+    s = pandas.to_datetime(start)
+    e = pandas.to_datetime(end)
+    if s.year == e.year:
+        if s.month == e.month: return s.strftime('%b %Y')
+        return f"{s.strftime('%b')} - {e.strftime('%b %Y')}"
+    return f"{s.strftime('%b %Y')} - {e.strftime('%b %Y')}"
+
+def get_kpi_data(filters=None):
+    if not filters: filters = {}
+    cursor = get_cursor()
+    
+    curr_s, curr_e = get_current_window(filters)
+    prev_s, prev_e = get_prev_window(filters)
+    
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
+    
+    # Current Period Query
+    curr_query = f"""
+        SELECT SUM(Amount_USD), SUM(Profit_USD), AVG("Margin_%"), SUM(Qty)
+        FROM sales WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}
+    """
+    c_res = cursor.execute(curr_query).fetchone()
+    
+    # Previous Period Query
+    p_res = [0, 0, 0, 0]
+    if prev_s and prev_e:
+        # Check if we have data before curr_s
+        global_min = cursor.execute("SELECT MIN(date) FROM sales").fetchone()[0]
+        if pandas.to_datetime(prev_s) >= pandas.to_datetime(global_min):
+            prev_query = f"""
+                SELECT SUM(Amount_USD), SUM(Profit_USD), AVG("Margin_%"), SUM(Qty)
+                FROM sales WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}
+            """
+            p_res = cursor.execute(prev_query).fetchone()
+    
+    def calc_growth(curr, prev):
+        if not prev or prev == 0: return 0
+        return ((curr - prev) / prev) * 100
+
+    return {
+        "revenue": {"value": c_res[0] or 0, "prev": p_res[0] or 0, "growth": calc_growth(c_res[0] or 0, p_res[0] or 0)},
+        "profit": {"value": c_res[1] or 0, "prev": p_res[1] or 0, "growth": calc_growth(c_res[1] or 0, p_res[1] or 0)},
+        "margin": {"value": c_res[2] or 0, "prev": p_res[2] or 0, "growth": calc_growth(c_res[2] or 0, p_res[2] or 0)},
+        "qty": {"value": c_res[3] or 0, "prev": p_res[3] or 0, "growth": calc_growth(c_res[3] or 0, p_res[3] or 0)},
+        "meta": {
+            "current_period": format_period_label(curr_s, curr_e),
+            "prev_period": format_period_label(prev_s, prev_e) if p_res[0] else None
+        }
+    }
 
 def build_filter_clause(filters, prefix="WHERE"):
     """Dynamically builds a WHERE clause based on the provided filters dictionary."""
@@ -242,7 +303,7 @@ def build_date_filter_clause(filters):
         end = None
     
     # Get data max date for relative filtering
-    _, end_date = get_current_window()
+    _, end_date = get_current_window(filters)
     
     clause = ""
     if mode == 'between' and start and end:
@@ -292,65 +353,6 @@ def get_overall_date_range():
     _OVERALL_DATE_RANGE = {"min": str(res[0]) if res[0] else None, "max": str(res[1]) if res[1] else None}
     return _OVERALL_DATE_RANGE
 
-def get_kpi_data(filters=None):
-    if not filters: filters = {}
-    logger.debug(f"KPI request filters: {filters}")
-    cache_key = f"kpi_data_{hash(str(filters))}"
-    cached = get_cached_data(cache_key)
-    if cached: return cached
-
-    cursor = get_cursor()
-    _, end_date = get_current_window(filters) # Use actual window for comparison
-    if not end_date:
-        return {"revenue": {"value":0,"prev":0,"growth":0}, "profit": {"value":0,"prev":0,"growth":0}, "margin": {"value":0,"prev":0,"growth":0}, "qty": {"value":0,"prev":0,"growth":0}}
-    
-    # Check for custom date filter
-    date_mode = filters.get('dateMode', 'all')
-    date_clause = build_date_filter_clause(filters)
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
-
-    # Smart check: if 'between' is used but it covers our default 6-month window, treat as 'all'
-    overall = get_overall_date_range()
-    
-    start_str = filters.get('startDate')
-    end_str = filters.get('endDate')
-    
-    is_full_range = (date_mode == 'all')
-    if not is_full_range and date_mode == 'between' and start_str and end_str:
-        if validate_date(start_str) and validate_date(end_str):
-            try:
-                s_dt = datetime.strptime(start_str, '%Y-%m-%d')
-                e_dt = datetime.strptime(end_str, '%Y-%m-%d')
-                diff_days = (e_dt - s_dt).days
-                if diff_days >= 170 and end_str == overall['max']:
-                    is_full_range = True
-            except ValueError as e:
-                logger.warning(f"Date parsing error in is_full_range check: {e}")
-
-    if not is_full_range and date_clause:
-        # CUSTOM DATE RANGE: No comparison
-        query = f"""
-            SELECT SUM(Amount_USD), SUM(Profit_USD), AVG("Margin_%"), SUM(Qty)
-            FROM sales WHERE 1=1 {date_clause} {extra_filters}
-        """
-        res = cursor.execute(query).fetchone()
-        return {
-            "revenue": {"value": res[0] or 0, "prev": None, "growth": 0},
-            "profit": {"value": res[1] or 0, "prev": None, "growth": 0},
-            "margin": {"value": res[2] or 0, "prev": None, "growth": 0},
-            "qty": {"value": res[3] or 0, "prev": None, "growth": 0},
-            "meta": {"current_period": "Custom Selection", "prev_period": None}
-        }
-
-    # 3-month comparison logic (Standard)
-    current_date_filter = f"CAST(date AS DATE) > CAST('{end_date}' AS DATE) - INTERVAL '3 month' AND CAST(date AS DATE) <= '{end_date}'"
-    previous_date_filter = f"CAST(date AS DATE) >= CAST('{end_date}' AS DATE) - INTERVAL '6 month' AND CAST(date AS DATE) <= CAST('{end_date}' AS DATE) - INTERVAL '3 month'"
-
-    query = f"""
-    WITH current_kpi AS (
-        SELECT SUM(Amount_USD) as rev, SUM(Profit_USD) as prof, AVG("Margin_%") as marg, SUM(Qty) as qty
-        FROM sales WHERE {current_date_filter} {extra_filters}
-    ),
     previous_kpi AS (
         SELECT SUM(Amount_USD) as rev, SUM(Profit_USD) as prof, AVG("Margin_%") as marg, SUM(Qty) as qty
         FROM sales WHERE {previous_date_filter} {extra_filters}
