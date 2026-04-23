@@ -270,7 +270,7 @@ def get_filter_options(dimension, search=None):
         clean_search = str(search).replace("'", "''")
         where_clause += f" AND \"{dimension}\" ILIKE '%{clean_search}%'"
     
-    query = f"SELECT DISTINCT \"{dimension}\" FROM sales {where_clause} ORDER BY \"{dimension}\" ASC LIMIT 100"
+    query = f"SELECT DISTINCT \"{dimension}\" FROM sales {where_clause} ORDER BY \"{dimension}\" ASC LIMIT 5000"
     try:
         res = cursor.execute(query).fetchall()
         out = [row[0] for row in res if row[0] is not None]
@@ -502,7 +502,9 @@ def get_master_table(dimension='Category', filters=None):
         s, e = get_current_window(filters)
         filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
     
-    query = f"SELECT \"{dimension}\" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG(\"Margin_%\") as margin, SUM(Qty) as qty FROM sales {filter_clause} GROUP BY 1 ORDER BY revenue DESC"
+    query = f"""SELECT "{dimension}" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
+                FROM sales {filter_clause} GROUP BY 1 ORDER BY revenue DESC
+                LIMIT 5000"""
     
     df = cursor.execute(query).df()
     out = df.to_dict(orient='records')

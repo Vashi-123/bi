@@ -155,7 +155,7 @@ async def get_master(dimension: str = 'Category', request: Request = None):
 async def get_detail(
     dimension: str = 'Category', 
     selected_group: Optional[str] = None, 
-    top_n: int = Query(default=10, ge=1, le=500),
+    top_n: int = Query(default=10, ge=1, le=5000),
     request: Request = None
 ):
     if dimension not in ALLOWED_DIMENSIONS:
