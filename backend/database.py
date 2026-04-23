@@ -1,9 +1,26 @@
 import duckdb
 import os
+import re
 from datetime import datetime
 import pandas
 import time
+import logging
 from threading import Lock
+
+logger = logging.getLogger(__name__)
+
+# Input validation
+DATE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+DATE_FILTER_KEYS = {'dateMode', 'startDate', 'endDate', 'relativeValue', 'relativeUnit'}
+ALLOWED_COLUMNS = {'type', 'Category', 'Currency', 'counterparty', 'Groupclient', 'Product country', 'CountryGroup', 'Item name', 'Product name'}
+
+def validate_date(date_str: str) -> bool:
+    """Returns True if date_str matches YYYY-MM-DD format."""
+    return bool(date_str and DATE_PATTERN.match(date_str))
+
+def extract_column_filters(filters: dict) -> dict:
+    """Separates column filters from date filter parameters."""
+    return {k: v for k, v in filters.items() if k not in DATE_FILTER_KEYS}
 
 # Path to the partitioned parquet dataset
 # Use environment variable DATA_PATH if available, else default to relative path
@@ -32,11 +49,11 @@ def get_connection():
                     WHERE CAST(date AS DATE) >= CAST('{max_date}' AS DATE) - INTERVAL '6 month'
                 """
                 _CONN.execute(query)
-                print(f"INFO: Database initialized. Window: Last 6 months from {max_date}")
+                logger.info(f"Database initialized. Window: Last 6 months from {max_date}")
             else:
                 _CONN.execute(f"CREATE OR REPLACE VIEW sales AS SELECT * FROM read_parquet('{DATA_PATH}')")
         except Exception as e:
-            print(f"WARNING: Could not pre-filter data: {e}")
+            logger.warning(f"Could not pre-filter data: {e}")
             _CONN.execute(f"CREATE OR REPLACE VIEW sales AS SELECT * FROM read_parquet('{DATA_PATH}')")
     return _CONN
 
@@ -115,6 +132,14 @@ def build_date_filter_clause(filters):
     rel_val = filters.get('relativeValue')
     rel_unit = filters.get('relativeUnit', 'day')
     
+    # Validate date inputs before using in SQL
+    if start and not validate_date(start):
+        logger.warning(f"Invalid startDate format: {start}")
+        start = None
+    if end and not validate_date(end):
+        logger.warning(f"Invalid endDate format: {end}")
+        end = None
+    
     # Get data max date for relative filtering
     _, end_date = get_current_window()
     
@@ -129,7 +154,7 @@ def build_date_filter_clause(filters):
         clause = f"AND CAST(date AS DATE) >= CAST('{end_date}' AS DATE) - INTERVAL '{rel_val} {rel_unit}'"
     
     if mode != 'all':
-        print(f"DEBUG: Date Filter Mode: {mode}, Clause: '{clause}'")
+        logger.debug(f"Date Filter Mode: {mode}, Clause: '{clause}'")
     return clause
 
 def get_filter_options(dimension, search=None):
@@ -164,7 +189,7 @@ def get_overall_date_range():
 
 def get_kpi_data(filters=None):
     if not filters: filters = {}
-    print(f"KPI REQUEST FILTERS: {filters}")
+    logger.debug(f"KPI request filters: {filters}")
     cache_key = f"kpi_data_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached
@@ -177,7 +202,7 @@ def get_kpi_data(filters=None):
     # Check for custom date filter
     date_mode = filters.get('dateMode', 'all')
     date_clause = build_date_filter_clause(filters)
-    extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
 
     # Smart check: if 'between' is used but it covers our default 6-month window, treat as 'all'
     overall = get_overall_date_range()
@@ -187,16 +212,15 @@ def get_kpi_data(filters=None):
     
     is_full_range = (date_mode == 'all')
     if not is_full_range and date_mode == 'between' and start_str and end_str:
-        # If the range ends at the global max and lasts at least 170 days, treat as full range
-        try:
-            from datetime import datetime
-            s_dt = datetime.strptime(start_str, '%Y-%m-%d')
-            e_dt = datetime.strptime(end_str, '%Y-%m-%d')
-            diff_days = (e_dt - s_dt).days
-            if diff_days >= 170 and end_str == overall['max']:
-                is_full_range = True
-        except:
-            pass
+        if validate_date(start_str) and validate_date(end_str):
+            try:
+                s_dt = datetime.strptime(start_str, '%Y-%m-%d')
+                e_dt = datetime.strptime(end_str, '%Y-%m-%d')
+                diff_days = (e_dt - s_dt).days
+                if diff_days >= 170 and end_str == overall['max']:
+                    is_full_range = True
+            except ValueError as e:
+                logger.warning(f"Date parsing error in is_full_range check: {e}")
 
     if not is_full_range and date_clause:
         # CUSTOM DATE RANGE: No comparison
@@ -257,7 +281,7 @@ def get_kpi_data(filters=None):
 
 def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', filters=None):
     if not filters: filters = {}
-    print(f"TRENDS REQUEST FILTERS: {filters}")
+    logger.debug(f"Trends request filters: {filters}")
     cache_key = f"trends_{metric}_{dimension}_{top_n}_{interval}_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached
@@ -270,7 +294,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     col = metric_map.get(metric, metric)
     
     date_clause = build_date_filter_clause(filters)
-    extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
     
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
@@ -311,7 +335,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     try:
         df = cursor.execute(query).df()
     except Exception as e:
-        print(f"ERROR in get_trends SQL: {e}\nQuery: {query}")
+        logger.error(f"SQL error in get_trends: {e}\nQuery: {query}")
         return []
     
     def format_label(row):
@@ -338,7 +362,7 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     col = metric_map.get(metric, metric)
     
     date_clause = build_date_filter_clause(filters)
-    extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
     
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
@@ -365,7 +389,7 @@ def get_master_table(dimension='Category', filters=None):
 
     cursor = get_cursor()
     date_clause = build_date_filter_clause(filters)
-    extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
     
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
@@ -387,7 +411,7 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
 
     cursor = get_cursor()
     date_clause = build_date_filter_clause(filters)
-    extra_filters = build_filter_clause({k:v for k,v in filters.items() if k not in ['dateMode','startDate','endDate','relativeValue','relativeUnit']}, prefix="AND")
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
     
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
