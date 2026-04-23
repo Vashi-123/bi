@@ -214,20 +214,26 @@ export default function Dashboard() {
             <div className="flex items-center gap-3 ml-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Show Top:</span>
                 <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={topN} onChange={e => setTopN(parseInt(e.target.value))}>
-                    {[3, 5].map(v => <option key={v} value={v}>Top {v}</option>)}
+                    {(chartView === 'combined' ? [3, 5] : [10, 25, 50, 100]).map(v => <option key={v} value={v}>Top {v}</option>)}
                 </select>
             </div>
             <div className="w-px h-5 bg-slate-100" />
             <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
                 <button 
-                    onClick={() => setChartView('combined')}
+                    onClick={() => {
+                        setChartView('combined');
+                        setTopN(5);
+                    }}
                     className={`p-1.5 rounded-lg transition-all ${chartView === 'combined' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
                     title="Combined View"
                 >
                     <LayoutGrid className="w-4 h-4" />
                 </button>
                 <button 
-                    onClick={() => setChartView('multiples')}
+                    onClick={() => {
+                        setChartView('multiples');
+                        setTopN(10);
+                    }}
                     className={`p-1.5 rounded-lg transition-all ${chartView === 'multiples' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
                     title="Small Multiples"
                 >

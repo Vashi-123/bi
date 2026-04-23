@@ -139,9 +139,9 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                         <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: getColor(i, categories.length) }} />
                                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">{category}</h3>
                                     </div>
-                                    <div className="h-[150px]">
+                                    <div style={{ minWidth: `${Math.max(800, data.length * minColWidth)}px`, height: '150px' }}>
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <ComposedChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                            <ComposedChart data={data} barCategoryGap={barCategoryGap} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                                 <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 700 }} />
                                                 <YAxis 
@@ -175,6 +175,26 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                                     radius={[4, 4, 0, 0]} 
                                                     isAnimationActive={true}
                                                 />
+                                                <Line 
+                                                    type="monotone" 
+                                                    dataKey={category} 
+                                                    stroke="none" 
+                                                    dot={false} 
+                                                    isAnimationActive={false}
+                                                >
+                                                    <LabelList dataKey="categoryGrowth" position="top" content={(props: any) => {
+                                                        const { x, y, value, index } = props;
+                                                        const catValue = value?.[category];
+                                                        if (index === 0 || catValue === undefined || catValue === null || Math.abs(catValue) < 0.1) return null;
+                                                        const isPos = catValue >= 0;
+                                                        return (
+                                                            <g>
+                                                                <rect x={x - 18} y={y - 25} width={36} height={16} rx={8} fill={isPos ? '#d1fae5' : '#fee2e2'} />
+                                                                <text x={x} y={y - 14} fill={isPos ? '#047857' : '#b91c1c'} textAnchor="middle" className="text-[8px] font-bold leading-none">{isPos ? '+' : ''}{catValue.toFixed(1)}%</text>
+                                                            </g>
+                                                        );
+                                                    }}/>
+                                                </Line>
                                             </ComposedChart>
                                         </ResponsiveContainer>
                                     </div>
