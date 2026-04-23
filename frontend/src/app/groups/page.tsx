@@ -30,10 +30,10 @@ export default function GroupsPage() {
     const allGroups = groupsData?.[activeType] || {};
 
     const filteredItems = useMemo(() => {
-        if (!search) return allItems.slice(0, 50);
+        if (!search) return allItems.slice(0, 5000);
         return allItems.filter((item: string) => 
             item.toLowerCase().includes(search.toLowerCase())
-        ).slice(0, 100);
+        ).slice(0, 5000);
     }, [allItems, search]);
 
     const handleToggleItem = (item: string) => {
