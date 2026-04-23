@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import useSWR, { mutate } from 'swr';
 import { API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
-import { ArrowLeft, Plus, Search, Trash2, CheckCircle, UserGroupIcon, UserIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Users, UserIcon } from 'lucide-react';
 import Link from 'next/link';
 
 export default function GroupsPage() {
@@ -89,7 +89,7 @@ export default function GroupsPage() {
                             <p className="text-xl font-black">{Object.keys(groups).length}</p>
                         </div>
                         <div className="w-10 h-10 bg-[#0C0C0C] rounded-xl flex items-center justify-center text-white">
-                            <UserGroupIcon className="w-5 h-5" />
+                            <Users className="w-5 h-5" />
                         </div>
                     </div>
                 </Flex>
