@@ -163,7 +163,7 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">{timeLabel}</p>
                                                                 <div className="flex justify-between items-center">
                                                                     <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">{category}</span>
-                                                                    <span className="text-sm font-black text-[#0C0C0C]">{formatValue(entry.value, isCurrency)}</span>
+                                                                    <span className="text-sm font-black text-[#0C0C0C]">{formatValue(Number(entry.value), isCurrency)}</span>
                                                                 </div>
                                                             </div>
                                                         );
