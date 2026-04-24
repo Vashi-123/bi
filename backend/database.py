@@ -396,9 +396,12 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
                  st_clauses.append(f"TRIM(UPPER(\"counterparty\")) IN ({client_subquery})")
             
             if st_clauses:
-                clauses.append("AND (" + " OR ".join(st_clauses) + ")")
-            continue
-            clauses.append(st_filter)
+                status_sql = "AND (" + " OR ".join(st_clauses) + ")"
+                logger.info(f"STATUS FILTER APPLIED: status={val_list}, owner={prod_owner}, dimension={dimension}")
+                logger.debug(f"STATUS SQL: {status_sql}")
+                clauses.append(status_sql)
+            else:
+                logger.warning(f"STATUS FILTER SKIPPED: dimension {dimension} not handled for status filtering")
             continue
 
         if isinstance(values, list):
