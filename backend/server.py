@@ -89,6 +89,17 @@ def parse_filters(request_params):
     filters['relativeValue'] = request_params.get('relativeValue')
     filters['relativeUnit'] = request_params.get('relativeUnit', 'day')
     
+    # Status filter
+    status = request_params.get('status')
+    if status:
+        try:
+            if status.startswith('['):
+                filters['status'] = json.loads(status)
+            else:
+                filters['status'] = [status]
+        except (json.JSONDecodeError, AttributeError):
+            filters['status'] = [status]
+            
     return filters
 
 
