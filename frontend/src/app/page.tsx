@@ -5,7 +5,7 @@ import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, Ta
 import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus, Layout, LayoutGrid } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import useSWR from 'swr';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Fragment } from 'react';
 
 // --- Modular Imports ---
 import Link from 'next/link';
@@ -457,14 +457,14 @@ export default function Dashboard() {
                             <TableRow className="border-b border-slate-100">
                                 <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Group Name</TableHeaderCell>
                                 {['revenue', 'profit', 'margin', 'qty'].map((metric) => (
-                                    <React.Fragment key={metric}>
+                                    <Fragment key={metric}>
                                         {activeMetric === metric && (
                                             <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Growth</TableHeaderCell>
                                         )}
                                         <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">
                                             {metric === 'qty' ? 'Qty' : metric.charAt(0).toUpperCase() + metric.slice(1)}
                                         </TableHeaderCell>
-                                    </React.Fragment>
+                                    </Fragment>
                                 ))}
                             </TableRow>
                         </TableHead>
@@ -518,14 +518,14 @@ export default function Dashboard() {
                             <TableRow className="border-b border-slate-100">
                                 <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
                                 {['revenue', 'profit', 'margin', 'qty'].map((metric) => (
-                                    <React.Fragment key={metric}>
+                                    <Fragment key={metric}>
                                         {activeMetric === metric && (
                                             <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Growth</TableHeaderCell>
                                         )}
                                         <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">
                                             {metric === 'qty' ? 'Qty' : metric.charAt(0).toUpperCase() + metric.slice(1)}
                                         </TableHeaderCell>
-                                    </React.Fragment>
+                                    </Fragment>
                                 ))}
                             </TableRow>
                         </TableHead>
