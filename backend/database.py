@@ -522,11 +522,11 @@ def get_master_table(dimension='Category', filters=None):
     LIMIT 5000
     """
     
-    df = cursor.execute(query).df()
-    df = df.where(pandas.notnull(df), None)
-    out_data = df.to_dict(orient='records')
-    set_cached_data(cache_key, out_data)
-    return out_data
+    query_res = cursor.execute(query).df()
+    query_res = query_res.where(pandas.notnull(query_res), None)
+    result_data = query_res.to_dict(orient='records')
+    set_cached_data(cache_key, result_data)
+    return result_data
 
 def get_detail_table(dimension='Category', selected_group=None, top_n=10, filters=None):
     cache_key = f"detail_{dimension}_{selected_group}_{top_n}_{hash(str(filters))}"
@@ -577,8 +577,8 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     LIMIT {top_n}
     """
     
-    df = cursor.execute(query).df()
-    df = df.where(pandas.notnull(df), None)
-    out_data = df.to_dict(orient='records')
-    set_cached_data(cache_key, out_data)
-    return out_data
+    query_res = cursor.execute(query).df()
+    query_res = query_res.where(pandas.notnull(query_res), None)
+    result_data = query_res.to_dict(orient='records')
+    set_cached_data(cache_key, result_data)
+    return result_data
