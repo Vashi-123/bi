@@ -48,6 +48,7 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                 <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[12px_0_20px_-10px_rgba(0,0,0,0.03)] flex-shrink-0" style={{ width: '70px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={data} margin={{ top: 30, right: 0, left: 10, bottom: 40 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <YAxis 
                                                 axisLine={false} 
                                                 tickLine={false} 
@@ -72,7 +73,7 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                                 tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} 
                                                 dy={15} 
                                             />
-                                            <YAxis hide domain={['auto', 'auto']} />
+                                            <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
                                             <ReTooltip 
                                                 cursor={{ fill: '#f8fafc', radius: 12 }}
                                                 content={(props) => {
@@ -165,6 +166,7 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                         <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[8px_0_12px_-6px_rgba(0,0,0,0.03)] flex-shrink-0" style={{ width: '65px', height: '150px' }}>
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <ComposedChart data={data} margin={{ top: 20, right: 0, left: 10, bottom: 20 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                                     <YAxis 
                                                         axisLine={false} 
                                                         tickLine={false} 
@@ -183,7 +185,7 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                                 <ComposedChart data={data} barCategoryGap={barCategoryGap} margin={{ top: 20, right: 30, left: 15, bottom: 20 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                                     <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 700 }} />
-                                                    <YAxis hide domain={['auto', 'auto']} />
+                                                    <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
                                                     <ReTooltip 
                                                         cursor={{ fill: '#f8fafc', radius: 8 }}
                                                         content={(props) => {
