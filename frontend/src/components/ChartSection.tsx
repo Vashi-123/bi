@@ -165,7 +165,7 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                     </div>
                                     <div className="flex">
                                         {/* Sticky Y-Axis */}
-                                        <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[8px_0_12px_-6px_rgba(0,0,0,0.03)] flex-shrink-0" style={{ width: '65px', height: '150px' }}>
+                                        <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[8px_0_12px_-6px_rgba(0,0,0,0.03)] flex-shrink-0" style={{ width: '80px', height: '150px' }}>
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <ComposedChart data={data} margin={{ top: 20, right: 0, left: 5, bottom: 20 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -174,7 +174,7 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                                         tickLine={false} 
                                                         tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 800 }} 
                                                         tickFormatter={(val) => formatValue(val, isCurrency)}
-                                                        width={45}
+                                                        width={60}
                                                         domain={['auto', 'auto']}
                                                     />
                                                     {/* Transparent bar for scale */}
