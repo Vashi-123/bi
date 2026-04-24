@@ -23,7 +23,7 @@ export default function Dashboard() {
     topN, setTopN, 
     selectedGroup, setSelectedGroup,
     dateFilter, setDateFilter,
-    filters
+    filters, setFilter
   } = useDashboardStore();
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
