@@ -287,6 +287,7 @@ export default function Dashboard() {
                         growth={kpiData?.qty.growth}
                         active={activeMetric === 'qty'}
                         onClick={() => setActiveMetric('qty')}
+                        isCurrency={false}
                         hasComparison={canCompare}
                     />
                 </>
