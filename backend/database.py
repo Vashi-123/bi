@@ -178,14 +178,28 @@ def save_stock_settings(data):
 def get_unique_items():
     """Returns all unique items (sku/product) for stock monitoring."""
     cursor = get_cursor()
-    # Combining Item name and Product name as potential SKUs
-    res = cursor.execute("""
-        SELECT DISTINCT "Item name" FROM sales_raw WHERE "Item name" IS NOT NULL
-        UNION
-        SELECT DISTINCT "Product name" FROM sales_raw WHERE "Product name" IS NOT NULL
-        ORDER BY 1
-    """).fetchall()
-    return [r[0] for r in res]
+    
+    # Try to find an ID column. Common names: 'Item ID', 'SKU', 'id', 'Code'
+    cols_res = cursor.execute("DESCRIBE sales_raw").fetchall()
+    cols = [row[0] for row in cols_res]
+    
+    id_col = next((c for c in cols if c.lower() in ['item id', 'sku', 'id', 'code', 'sku_id']), None)
+    name_col = "Item name" if "Item name" in cols else ("Product name" if "Product name" in cols else None)
+    
+    if not name_col:
+        return []
+    
+    if id_col:
+        query = f'SELECT DISTINCT "{id_col}", "{name_col}" FROM sales_raw WHERE "{name_col}" IS NOT NULL ORDER BY 2'
+    else:
+        query = f'SELECT DISTINCT "{name_col}", "{name_col}" FROM sales_raw WHERE "{name_col}" IS NOT NULL ORDER BY 1'
+        
+    try:
+        res = cursor.execute(query).fetchall()
+        return [{"id": str(r[0]), "name": str(r[1])} for r in res]
+    except Exception as e:
+        logger.error(f"Error in get_unique_items: {e}")
+        return []
 
 def get_unique_counterparties():
     """Returns all unique counterparties from the raw dataset."""

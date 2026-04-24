@@ -31,8 +31,10 @@ export default function StockSettingsPage() {
 
     const filteredSourceItems = useMemo(() => {
         if (!search) return allSourceItems.slice(0, 500);
-        return allSourceItems.filter((item: string) => 
-            item.toLowerCase().includes(search.toLowerCase())
+        const lowerSearch = search.toLowerCase();
+        return allSourceItems.filter((item: any) => 
+            item.name.toLowerCase().includes(lowerSearch) || 
+            item.id.toLowerCase().includes(lowerSearch)
         ).slice(0, 500);
     }, [allSourceItems, search]);
 
@@ -155,7 +157,7 @@ export default function StockSettingsPage() {
                             {activeCategory === 'monitored_skus' && (
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        Quick Select from Data
+                                        Quick Select (Search ID or Name)
                                     </label>
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
@@ -170,13 +172,14 @@ export default function StockSettingsPage() {
                                     <div className="max-h-48 overflow-y-auto space-y-1 p-1 bg-slate-50/50 rounded-xl border border-slate-100">
                                         {itemsLoading ? (
                                             <div className="py-8 text-center text-[10px] font-bold text-slate-400 uppercase animate-pulse">Loading...</div>
-                                        ) : filteredSourceItems.map((item: string) => (
+                                        ) : filteredSourceItems.map((item: any) => (
                                             <button 
-                                                key={item}
-                                                onClick={() => { setNewItemId(item); setNewItemName(item); }}
-                                                className="w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold transition-all text-slate-500 hover:bg-white hover:text-[#0C0C0C] truncate"
+                                                key={item.id}
+                                                onClick={() => { setNewItemId(item.id); setNewItemName(item.name); }}
+                                                className="w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold transition-all text-slate-500 hover:bg-white hover:text-[#0C0C0C] truncate flex justify-between"
                                             >
-                                                {item}
+                                                <span className="truncate">{item.name}</span>
+                                                <span className="text-slate-300 ml-2 shrink-0">{item.id}</span>
                                             </button>
                                         ))}
                                     </div>
