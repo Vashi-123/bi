@@ -10,8 +10,38 @@ import type { ChartSectionProps } from '@/lib/types';
 import { getColor } from '@/lib/constants';
 import { formatValue } from '@/lib/formatters';
 
-export function ChartSection({ title, label, data, categories, statuses = {}, minColWidth = 60, barCategoryGap = "10%", isCurrency = true, view = 'combined' }: ChartSectionProps) {
+interface ChartSectionProps {
+    title: string;
+    label: string;
+    data: any[];
+    categories: string[];
+    statuses?: Record<string, string>;
+    minColWidth?: number;
+    barCategoryGap?: string | number;
+    isCurrency?: boolean;
+    view?: 'combined' | 'multiples';
+    legendDimension?: string;
+    activeFilters?: Record<string, string[]>;
+}
+
+export function ChartSection({ 
+    title, 
+    label, 
+    data, 
+    categories, 
+    statuses = {},
+    minColWidth = 60, 
+    barCategoryGap = "10%", 
+    isCurrency = true,
+    view = 'combined',
+    legendDimension = '',
+    activeFilters = {}
+}: ChartSectionProps) {
     const containerRef = useRef<HTMLDivElement>(null);
+    
+    const isStatusFiltered = activeFilters.status && activeFilters.status.length > 0 && activeFilters.status[0] !== '';
+    const canFilterByStatus = ['Product name', 'Item name', 'counterparty'].includes(legendDimension);
+    const showStatusWarning = isStatusFiltered && !canFilterByStatus;
 
     useEffect(() => {
         if (containerRef.current) {
@@ -20,7 +50,20 @@ export function ChartSection({ title, label, data, categories, statuses = {}, mi
     }, [data]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 relative">
+            {showStatusWarning && (
+                <div className="absolute inset-0 z-[100] bg-white/95 backdrop-blur-md flex items-center justify-center rounded-3xl border border-slate-200/60 shadow-inner">
+                    <div className="text-center p-8 animate-in fade-in zoom-in duration-300">
+                        <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-100 shadow-sm">
+                            <svg className="w-8 h-8 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        </div>
+                        <h3 className="text-xl font-black text-[#0C0C0C] mb-3 tracking-tight">DIMENSION MISMATCH</h3>
+                        <p className="text-sm font-bold text-slate-400 max-w-[280px] mx-auto leading-relaxed uppercase tracking-widest">
+                            Status filtering is only supported for <span className="text-slate-600">Product</span>, <span className="text-slate-600">SKU</span>, or <span className="text-slate-600">Client</span>.
+                        </p>
+                    </div>
+                </div>
+            )}
             <Flex className="px-2" alignItems="end">
                 <div className="space-y-1">
                     <h2 className="text-2xl font-bold tracking-tight text-[#0C0C0C]">{title}</h2>

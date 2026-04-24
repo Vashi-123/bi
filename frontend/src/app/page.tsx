@@ -359,9 +359,9 @@ export default function Dashboard() {
 
         {/* Trends */}
         <section className="space-y-12">
-            <ChartSection title="Weekly Trend" label="Weekly Analysis" data={weeklyData} categories={sharedCategories} statuses={allStatuses} minColWidth={130} barCategoryGap="20%" isCurrency={isCurrencyMetric} view={chartView} />
-            <ChartSection title="Monthly Trend" label="Monthly Overview" data={monthlyData} categories={sharedCategories} statuses={allStatuses} minColWidth={50} barCategoryGap="25%" isCurrency={isCurrencyMetric} view={chartView} />
-            <ChartSection title="Daily Trend" label="Day-by-Day" data={dailyData} categories={sharedCategories} statuses={allStatuses} minColWidth={60} barCategoryGap="15%" isCurrency={isCurrencyMetric} view={chartView} />
+            <ChartSection title="Weekly Trend" label="Weekly Analysis" data={weeklyData} categories={sharedCategories} statuses={allStatuses} minColWidth={130} barCategoryGap="20%" isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} />
+            <ChartSection title="Monthly Trend" label="Monthly Overview" data={monthlyData} categories={sharedCategories} statuses={allStatuses} minColWidth={50} barCategoryGap="25%" isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} />
+            <ChartSection title="Daily Trend" label="Day-by-Day" data={dailyData} categories={sharedCategories} statuses={allStatuses} minColWidth={60} barCategoryGap="15%" isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} />
         </section>
 
         {/* Distribution Row */}

@@ -368,10 +368,10 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
             
             clean_vals = [str(v).replace("'", "''") for v in val_list]
             st_filter = f"""
-                AND "{dimension}" IN (
-                    SELECT name FROM statuses_view 
+                AND TRIM(UPPER("{dimension}")) IN (
+                    SELECT DISTINCT TRIM(UPPER(name)) FROM statuses_view 
                     WHERE status IN ({', '.join([f"'{v}'" for v in clean_vals])})
-                    AND status_owner = '{status_owner.replace("'", "''")}'
+                    AND TRIM(UPPER(status_owner)) = TRIM(UPPER('{status_owner.replace("'", "''")}'))
                     AND type = '{st_type}'
                 )
             """
