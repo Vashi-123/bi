@@ -238,6 +238,8 @@ export default function Dashboard() {
                     />
                     <KPICard 
                         title="Net Profit" 
+                        period={kpiData?.meta.current_period}
+                        baselinePeriod={kpiData?.meta.prev_period}
                         value={kpiData?.profit.value} 
                         baseline={kpiData?.profit.prev} 
                         growth={kpiData?.profit.growth}
@@ -248,6 +250,8 @@ export default function Dashboard() {
                     />
                     <KPICard 
                         title="Profit Margin" 
+                        period={kpiData?.meta.current_period}
+                        baselinePeriod={kpiData?.meta.prev_period}
                         value={kpiData?.margin.value} 
                         baseline={kpiData?.margin.prev} 
                         growth={kpiData?.margin.growth}
@@ -258,6 +262,8 @@ export default function Dashboard() {
                     />
                     <KPICard 
                         title="Total Qty" 
+                        period={kpiData?.meta.current_period}
+                        baselinePeriod={kpiData?.meta.prev_period}
                         value={kpiData?.qty.value} 
                         baseline={kpiData?.qty.prev} 
                         growth={kpiData?.qty.growth}
@@ -274,7 +280,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-3 ml-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Show Top:</span>
                 <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={topN} onChange={e => setTopN(parseInt(e.target.value))}>
-                    {(chartView === 'combined' ? [3, 5] : [10, 25, 50, 100]).map(v => <option key={v} value={v}>Top {v}</option>)}
+                    {(chartView === 'combined' ? [3, 5] : [5, 10, 25, 50, 100]).map(v => <option key={v} value={v}>Top {v}</option>)}
                 </select>
             </div>
             <div className="w-px h-5 bg-slate-100" />
@@ -292,7 +298,7 @@ export default function Dashboard() {
                 <button 
                     onClick={() => {
                         setChartView('multiples');
-                        setTopN(10);
+                        setTopN(5);
                     }}
                     className={`p-1.5 rounded-lg transition-all ${chartView === 'multiples' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
                     title="Small Multiples"
