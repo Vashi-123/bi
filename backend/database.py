@@ -329,8 +329,10 @@ def build_date_filter_clause(filters):
         clause = f"AND CAST(date AS DATE) <= '{end}'"
     elif mode == 'after' and start:
         clause = f"AND CAST(date AS DATE) >= '{start}'"
-    elif mode == 'relative' and rel_val and end_date:
-        clause = f"AND CAST(date AS DATE) >= CAST('{end_date}' AS DATE) - INTERVAL '{rel_val} {rel_unit}'"
+    elif mode == 'relative':
+        s, e = get_current_window(filters)
+        if s and e:
+            clause = f"AND CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}'"
     
     if mode != 'all':
         logger.debug(f"Date Filter Mode: {mode}, Clause: '{clause}'")
@@ -507,10 +509,10 @@ def get_master_table(dimension='Category', filters=None):
     SELECT 
         c.name, 
         c.revenue, c.profit, c.margin, c.qty,
-        ((c.revenue - p.revenue) / NULLIF(p.revenue, 0)) * 100 as revenue_growth,
-        ((c.profit - p.profit) / NULLIF(p.profit, 0)) * 100 as profit_growth,
-        ((c.margin - p.margin) / NULLIF(p.margin, 0)) * 100 as margin_growth,
-        ((c.qty - p.qty) / NULLIF(p.qty, 0)) * 100 as qty_growth
+        CASE WHEN p.revenue IS NULL OR p.revenue = 0 THEN 0 ELSE ((c.revenue - p.revenue) / p.revenue) * 100 END as revenue_growth,
+        CASE WHEN p.profit IS NULL OR p.profit = 0 THEN 0 ELSE ((c.profit - p.profit) / p.profit) * 100 END as profit_growth,
+        CASE WHEN p.margin IS NULL OR p.margin = 0 THEN 0 ELSE ((c.margin - p.margin) / p.margin) * 100 END as margin_growth,
+        CASE WHEN p.qty IS NULL OR p.qty = 0 THEN 0 ELSE ((c.qty - p.qty) / p.qty) * 100 END as qty_growth
     FROM curr c
     LEFT JOIN prev p ON c.name = p.name
     WHERE c.name IS NOT NULL
@@ -562,10 +564,10 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     SELECT 
         c.name, 
         c.revenue, c.profit, c.margin, c.qty,
-        ((c.revenue - p.revenue) / NULLIF(p.revenue, 0)) * 100 as revenue_growth,
-        ((c.profit - p.profit) / NULLIF(p.profit, 0)) * 100 as profit_growth,
-        ((c.margin - p.margin) / NULLIF(p.margin, 0)) * 100 as margin_growth,
-        ((c.qty - p.qty) / NULLIF(p.qty, 0)) * 100 as qty_growth
+        CASE WHEN p.revenue IS NULL OR p.revenue = 0 THEN 0 ELSE ((c.revenue - p.revenue) / p.revenue) * 100 END as revenue_growth,
+        CASE WHEN p.profit IS NULL OR p.profit = 0 THEN 0 ELSE ((c.profit - p.profit) / p.profit) * 100 END as profit_growth,
+        CASE WHEN p.margin IS NULL OR p.margin = 0 THEN 0 ELSE ((c.margin - p.margin) / p.margin) * 100 END as margin_growth,
+        CASE WHEN p.qty IS NULL OR p.qty = 0 THEN 0 ELSE ((c.qty - p.qty) / p.qty) * 100 END as qty_growth
     FROM curr c
     LEFT JOIN prev p ON c.name = p.name
     WHERE c.name IS NOT NULL

@@ -400,8 +400,8 @@ export default function Dashboard() {
                                         }}
                                         labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
                                     >
-                                        {Array.isArray(distData) && distData.map((_: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill={getColor(index, distData.length)} />
+                                        {Array.isArray(distData) && distData.map((item: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)} />
                                         ))}
                                     </Pie>
                                     <ReTooltip />
@@ -412,14 +412,11 @@ export default function Dashboard() {
                     <div className="w-full md:w-1/2 flex-1 overflow-y-auto pr-2 scrollbar-thin space-y-3">
                         {Array.isArray(distData) && distData.map((item: any, i: number) => {
                             const total = distData.reduce((acc: number, curr: any) => acc + curr.value, 0) || 1;
-                            const color = getColor(i, distData.length);
+                            const color = item.dimension_value === 'Other' ? '#0C0C0C' : getColor(i, distData.length);
                             return (
-                                <div key={item.dimension_value} className="flex justify-between items-center p-3 rounded-xl hover:bg-slate-50 transition-all border border-transparent group">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-3.5 h-3.5 rounded-full shadow-md border-2 border-white" style={{ backgroundColor: color }} />
-                                        <span className="text-[11px] font-bold text-slate-400 group-hover:text-[#0C0C0C] uppercase tracking-tight transition-colors">{item.dimension_value}</span>
-                                    </div>
-                                    <div className="text-sm font-extrabold text-[#0C0C0C]">{formatValue(item.value, isCurrencyMetric)}</div>
+                                <div key={item.dimension_value} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all border border-transparent group">
+                                    <div className="w-3.5 h-3.5 rounded-full shadow-md border-2 border-white" style={{ backgroundColor: color }} />
+                                    <span className="text-[11px] font-bold text-slate-400 group-hover:text-[#0C0C0C] uppercase tracking-tight transition-colors">{item.dimension_value}</span>
                                 </div>
                             );
                         })}
