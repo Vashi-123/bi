@@ -63,6 +63,7 @@ export interface ChartSectionProps {
   label: string;
   data: any[];
   categories: string[];
+  statuses?: Record<string, string>;
   minColWidth?: number;
   barCategoryGap?: string;
   isCurrency?: boolean;
