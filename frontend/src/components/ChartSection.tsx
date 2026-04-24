@@ -87,7 +87,7 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                                         <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[320px] z-[100] relative">
                                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{timeLabel}</p>
                                                             <div className="space-y-4 mb-5">
-                                                                {payload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').map((entry: any) => {
+                                                                {payload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
                                                                     const catGrowth = entry.payload.categoryGrowth?.[entry.name];
                                                                     const actualIndex = categories.indexOf(entry.name);
                                                                     const color = entry.name === 'Other' ? '#0C0C0C' : getColor(actualIndex, categories.length);
