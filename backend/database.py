@@ -8,6 +8,8 @@ import time
 import logging
 from threading import Lock
 
+print("!!! DATABASE FILE LOADED !!!")
+
 logger = logging.getLogger(__name__)
 
 # Input validation
@@ -208,7 +210,7 @@ def get_current_window(filters):
             start_dt = max_dt - pandas.Timedelta(days=val - 1)
         
         res_s, res_e = start_dt.strftime('%Y-%m-%d'), max_dt.strftime('%Y-%m-%d')
-        logger.info(f"DEBUG WINDOW: {mode} {val} {unit} -> {res_s} to {res_e}")
+        print(f"PRINT DEBUG: {mode} {val} {unit} -> {res_s} to {res_e}")
         return res_s, res_e
     
     return filters.get('startDate'), filters.get('endDate')
@@ -237,6 +239,11 @@ def format_period_label(start, end):
 
 def get_kpi_data(filters=None):
     if not filters: filters = {}
+    cache_key = f"kpi_{hash(str(filters))}"
+    # DISABLING CACHE FOR DEBUG
+    # cached = get_cached_data(cache_key)
+    # if cached: return cached
+    
     cursor = get_cursor()
     
     mode = filters.get('dateMode', 'all')
@@ -377,9 +384,10 @@ def get_overall_date_range():
 def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', filters=None):
     if not filters: filters = {}
     logger.debug(f"Trends request filters: {filters}")
-    cache_key = f"trends_{metric}_{dimension}_{top_n}_{interval}_{hash(str(filters))}"
-    cached = get_cached_data(cache_key)
-    if cached: return cached
+    # DISABLING CACHE FOR DEBUG
+    # cache_key = f"trends_{metric}_{dimension}_{top_n}_{interval}_{hash(str(filters))}"
+    # cached = get_cached_data(cache_key)
+    # if cached: return cached
 
     cursor = get_cursor()
     start_date, end_date = get_current_window(filters)
@@ -448,9 +456,10 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     return out
 
 def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=None):
-    cache_key = f"dist_{metric}_{dimension}_{top_n}_{hash(str(filters))}"
-    cached = get_cached_data(cache_key)
-    if cached: return cached
+    # DISABLING CACHE FOR DEBUG
+    # cache_key = f"dist_{metric}_{dimension}_{top_n}_{hash(str(filters))}"
+    # cached = get_cached_data(cache_key)
+    # if cached: return cached
 
     cursor = get_cursor()
     metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
@@ -479,9 +488,10 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     return out
 
 def get_master_table(dimension='Category', filters=None):
-    cache_key = f"master_{dimension}_{hash(str(filters))}"
-    cached = get_cached_data(cache_key)
-    if cached: return cached
+    # DISABLING CACHE FOR DEBUG
+    # cache_key = f"master_{dimension}_{hash(str(filters))}"
+    # cached = get_cached_data(cache_key)
+    # if cached: return cached
 
     cursor = get_cursor()
     extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
@@ -529,9 +539,10 @@ def get_master_table(dimension='Category', filters=None):
     return out
 
 def get_detail_table(dimension='Category', selected_group=None, top_n=10, filters=None):
-    cache_key = f"detail_{dimension}_{selected_group}_{top_n}_{hash(str(filters))}"
-    cached = get_cached_data(cache_key)
-    if cached: return cached
+    # DISABLING CACHE FOR DEBUG
+    # cache_key = f"detail_{dimension}_{selected_group}_{top_n}_{hash(str(filters))}"
+    # cached = get_cached_data(cache_key)
+    # if cached: return cached
 
     cursor = get_cursor()
     extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
