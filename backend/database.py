@@ -372,7 +372,7 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
                     SELECT DISTINCT TRIM(UPPER(name)) FROM statuses_view 
                     WHERE status IN ({', '.join([f"'{v}'" for v in clean_vals])})
                     AND TRIM(UPPER(status_owner)) = TRIM(UPPER('{status_owner.replace("'", "''")}'))
-                    AND type = '{st_type}'
+                    AND UPPER(type) = UPPER('{st_type}')
                 )
             """
             clauses.append(st_filter)
