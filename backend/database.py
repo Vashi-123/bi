@@ -524,9 +524,9 @@ def get_master_table(dimension='Category', filters=None):
     
     df = cursor.execute(query).df()
     df = df.where(pandas.notnull(df), None)
-    out = df.to_dict(orient='records')
-    set_cached_data(cache_key, out)
-    return out
+    out_data = df.to_dict(orient='records')
+    set_cached_data(cache_key, out_data)
+    return out_data
 
 def get_detail_table(dimension='Category', selected_group=None, top_n=10, filters=None):
     cache_key = f"detail_{dimension}_{selected_group}_{top_n}_{hash(str(filters))}"
@@ -579,6 +579,6 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     
     df = cursor.execute(query).df()
     df = df.where(pandas.notnull(df), None)
-    out = df.to_dict(orient='records')
-    set_cached_data(cache_key, out)
-    return out
+    out_data = df.to_dict(orient='records')
+    set_cached_data(cache_key, out_data)
+    return out_data
