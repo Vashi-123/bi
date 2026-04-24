@@ -24,6 +24,7 @@ export default function StockSettingsPage() {
     const [search, setSearch] = useState('');
     const [newItemId, setNewItemId] = useState('');
     const [newItemName, setNewItemName] = useState('');
+    const [newItemGroup, setNewItemGroup] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     const allSourceItems = itemsData?.items || [];
@@ -38,9 +39,10 @@ export default function StockSettingsPage() {
         ).slice(0, 500);
     }, [allSourceItems, search]);
 
-    const handleSaveSetting = async (id?: string, name?: string) => {
+    const handleSaveSetting = async (id?: string, name?: string, group?: string) => {
         const targetId = id || newItemId;
         const targetName = name || newItemName;
+        const targetGroup = group || newItemGroup;
 
         if (!targetId || !targetName) return;
         setIsSaving(true);
@@ -48,12 +50,19 @@ export default function StockSettingsPage() {
             const res = await fetch(`${API_BASE}/api/stock/settings?category=${activeCategory}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ item: { id: targetId, name: targetName } })
+                body: JSON.stringify({ 
+                    item: { 
+                        id: targetId, 
+                        name: targetName, 
+                        group: targetGroup || 'General' 
+                    } 
+                })
             });
             if (res.ok) {
                 mutate(`${API_BASE}/api/stock/settings`);
                 setNewItemId('');
                 setNewItemName('');
+                setNewItemGroup('');
                 setSearch('');
             }
         } catch (e) {
@@ -128,18 +137,35 @@ export default function StockSettingsPage() {
                             Add {activeCategory === 'monitored_skus' ? 'SKU' : 'User'}
                         </Title>
                         <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                    {activeCategory === 'monitored_skus' ? 'Item ID' : 'Telegram ID'}
-                                </label>
-                                <input 
-                                    type="text" 
-                                    value={newItemId}
-                                    onChange={e => setNewItemId(e.target.value)}
-                                    placeholder={activeCategory === 'monitored_skus' ? "e.g. 6552" : "e.g. 198799905"}
-                                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
-                                />
-                            </div>
+                            {activeCategory === 'monitored_skus' && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                        Group Name (Tag)
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={newItemGroup}
+                                        onChange={e => setNewItemGroup(e.target.value)}
+                                        placeholder="e.g. PUBG"
+                                        className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
+                                    />
+                                </div>
+                            )}
+
+                            {activeCategory !== 'monitored_skus' && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                        Telegram ID
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={newItemId}
+                                        onChange={e => setNewItemId(e.target.value)}
+                                        placeholder="e.g. 198799905"
+                                        className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
+                                    />
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -157,7 +183,7 @@ export default function StockSettingsPage() {
                             {activeCategory === 'monitored_skus' && (
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        Quick Select (Search ID or Name)
+                                        Quick Select (Find Item)
                                     </label>
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
@@ -175,7 +201,10 @@ export default function StockSettingsPage() {
                                         ) : filteredSourceItems.map((item: any) => (
                                             <button 
                                                 key={item.id}
-                                                onClick={() => { setNewItemId(item.id); setNewItemName(item.name); }}
+                                                onClick={() => { 
+                                                    setNewItemId(item.id); 
+                                                    setNewItemName(item.name); 
+                                                }}
                                                 className="w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold transition-all text-slate-500 hover:bg-white hover:text-[#0C0C0C] truncate flex justify-between"
                                             >
                                                 <span className="truncate">{item.name}</span>
@@ -206,7 +235,9 @@ export default function StockSettingsPage() {
                             <Table>
                                 <TableHead className="bg-white sticky top-0 z-10 shadow-sm">
                                     <TableRow className="border-b border-slate-100">
-                                        <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">ID</TableHeaderCell>
+                                        <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">
+                                            {activeCategory === 'monitored_skus' ? 'Group' : 'ID'}
+                                        </TableHeaderCell>
                                         <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Name</TableHeaderCell>
                                         <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
                                     </TableRow>
@@ -218,8 +249,15 @@ export default function StockSettingsPage() {
                                         </TableRow>
                                     ) : currentSettings.map((item: any) => (
                                         <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50">
-                                            <TableCell className="text-xs !text-slate-400 font-mono py-5">{item.id}</TableCell>
-                                            <TableCell className="text-sm !text-[#0C0C0C] font-black">{item.name}</TableCell>
+                                            <TableCell className="text-xs !text-slate-400 font-mono py-5">
+                                                {activeCategory === 'monitored_skus' ? (
+                                                    <Badge className="bg-slate-100 text-slate-500 border-none text-[9px] font-bold uppercase">{item.group || 'General'}</Badge>
+                                                ) : item.id}
+                                            </TableCell>
+                                            <TableCell className="text-sm !text-[#0C0C0C] font-black">
+                                                {item.name}
+                                                {activeCategory === 'monitored_skus' && <div className="text-[10px] text-slate-300 font-mono">{item.id}</div>}
+                                            </TableCell>
                                             <TableCell className="text-right">
                                                 <button 
                                                     onClick={() => handleDeleteSetting(item.id)}
