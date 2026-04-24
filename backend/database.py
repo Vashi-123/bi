@@ -359,49 +359,51 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
         
         # Handle status filtering
         if col == 'status':
-            val_list = values if isinstance(values, list) else [values]
-            if not val_list or not dimension: continue
-            
-            # Implementation of global status filtering:
-            # We filter by product status AND client status if they exist.
-            clean_vals = [str(v).replace("'", "''") for v in val_list]
-            st_list_str = ', '.join([f"'{v}'" for v in clean_vals])
-            
-            # Subquery for Products
-            prod_owner = status_owner # 'all' or selected client
-            prod_subquery = f"""
-                SELECT DISTINCT TRIM(UPPER(name)) FROM read_parquet('{STATUS_PATH}')
-                WHERE status IN ({st_list_str})
-                AND TRIM(UPPER(status_owner)) = TRIM(UPPER('{prod_owner.replace("'", "''")}'))
-                AND UPPER(type) = 'PRODUCT'
-            """
-            
-            # Subquery for Clients
-            client_subquery = f"""
-                SELECT DISTINCT TRIM(UPPER(name)) FROM read_parquet('{STATUS_PATH}')
-                WHERE status IN ({st_list_str})
-                AND TRIM(UPPER(status_owner)) = 'ALL'
-                AND UPPER(type) = 'CLIENT'
-            """
-            
-            # Apply filters. If we are looking at products, we filter by product status. 
-            # If we are looking at clients, we filter by client status.
-            # If we are looking at something else (Category), we filter by BOTH to be safe.
-            
-            st_clauses = []
-            if dimension in ['Product name', 'Item name'] or dimension == 'Category':
-                 st_clauses.append(f"TRIM(UPPER(\"Product name\")) IN ({prod_subquery})")
-            
-            if dimension == 'counterparty' or dimension == 'Category':
-                 st_clauses.append(f"TRIM(UPPER(\"counterparty\")) IN ({client_subquery})")
-            
-            if st_clauses:
-                status_sql = "AND (" + " OR ".join(st_clauses) + ")"
-                logger.info(f"STATUS FILTER APPLIED: status={val_list}, owner={prod_owner}, dimension={dimension}")
-                logger.debug(f"STATUS SQL: {status_sql}")
-                clauses.append(status_sql)
-            else:
-                logger.warning(f"STATUS FILTER SKIPPED: dimension {dimension} not handled for status filtering")
+            try:
+                # Handle cases where status might be a JSON-encoded string like '["status"]'
+                if isinstance(values, str) and values.startswith('['):
+                    val_list = json.loads(values)
+                else:
+                    val_list = values if isinstance(values, list) else [values]
+                
+                if not val_list or not dimension: continue
+                
+                # Implementation of global status filtering:
+                clean_vals = [str(v).replace("'", "''") for v in val_list]
+                st_list_str = ', '.join([f"'{v}'" for v in clean_vals])
+                
+                # Subquery for Products
+                prod_owner = status_owner
+                prod_subquery = f"""
+                    SELECT DISTINCT TRIM(UPPER(name)) FROM read_parquet('{STATUS_PATH}')
+                    WHERE status IN ({st_list_str})
+                    AND TRIM(UPPER(status_owner)) = TRIM(UPPER('{prod_owner.replace("'", "''")}'))
+                    AND UPPER(type) = 'PRODUCT'
+                """
+                
+                # Subquery for Clients
+                client_subquery = f"""
+                    SELECT DISTINCT TRIM(UPPER(name)) FROM read_parquet('{STATUS_PATH}')
+                    WHERE status IN ({st_list_str})
+                    AND TRIM(UPPER(status_owner)) = 'ALL'
+                    AND UPPER(type) = 'CLIENT'
+                """
+                
+                st_clauses = []
+                if dimension in ['Product name', 'Item name'] or dimension == 'Category':
+                    st_clauses.append(f"TRIM(UPPER(\"Product name\")) IN ({prod_subquery})")
+                
+                if dimension == 'counterparty' or dimension == 'Category':
+                    st_clauses.append(f"TRIM(UPPER(\"counterparty\")) IN ({client_subquery})")
+                
+                if st_clauses:
+                    status_sql = "AND (" + " OR ".join(st_clauses) + ")"
+                    logger.info(f"STATUS FILTER APPLIED: status={val_list}, owner={prod_owner}, dimension={dimension}")
+                    clauses.append(status_sql)
+                else:
+                    logger.warning(f"STATUS FILTER SKIPPED: dimension {dimension} not handled for status filtering")
+            except Exception as e:
+                logger.error(f"CRITICAL ERROR in status filtering: {e}")
             continue
 
         if isinstance(values, list):
