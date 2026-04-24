@@ -386,13 +386,14 @@ export default function Dashboard() {
                                         dataKey="value" 
                                         nameKey="dimension_value"
                                         label={({ cx, cy, midAngle, outerRadius, fill, percent }) => {
+                                            if (cx === undefined || cy === undefined || midAngle === undefined || outerRadius === undefined) return null;
                                             const RADIAN = Math.PI / 180;
-                                            const radius = outerRadius + 15;
-                                            const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                                            const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                                            const radius = Number(outerRadius) + 15;
+                                            const x = Number(cx) + radius * Math.cos(-midAngle * RADIAN);
+                                            const y = Number(cy) + radius * Math.sin(-midAngle * RADIAN);
                                             if (percent < 0.02) return null; // Hide very small labels
                                             return (
-                                                <text x={x} y={y} fill={fill} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-[11px] font-extrabold">
+                                                <text x={x} y={y} fill={fill} textAnchor={x > Number(cx) ? 'start' : 'end'} dominantBaseline="central" className="text-[11px] font-extrabold">
                                                     {(percent * 100).toFixed(1)}%
                                                 </text>
                                             );
