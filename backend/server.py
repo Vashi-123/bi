@@ -279,6 +279,39 @@ def delete_stock_setting(item_id: str, category: str = Query(default='monitored_
     return JSONResponse(status_code=404, content={"error": "Item not found"})
 
 
+@app.post("/api/stock/settings/bulk")
+async def save_stock_settings_bulk(request: Request, category: str = Query(default='monitored_skus')):
+    """Saves multiple stock setting entries at once."""
+    try:
+        body = await request.json()
+        items = body.get("items") # List of SKU objects [{id, name, group}, ...]
+        if not items or not isinstance(items, list):
+            return JSONResponse(status_code=400, content={"error": "Missing or invalid items list"})
+        
+        data = database.load_stock_settings()
+        if category not in data:
+            data[category] = []
+            
+        # Create a map for quick lookup
+        existing_map = {str(item.get("id")): i for i, item in enumerate(data[category])}
+        
+        for new_item in items:
+            item_id = str(new_item.get("id"))
+            if item_id in existing_map:
+                data[category][existing_map[item_id]] = new_item
+            else:
+                data[category].append(new_item)
+                # Update map in case there are duplicates in the 'items' list itself
+                existing_map[item_id] = len(data[category]) - 1
+            
+        if database.save_stock_settings(data):
+            return {"status": "ok", "count": len(items)}
+        else:
+            return JSONResponse(status_code=500, content={"error": "Failed to save settings"})
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+
 # --- Health Check ---
 
 @app.get("/api/health")

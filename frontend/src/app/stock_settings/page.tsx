@@ -25,6 +25,7 @@ export default function StockSettingsPage() {
     const [newItemId, setNewItemId] = useState('');
     const [newItemName, setNewItemName] = useState('');
     const [newItemGroup, setNewItemGroup] = useState('');
+    const [selectedItems, setSelectedItems] = useState<Map<string, string>>(new Map());
     const [isSaving, setIsSaving] = useState(false);
 
     const allSourceItems = itemsData?.items || [];
@@ -39,12 +40,45 @@ export default function StockSettingsPage() {
         ).slice(0, 500);
     }, [allSourceItems, search]);
 
-    const handleSaveSetting = async (id?: string, name?: string, group?: string) => {
-        const targetId = id || newItemId;
-        const targetName = name || newItemName;
-        const targetGroup = group || newItemGroup;
+    const handleToggleItem = (id: string, name: string) => {
+        const next = new Map(selectedItems);
+        if (next.has(id)) {
+            next.delete(id);
+        } else {
+            next.set(id, name);
+        }
+        setSelectedItems(next);
+    };
 
-        if (!targetId || !targetName) return;
+    const handleBulkSave = async () => {
+        if (selectedItems.size === 0) return;
+        setIsSaving(true);
+        try {
+            const itemsToSave = Array.from(selectedItems.entries()).map(([id, name]) => ({
+                id,
+                name,
+                group: newItemGroup || 'General'
+            }));
+
+            const res = await fetch(`${API_BASE}/api/stock/settings/bulk?category=${activeCategory}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: itemsToSave })
+            });
+            if (res.ok) {
+                mutate(`${API_BASE}/api/stock/settings`);
+                setSelectedItems(new Map());
+                setSearch('');
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSaveSingle = async () => {
+        if (!newItemId || !newItemName) return;
         setIsSaving(true);
         try {
             const res = await fetch(`${API_BASE}/api/stock/settings?category=${activeCategory}`, {
@@ -52,9 +86,9 @@ export default function StockSettingsPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     item: { 
-                        id: targetId, 
-                        name: targetName, 
-                        group: targetGroup || 'General' 
+                        id: newItemId, 
+                        name: newItemName, 
+                        group: activeCategory === 'monitored_skus' ? (newItemGroup || 'General') : undefined 
                     } 
                 })
             });
@@ -63,7 +97,6 @@ export default function StockSettingsPage() {
                 setNewItemId('');
                 setNewItemName('');
                 setNewItemGroup('');
-                setSearch('');
             }
         } catch (e) {
             console.error(e);
@@ -107,21 +140,21 @@ export default function StockSettingsPage() {
                     {/* Tab Switcher */}
                     <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
                         <button 
-                            onClick={() => setActiveCategory('monitored_skus')}
+                            onClick={() => { setActiveCategory('monitored_skus'); setSelectedItems(new Map()); }}
                             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
                                 ${activeCategory === 'monitored_skus' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
                         >
                             <Package className="w-4 h-4" /> SKUs
                         </button>
                         <button 
-                            onClick={() => setActiveCategory('authorized_users')}
+                            onClick={() => { setActiveCategory('authorized_users'); setSelectedItems(new Map()); }}
                             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
                                 ${activeCategory === 'authorized_users' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
                         >
                             <ShieldCheck className="w-4 h-4" /> Access
                         </button>
                         <button 
-                            onClick={() => setActiveCategory('notification_recipients')}
+                            onClick={() => { setActiveCategory('notification_recipients'); setSelectedItems(new Map()); }}
                             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
                                 ${activeCategory === 'notification_recipients' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
                         >
@@ -134,95 +167,93 @@ export default function StockSettingsPage() {
                     {/* Create Form */}
                     <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-fit">
                         <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">
-                            Add {activeCategory === 'monitored_skus' ? 'SKU' : 'User'}
+                            Add {activeCategory === 'monitored_skus' ? 'Items' : 'User'}
                         </Title>
                         <div className="space-y-6">
-                            {activeCategory === 'monitored_skus' && (
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        Group Name (Tag)
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        value={newItemGroup}
-                                        onChange={e => setNewItemGroup(e.target.value)}
-                                        placeholder="e.g. PUBG"
-                                        className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
-                                    />
-                                </div>
-                            )}
-
-                            {activeCategory !== 'monitored_skus' && (
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        Telegram ID
-                                    </label>
-                                    <input 
-                                        type="text" 
-                                        value={newItemId}
-                                        onChange={e => setNewItemId(e.target.value)}
-                                        placeholder="e.g. 198799905"
-                                        className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
-                                    />
-                                </div>
-                            )}
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                    {activeCategory === 'monitored_skus' ? 'Display Name' : 'User Name'}
-                                </label>
-                                <input 
-                                    type="text" 
-                                    value={newItemName}
-                                    onChange={e => setNewItemName(e.target.value)}
-                                    placeholder={activeCategory === 'monitored_skus' ? "e.g. PUBG 60 UC" : "e.g. Usman G."}
-                                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
-                                />
-                            </div>
-
-                            {activeCategory === 'monitored_skus' && (
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                        Quick Select (Find Item)
-                                    </label>
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                            {activeCategory === 'monitored_skus' ? (
+                                <>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Group Name (Tag for all selected)</label>
                                         <input 
                                             type="text" 
-                                            value={search}
-                                            onChange={e => setSearch(e.target.value)}
-                                            placeholder="Search items..."
-                                            className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold"
+                                            value={newItemGroup}
+                                            onChange={e => setNewItemGroup(e.target.value)}
+                                            placeholder="e.g. PUBG"
+                                            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
                                         />
                                     </div>
-                                    <div className="max-h-48 overflow-y-auto space-y-1 p-1 bg-slate-50/50 rounded-xl border border-slate-100">
-                                        {itemsLoading ? (
-                                            <div className="py-8 text-center text-[10px] font-bold text-slate-400 uppercase animate-pulse">Loading...</div>
-                                        ) : filteredSourceItems.map((item: any) => (
-                                            <button 
-                                                key={item.id}
-                                                onClick={() => { 
-                                                    setNewItemId(item.id); 
-                                                    setNewItemName(item.name); 
-                                                }}
-                                                className="w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold transition-all text-slate-500 hover:bg-white hover:text-[#0C0C0C] truncate flex justify-between"
-                                            >
-                                                <span className="truncate">{item.name}</span>
-                                                <span className="text-slate-300 ml-2 shrink-0">{item.id}</span>
-                                            </button>
-                                        ))}
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quick Select (Multi-select)</label>
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+                                            <input 
+                                                type="text" 
+                                                value={search}
+                                                onChange={e => setSearch(e.target.value)}
+                                                placeholder="Search ID or Name..."
+                                                className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold"
+                                            />
+                                        </div>
+                                        <div className="max-h-60 overflow-y-auto space-y-1 p-1 bg-slate-50/50 rounded-xl border border-slate-100">
+                                            {itemsLoading ? (
+                                                <div className="py-8 text-center text-[10px] font-bold text-slate-400 uppercase animate-pulse">Loading...</div>
+                                            ) : filteredSourceItems.map((item: any) => (
+                                                <div 
+                                                    key={item.id}
+                                                    onClick={() => handleToggleItem(item.id, item.name)}
+                                                    className={`w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-3
+                                                              ${selectedItems.has(item.id) ? 'bg-black text-white' : 'text-slate-500 hover:bg-white hover:text-[#0C0C0C]'}`}
+                                                >
+                                                    <div className={`w-3 h-3 rounded border flex items-center justify-center ${selectedItems.has(item.id) ? 'border-white' : 'border-slate-300'}`}>
+                                                        {selectedItems.has(item.id) && <CheckCircle className="w-2 h-2 text-white" />}
+                                                    </div>
+                                                    <span className="truncate flex-1">{item.name}</span>
+                                                    <span className={`text-[9px] font-mono shrink-0 ${selectedItems.has(item.id) ? 'text-white/50' : 'text-slate-300'}`}>{item.id}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                    <button 
+                                        onClick={handleBulkSave}
+                                        disabled={isSaving || selectedItems.size === 0}
+                                        className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+                                        Add {selectedItems.size} Selected Items
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Telegram ID</label>
+                                        <input 
+                                            type="text" 
+                                            value={newItemId}
+                                            onChange={e => setNewItemId(e.target.value)}
+                                            placeholder="e.g. 198799905"
+                                            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">User Name</label>
+                                        <input 
+                                            type="text" 
+                                            value={newItemName}
+                                            onChange={e => setNewItemName(e.target.value)}
+                                            placeholder="e.g. Usman G."
+                                            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={handleSaveSingle}
+                                        disabled={isSaving || !newItemId || !newItemName}
+                                        className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+                                        Add User
+                                    </button>
+                                </>
                             )}
-
-                            <button 
-                                onClick={() => handleSaveSetting()}
-                                disabled={isSaving || !newItemId || !newItemName}
-                                className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                            >
-                                {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                                Add Entry
-                            </button>
                         </div>
                     </Card>
 
