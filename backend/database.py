@@ -362,32 +362,42 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
             val_list = values if isinstance(values, list) else [values]
             if not val_list or not dimension: continue
             
-            # Map dimension to status type
-            type_map = {'Category': 'category', 'Product name': 'product', 'Item name': 'product', 'counterparty': 'client'}
-            st_type = type_map.get(dimension, 'category')
-            
-            # Implementation of the requested logic:
-            # 1. Dimension=Product & no client filter -> use owner='all'
-            # 2. Dimension=Product & client filter -> use owner=client
-            # 3. Dimension=Client -> use type='client' & owner='all'
-            
-            is_client_filtered = (status_owner != 'all')
-            
-            if st_type == 'product':
-                effective_owner = status_owner # This will be 'all' if no client filter, or the client name if filtered
-            else:
-                # For clients or categories, we always use 'all' as they don't have an owner
-                effective_owner = 'all'
-            
+            # Implementation of global status filtering:
+            # We filter by product status AND client status if they exist.
             clean_vals = [str(v).replace("'", "''") for v in val_list]
-            st_filter = f"""
-                AND TRIM(UPPER("{dimension}")) IN (
-                    SELECT DISTINCT TRIM(UPPER(name)) FROM statuses_view 
-                    WHERE status IN ({', '.join([f"'{v}'" for v in clean_vals])})
-                    AND TRIM(UPPER(status_owner)) = TRIM(UPPER('{effective_owner.replace("'", "''")}'))
-                    AND UPPER(type) = UPPER('{st_type}')
-                )
+            st_list_str = ', '.join([f"'{v}'" for v in clean_vals])
+            
+            # Subquery for Products
+            prod_owner = status_owner # 'all' or selected client
+            prod_subquery = f"""
+                SELECT DISTINCT TRIM(UPPER(name)) FROM read_parquet('{STATUS_PATH}')
+                WHERE status IN ({st_list_str})
+                AND TRIM(UPPER(status_owner)) = TRIM(UPPER('{prod_owner.replace("'", "''")}'))
+                AND UPPER(type) = 'PRODUCT'
             """
+            
+            # Subquery for Clients
+            client_subquery = f"""
+                SELECT DISTINCT TRIM(UPPER(name)) FROM read_parquet('{STATUS_PATH}')
+                WHERE status IN ({st_list_str})
+                AND TRIM(UPPER(status_owner)) = 'ALL'
+                AND UPPER(type) = 'CLIENT'
+            """
+            
+            # Apply filters. If we are looking at products, we filter by product status. 
+            # If we are looking at clients, we filter by client status.
+            # If we are looking at something else (Category), we filter by BOTH to be safe.
+            
+            st_clauses = []
+            if dimension in ['Product name', 'Item name'] or dimension == 'Category':
+                 st_clauses.append(f"TRIM(UPPER(\"Product name\")) IN ({prod_subquery})")
+            
+            if dimension == 'counterparty' or dimension == 'Category':
+                 st_clauses.append(f"TRIM(UPPER(\"counterparty\")) IN ({client_subquery})")
+            
+            if st_clauses:
+                clauses.append("AND (" + " OR ".join(st_clauses) + ")")
+            continue
             clauses.append(st_filter)
             continue
 
