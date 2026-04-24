@@ -215,7 +215,7 @@ export default function Dashboard() {
                 {[
                     { label: 'All', mode: 'all', val: null, unit: 'day' },
                     { label: '3 Months', mode: 'relative', val: 3, unit: 'month' },
-                    { label: '1 Month', mode: 'relative', val: 1, unit: 'month' }
+                    { label: 'Last 30 days', mode: 'relative', val: 30, unit: 'day' }
                 ].map((btn) => {
                     const isActive = (btn.mode === 'all' && dateFilter.mode === 'all') || 
                                    (btn.mode === 'relative' && dateFilter.mode === 'relative' && dateFilter.value === btn.val && dateFilter.unit === btn.unit);
