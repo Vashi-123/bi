@@ -30,14 +30,13 @@ STATUS_PATH = os.getenv("STATUS_PATH", "/home/usman/onedrive_folder/project_data
 
 # Global connection and cache
 _CONN = None
-_MAX_DATE = None
 _CACHE = {}
 _CACHE_LOCK = Lock()
 CACHE_TTL = 300  # 5 minutes
 GROUPS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "groups.json")
 
 def get_connection():
-    global _CONN, _MAX_DATE
+    global _CONN
     if _CONN is None:
         # Initialize one global connection
         _CONN = duckdb.connect(database=':memory:')
@@ -45,7 +44,7 @@ def get_connection():
             # Efficiently find max date to set the window for the entire dashboard
             max_row = _CONN.execute(f"SELECT MAX(date) FROM read_parquet('{DATA_PATH}')").fetchone()
             if max_row and max_row[0]:
-                _MAX_DATE = max_row[0]
+                max_date = max_row[0]
                 # DEFAULT: 6 months limit as requested
                 query = f"""
                     CREATE OR REPLACE VIEW sales_raw AS 
@@ -183,11 +182,10 @@ def set_cached_data(key: str, val: any):
         _CACHE[key] = (val, time.time())
 
 def get_current_window(filters):
-    global _MAX_DATE
-    get_connection() # Ensure initialized
-    
-    if not _MAX_DATE: return None, None
-    max_d = _MAX_DATE
+    cursor = get_cursor()
+    max_res = cursor.execute("SELECT MAX(date) FROM sales").fetchone()
+    if not max_res or not max_res[0]: return None, None
+    max_d = max_res[0]
 
     mode = filters.get('dateMode', 'all')
     if mode == 'all':
@@ -217,6 +215,7 @@ def get_current_window(filters):
             start_dt = max_dt - pandas.Timedelta(days=val - 1)
         
         res_s, res_e = start_dt.strftime('%Y-%m-%d'), max_dt.strftime('%Y-%m-%d')
+        logger.info(f"DEBUG WINDOW: {mode} {val} {unit} -> {res_s} to {res_e}")
         return res_s, res_e
     
     return filters.get('startDate'), filters.get('endDate')
@@ -245,10 +244,6 @@ def format_period_label(start, end):
 
 def get_kpi_data(filters=None):
     if not filters: filters = {}
-    cache_key = f"kpi_{hash(str(filters))}"
-    cached = get_cached_data(cache_key)
-    if cached: return cached
-    
     cursor = get_cursor()
     
     mode = filters.get('dateMode', 'all')
@@ -285,7 +280,7 @@ def get_kpi_data(filters=None):
         if not prev or prev == 0: return 0
         return ((curr - prev) / prev) * 100
 
-    result = {
+    return {
         "revenue": {"value": c_res[0] or 0, "prev": p_res[0] or 0, "growth": calc_growth(c_res[0] or 0, p_res[0] or 0)},
         "profit": {"value": c_res[1] or 0, "prev": p_res[1] or 0, "growth": calc_growth(c_res[1] or 0, p_res[1] or 0)},
         "margin": {"value": c_res[2] or 0, "prev": p_res[2] or 0, "growth": calc_growth(c_res[2] or 0, p_res[2] or 0)},
@@ -295,8 +290,6 @@ def get_kpi_data(filters=None):
             "prev_period": prev_label
         }
     }
-    set_cached_data(cache_key, result)
-    return result
 
 def get_unified_statuses(filters=None):
     """Fetches statuses from unified_status.parquet based on filters."""
