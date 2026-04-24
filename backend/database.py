@@ -59,6 +59,12 @@ def get_connection():
             # Load custom groups if they exist
             refresh_groups_table()
 
+            # Create a view for statuses to enable filtering
+            if os.path.exists(STATUS_PATH):
+                _CONN.execute(f"CREATE OR REPLACE VIEW statuses_view AS SELECT * FROM read_parquet('{STATUS_PATH}')")
+            elif os.path.exists("unified_status.parquet"):
+                _CONN.execute("CREATE OR REPLACE VIEW statuses_view AS SELECT * FROM read_parquet('unified_status.parquet')")
+
         except Exception as e:
             logger.warning(f"Could not pre-filter data: {e}")
             _CONN.execute(f"CREATE OR REPLACE VIEW sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}')")
@@ -296,21 +302,19 @@ def get_unified_statuses(filters=None):
     else:
         path = STATUS_PATH
 
+def get_unified_statuses(filters=None):
+    """Fetches statuses from unified_status.parquet based on filters."""
+    if not os.path.exists(STATUS_PATH):
+        # Fallback for local dev if file isn't at the server path
+        local_path = "unified_status.parquet"
+        if not os.path.exists(local_path):
+            return {}
+        path = local_path
+    else:
+        path = STATUS_PATH
+
     # Determine status_owner
-    owner = 'all'
-    if filters:
-        # Filters from frontend are often lists
-        f_client = filters.get('Groupclient') or filters.get('client')
-        f_product = filters.get('Product name')
-        
-        if f_client and isinstance(f_client, list) and len(f_client) == 1:
-            owner = f_client[0]
-        elif f_client and isinstance(f_client, str):
-            owner = f_client
-        elif f_product and isinstance(f_product, list) and len(f_product) == 1:
-            owner = f_product[0]
-        elif f_product and isinstance(f_product, str):
-            owner = f_product
+    owner = get_status_owner(filters)
 
     try:
         cursor = get_connection().cursor()
@@ -323,23 +327,71 @@ def get_unified_statuses(filters=None):
         logger.error(f"Error fetching statuses: {e}")
         return {}
 
-def build_filter_clause(filters, prefix="WHERE"):
+def get_status_owner(filters):
+    """Determines the owner context for statuses based on current filters."""
+    owner = 'all'
+    if filters:
+        # Filters from frontend are often lists
+        f_client = filters.get('Groupclient') or filters.get('client') or filters.get('counterparty')
+        f_product = filters.get('Product name')
+        
+        if f_client and isinstance(f_client, list) and len(f_client) == 1:
+            owner = f_client[0]
+        elif f_client and isinstance(f_client, str):
+            owner = f_client
+        elif f_product and isinstance(f_product, list) and len(f_product) == 1:
+            owner = f_product[0]
+        elif f_product and isinstance(f_product, str):
+            owner = f_product
+    return owner
+
+def build_filter_clause(filters, prefix="WHERE", dimension=None):
     """Dynamically builds a WHERE clause based on the provided filters dictionary."""
     if not filters:
         return ""
     
     clauses = []
+    status_owner = get_status_owner(filters)
+
     for col, values in filters.items():
-        if values and isinstance(values, list):
-            val_str = ", ".join(["'" + str(v).replace("'", "''") + "'" for v in values])
-            clauses.append(f"\"{col}\" IN ({val_str})")
-        elif values and not isinstance(values, dict): # Avoid including date params as standard filters
-             clauses.append(f"\"{col}\" = '" + str(values).replace("'", "''") + "'")
+        if not values or col in DATE_FILTER_KEYS:
+            continue
+        
+        # Handle status filtering
+        if col == 'status':
+            val_list = values if isinstance(values, list) else [values]
+            if not val_list or not dimension: continue
+            
+            # Map dimension to status type
+            type_map = {'Category': 'category', 'Product name': 'product', 'Item name': 'product', 'counterparty': 'client'}
+            st_type = type_map.get(dimension, 'category')
+            
+            clean_vals = [str(v).replace("'", "''") for v in val_list]
+            st_filter = f"""
+                AND "{dimension}" IN (
+                    SELECT name FROM statuses_view 
+                    WHERE status IN ({', '.join([f"'{v}'" for v in clean_vals])})
+                    AND status_owner = '{status_owner.replace("'", "''")}'
+                    AND type = '{st_type}'
+                )
+            """
+            clauses.append(st_filter)
+            continue
+
+        if isinstance(values, list):
+            clean_values = [str(v).replace("'", "''") for v in values]
+            clauses.append(f"AND \"{col}\" IN ({', '.join([f"'{v}'" for v in clean_values])})")
+        else:
+            clean_value = str(values).replace("'", "''")
+            clauses.append(f"AND \"{col}\" = '{clean_value}'")
     
     if not clauses:
         return ""
     
-    return f"{prefix} " + " AND ".join(clauses)
+    combined = " ".join(clauses)
+    if combined.startswith("AND"):
+        return f"{prefix} 1=1 {combined}"
+    return f"{prefix} {combined}"
 
 def build_date_filter_clause(filters):
     """Builds a date-specific SQL clause based on the dateFilter parameters."""
@@ -428,7 +480,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     col = metric_map.get(metric, metric)
     
     date_clause = build_date_filter_clause(filters)
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension=dimension)
     
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
@@ -502,7 +554,7 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     col = metric_map.get(metric, metric)
     
     date_clause = build_date_filter_clause(filters)
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension=dimension)
     
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
@@ -529,7 +581,7 @@ def get_master_table(dimension='Category', filters=None):
     if cached: return cached
 
     cursor = get_cursor()
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension=dimension)
     mode = filters.get('dateMode', 'all') if filters else 'all'
     
     if mode == 'all':
@@ -579,7 +631,8 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     if cached: return cached
 
     cursor = get_cursor()
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
+    # In detail table, we filter based on 'Item name' for statuses
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension='Item name')
     mode = filters.get('dateMode', 'all') if filters else 'all'
     
     group_filter = ""

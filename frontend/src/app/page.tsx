@@ -326,6 +326,22 @@ export default function Dashboard() {
             </div>
             <div className="w-px h-5 bg-slate-100" />
             <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status:</span>
+                <select 
+                    className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" 
+                    value={filters.status?.[0] || ''} 
+                    onChange={e => setFilter('status', e.target.value ? [e.target.value] : [])}
+                >
+                    <option value="">All Statuses</option>
+                    <option value="Стабильно покупают">Стабильно покупают</option>
+                    <option value="Редко покупают">Редко покупают</option>
+                    <option value="В зоне риска">В зоне риска</option>
+                    <option value="Перестали покупать">Перестали покупать</option>
+                    <option value="Начали покупать">Начали покупать</option>
+                </select>
+            </div>
+            <div className="w-px h-5 bg-slate-100" />
+            <div className="flex items-center gap-3">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dimension:</span>
                 <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={legendDimension} onChange={e => setLegendDimension(e.target.value as any)}>
                     <option value="Category">Category</option>

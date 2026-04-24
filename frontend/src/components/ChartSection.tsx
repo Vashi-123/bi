@@ -164,11 +164,6 @@ export function ChartSection({ title, label, data, categories, statuses = {}, mi
                                     <div className="flex items-center gap-3 sticky left-0 z-30 bg-white/50 backdrop-blur-sm w-fit pr-4 rounded-r-lg">
                                         <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: category === 'Other' ? '#0C0C0C' : getColor(i, categories.length) }} />
                                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                            {statuses[category] && (
-                                                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 text-[9px] font-bold">
-                                                    {statuses[category]}
-                                                </span>
-                                            )}
                                             {category}
                                         </h3>
                                     </div>
