@@ -192,11 +192,22 @@ def get_current_window(filters):
         val = int(filters.get('relativeValue', 3))
         unit = filters.get('relativeUnit', 'month')
         
-        if unit == 'month': start_dt = max_d - pandas.Timedelta(days=30*val)
-        elif unit == 'week': start_dt = max_d - pandas.Timedelta(days=7*val)
-        else: start_dt = max_d - pandas.Timedelta(days=val)
+        # Ensure max_d is a datetime object for calculations
+        max_dt = pandas.to_datetime(max_d)
         
-        return start_dt.strftime('%Y-%m-%d'), max_d.strftime('%Y-%m-%d')
+        if unit == 'month':
+            # Alignment: Start from the 1st of the month (val-1) months ago
+            # e.g. if today is April 24 and val=3, we want Feb 1st
+            start_dt = (max_dt.replace(day=1) - pandas.DateOffset(months=val - 1))
+        elif unit == 'week':
+            # Alignment: Start from the Monday of the week (val-1) weeks ago
+            # max_dt.weekday() is 0 for Monday
+            start_dt = (max_dt - pandas.Timedelta(days=max_dt.weekday())) - pandas.Timedelta(weeks=val - 1)
+        else:
+            # For days, we just take the last X days including today
+            start_dt = max_dt - pandas.Timedelta(days=val - 1)
+        
+        return start_dt.strftime('%Y-%m-%d'), max_dt.strftime('%Y-%m-%d')
     
     return filters.get('startDate'), filters.get('endDate')
 
@@ -469,20 +480,46 @@ def get_master_table(dimension='Category', filters=None):
     if cached: return cached
 
     cursor = get_cursor()
-    date_clause = build_date_filter_clause(filters)
     extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
+    mode = filters.get('dateMode', 'all') if filters else 'all'
     
-    if date_clause:
-        filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
+    if mode == 'all':
+        curr_filter = f"WHERE 1=1 {extra_filters}"
+        prev_filter = "WHERE 1=0"
     else:
-        s, e = get_current_window(filters)
-        filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
+        curr_s, curr_e = get_current_window(filters)
+        prev_s, prev_e = get_prev_window(filters)
+        curr_filter = f"WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}"
+        if prev_s and prev_e:
+            prev_filter = f"WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
+        else:
+            prev_filter = "WHERE 1=0"
     
-    query = f"""SELECT "{dimension}" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
-                FROM sales {filter_clause} GROUP BY 1 ORDER BY revenue DESC
-                LIMIT 5000"""
+    query = f"""
+    WITH curr AS (
+        SELECT "{dimension}" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
+        FROM sales {curr_filter} GROUP BY 1
+    ),
+    prev AS (
+        SELECT "{dimension}" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
+        FROM sales {prev_filter} GROUP BY 1
+    )
+    SELECT 
+        c.name, 
+        c.revenue, c.profit, c.margin, c.qty,
+        ((c.revenue - p.revenue) / NULLIF(p.revenue, 0)) * 100 as revenue_growth,
+        ((c.profit - p.profit) / NULLIF(p.profit, 0)) * 100 as profit_growth,
+        ((c.margin - p.margin) / NULLIF(p.margin, 0)) * 100 as margin_growth,
+        ((c.qty - p.qty) / NULLIF(p.qty, 0)) * 100 as qty_growth
+    FROM curr c
+    LEFT JOIN prev p ON c.name = p.name
+    WHERE c.name IS NOT NULL
+    ORDER BY c.revenue DESC NULLS LAST
+    LIMIT 5000
+    """
     
     df = cursor.execute(query).df()
+    df = df.where(pandas.notnull(df), None)
     out = df.to_dict(orient='records')
     set_cached_data(cache_key, out)
     return out
@@ -493,21 +530,51 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     if cached: return cached
 
     cursor = get_cursor()
-    date_clause = build_date_filter_clause(filters)
     extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
+    mode = filters.get('dateMode', 'all') if filters else 'all'
     
-    if date_clause:
-        filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
-    else:
-        s, e = get_current_window(filters)
-        filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
-    
+    group_filter = ""
     if selected_group:
         clean_group = str(selected_group).replace("'", "''")
-        filter_clause += f" AND \"{dimension}\" = '{clean_group}'"
+        group_filter = f" AND \"{dimension}\" = '{clean_group}'"
+        
+    if mode == 'all':
+        curr_filter = f"WHERE 1=1 {extra_filters} {group_filter}"
+        prev_filter = "WHERE 1=0"
+    else:
+        curr_s, curr_e = get_current_window(filters)
+        prev_s, prev_e = get_prev_window(filters)
+        curr_filter = f"WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters} {group_filter}"
+        if prev_s and prev_e:
+            prev_filter = f"WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters} {group_filter}"
+        else:
+            prev_filter = "WHERE 1=0"
     
-    query = f"SELECT \"Item name\" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG(\"Margin_%\") as margin, SUM(Qty) as qty FROM sales {filter_clause} GROUP BY 1 ORDER BY revenue DESC LIMIT {top_n}"
+    query = f"""
+    WITH curr AS (
+        SELECT "Item name" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
+        FROM sales {curr_filter} GROUP BY 1
+    ),
+    prev AS (
+        SELECT "Item name" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
+        FROM sales {prev_filter} GROUP BY 1
+    )
+    SELECT 
+        c.name, 
+        c.revenue, c.profit, c.margin, c.qty,
+        ((c.revenue - p.revenue) / NULLIF(p.revenue, 0)) * 100 as revenue_growth,
+        ((c.profit - p.profit) / NULLIF(p.profit, 0)) * 100 as profit_growth,
+        ((c.margin - p.margin) / NULLIF(p.margin, 0)) * 100 as margin_growth,
+        ((c.qty - p.qty) / NULLIF(p.qty, 0)) * 100 as qty_growth
+    FROM curr c
+    LEFT JOIN prev p ON c.name = p.name
+    WHERE c.name IS NOT NULL
+    ORDER BY c.revenue DESC NULLS LAST
+    LIMIT {top_n}
+    """
+    
     df = cursor.execute(query).df()
+    df = df.where(pandas.notnull(df), None)
     out = df.to_dict(orient='records')
     set_cached_data(cache_key, out)
     return out

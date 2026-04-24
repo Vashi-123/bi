@@ -154,6 +154,18 @@ export default function Dashboard() {
       document.body.removeChild(link);
   };
 
+  const renderGrowthCell = (growthVal: number | null | undefined) => {
+      if (growthVal == null) return <TableCell className="text-right text-sm !text-slate-400 py-4">-</TableCell>;
+      const isPos = growthVal >= 0;
+      return (
+          <TableCell className="text-right py-4 w-[80px]">
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${isPos ? 'text-emerald-700 bg-emerald-100' : 'text-rose-700 bg-rose-100'}`}>
+                  {isPos ? '+' : ''}{growthVal.toFixed(2)}%
+              </span>
+          </TableCell>
+      );
+  };
+
   return (
     <div className="min-h-screen text-[#0C0C0C] font-sans selection:bg-blue-100 selection:text-blue-900 bg-[#F8FAFC]">
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
@@ -365,7 +377,28 @@ export default function Dashboard() {
                         <div className="h-72 w-72">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie data={Array.isArray(distData) ? distData : []} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" nameKey="dimension_value">
+                                    <Pie 
+                                        data={Array.isArray(distData) ? distData : []} 
+                                        cx="50%" cy="50%" 
+                                        innerRadius={60} 
+                                        outerRadius={100} 
+                                        paddingAngle={5} 
+                                        dataKey="value" 
+                                        nameKey="dimension_value"
+                                        label={({ cx, cy, midAngle, outerRadius, fill, percent }) => {
+                                            const RADIAN = Math.PI / 180;
+                                            const radius = outerRadius + 15;
+                                            const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                            const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                                            if (percent < 0.02) return null; // Hide very small labels
+                                            return (
+                                                <text x={x} y={y} fill={fill} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" className="text-[11px] font-extrabold">
+                                                    {(percent * 100).toFixed(1)}%
+                                                </text>
+                                            );
+                                        }}
+                                        labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
+                                    >
                                         {Array.isArray(distData) && distData.map((_: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={getColor(index, distData.length)} />
                                         ))}
@@ -385,7 +418,7 @@ export default function Dashboard() {
                                         <div className="w-3.5 h-3.5 rounded-full shadow-md border-2 border-white" style={{ backgroundColor: color }} />
                                         <span className="text-[11px] font-bold text-slate-400 group-hover:text-[#0C0C0C] uppercase tracking-tight transition-colors">{item.dimension_value}</span>
                                     </div>
-                                    <div className="text-sm font-extrabold text-[#0C0C0C]">{((item.value / total) * 100).toFixed(2)}%</div>
+                                    <div className="text-sm font-extrabold text-[#0C0C0C]">{formatValue(item.value, isCurrencyMetric)}</div>
                                 </div>
                             );
                         })}
@@ -422,15 +455,21 @@ export default function Dashboard() {
                         <TableHead className="bg-slate-50/80 sticky top-0 z-10">
                             <TableRow className="border-b border-slate-100">
                                 <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Group Name</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Revenue</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Profit</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Margin</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
+                                {['revenue', 'profit', 'margin', 'qty'].map((metric) => (
+                                    <React.Fragment key={metric}>
+                                        {activeMetric === metric && (
+                                            <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Growth</TableHeaderCell>
+                                        )}
+                                        <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">
+                                            {metric === 'qty' ? 'Qty' : metric.charAt(0).toUpperCase() + metric.slice(1)}
+                                        </TableHeaderCell>
+                                    </React.Fragment>
+                                ))}
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {masterLoading ? (
-                                <TableRow><TableCell colSpan={5} className="py-20 text-center"><div className="inline-block w-6 h-6 border-2 border-[#0C0C0C] border-t-transparent rounded-full animate-spin" /></TableCell></TableRow>
+                                <TableRow><TableCell colSpan={6} className="py-20 text-center"><div className="inline-block w-6 h-6 border-2 border-[#0C0C0C] border-t-transparent rounded-full animate-spin" /></TableCell></TableRow>
                             ) : Array.isArray(masterData) && masterData.map((item: any) => (
                                 <TableRow 
                                     key={item.name} 
@@ -438,9 +477,13 @@ export default function Dashboard() {
                                     onClick={() => setSelectedGroup(item.name === selectedGroup ? null : item.name)}
                                 >
                                     <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
+                                    {activeMetric === 'revenue' && renderGrowthCell(item.revenue_growth)}
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
+                                    {activeMetric === 'profit' && renderGrowthCell(item.profit_growth)}
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.profit)}</TableCell>
+                                    {activeMetric === 'margin' && renderGrowthCell(item.margin_growth)}
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{item.margin?.toFixed(2) ?? '0.00'}%</TableCell>
+                                    {activeMetric === 'qty' && renderGrowthCell(item.qty_growth)}
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
                                 </TableRow>
                             ))}
@@ -473,25 +516,35 @@ export default function Dashboard() {
                         <TableHead className="bg-slate-50/80 sticky top-0 z-10">
                             <TableRow className="border-b border-slate-100">
                                 <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Revenue</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Profit</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Margin</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
+                                {['revenue', 'profit', 'margin', 'qty'].map((metric) => (
+                                    <React.Fragment key={metric}>
+                                        {activeMetric === metric && (
+                                            <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Growth</TableHeaderCell>
+                                        )}
+                                        <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">
+                                            {metric === 'qty' ? 'Qty' : metric.charAt(0).toUpperCase() + metric.slice(1)}
+                                        </TableHeaderCell>
+                                    </React.Fragment>
+                                ))}
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {detailLoading ? (
-                                <TableRow><TableCell colSpan={5} className="py-20 text-center"><div className="inline-block w-6 h-6 border-2 border-[#0C0C0C] border-t-transparent rounded-full animate-spin" /></TableCell></TableRow>
+                                <TableRow><TableCell colSpan={6} className="py-20 text-center"><div className="inline-block w-6 h-6 border-2 border-[#0C0C0C] border-t-transparent rounded-full animate-spin" /></TableCell></TableRow>
                             ) : (Array.isArray(detailData) && detailData.length > 0) ? detailData.map((item: any) => (
                                 <TableRow key={item.name} className="hover:bg-slate-50/30 transition-colors border-b border-slate-50">
                                     <TableCell className="text-sm !text-[#0C0C0C] py-4 max-w-[300px] truncate font-bold" title={item.name}>{item.name}</TableCell>
+                                    {activeMetric === 'revenue' && renderGrowthCell(item.revenue_growth)}
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
+                                    {activeMetric === 'profit' && renderGrowthCell(item.profit_growth)}
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.profit)}</TableCell>
+                                    {activeMetric === 'margin' && renderGrowthCell(item.margin_growth)}
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{item.margin?.toFixed(2) ?? '0.00'}%</TableCell>
+                                    {activeMetric === 'qty' && renderGrowthCell(item.qty_growth)}
                                     <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
                                 </TableRow>
                             )) : (
-                                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-400 italic font-bold">Select a group in the left table to see SKU details</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={6} className="text-center py-20 text-slate-400 italic font-bold">Select a group in the left table to see SKU details</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>

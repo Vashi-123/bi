@@ -191,18 +191,30 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                                     <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 700 }} />
                                                     <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
                                                     <ReTooltip 
-                                                        cursor={{ fill: '#f8fafc', radius: 8 }}
+                                                        cursor={{ fill: '#f8fafc', radius: 12 }}
                                                         content={(props) => {
                                                             const { payload, active, label: timeLabel } = props;
                                                             if (!active || !payload || payload.length === 0) return null;
                                                             const entry = payload.find(p => p.dataKey === category);
                                                             if (!entry) return null;
+                                                            const catGrowth = entry.payload.categoryGrowth?.[category];
+                                                            const color = getColor(i, categories.length);
                                                             return (
-                                                                <div className="bg-white/95 backdrop-blur-xl p-4 rounded-xl shadow-xl border border-slate-100 min-w-[200px] z-[100] relative">
-                                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">{timeLabel}</p>
-                                                                    <div className="flex justify-between items-center">
-                                                                        <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">{category}</span>
-                                                                        <span className="text-sm font-black text-[#0C0C0C]">{formatValue(Number(entry.value), isCurrency)}</span>
+                                                                <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[280px] z-[100] relative">
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{timeLabel}</p>
+                                                                    <div className="flex justify-between items-center gap-6">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
+                                                                            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tighter">{category}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-3">
+                                                                            <span className="text-xs font-black text-[#0C0C0C]">{formatValue(Number(entry.value), isCurrency)}</span>
+                                                                            {catGrowth !== undefined && (
+                                                                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${catGrowth >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+                                                                                    {catGrowth >= 0 ? '+' : ''}{catGrowth.toFixed(2)}%
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             );
