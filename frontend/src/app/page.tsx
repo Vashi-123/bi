@@ -386,7 +386,7 @@ export default function Dashboard() {
                                         dataKey="value" 
                                         nameKey="dimension_value"
                                         label={({ cx, cy, midAngle, outerRadius, fill, percent }) => {
-                                            if (cx === undefined || cy === undefined || midAngle === undefined || outerRadius === undefined) return null;
+                                            if (cx === undefined || cy === undefined || midAngle === undefined || outerRadius === undefined || percent === undefined) return null;
                                             const RADIAN = Math.PI / 180;
                                             const radius = Number(outerRadius) + 15;
                                             const x = Number(cx) + radius * Math.cos(-midAngle * RADIAN);
