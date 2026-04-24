@@ -2,6 +2,7 @@ import duckdb
 import os
 import json
 import re
+import glob
 from datetime import datetime
 import pandas
 import time
@@ -176,30 +177,37 @@ def save_stock_settings(data):
         return False
 
 def get_unique_items():
-    """Returns all unique items (sku/product) for stock monitoring."""
+    """Returns all unique items (sku/product) for stock monitoring from df_stock."""
     cursor = get_cursor()
     
-    # Try to find an ID column. Common names: 'Item ID', 'SKU', 'id', 'Code'
-    cols_res = cursor.execute("DESCRIBE sales_raw").fetchall()
-    cols = [row[0] for row in cols_res]
+    # Path to stock data (contains all items even without sales)
+    # On server: ~/onedrive_folder/project_data/df_stock/
+    # Locally: relative to backend
+    STOCK_DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "onedrive_folder", "project_data", "df_stock", "**", "*.parquet")
     
-    id_col = next((c for c in cols if c.lower() in ['item id', 'sku', 'id', 'code', 'sku_id']), None)
-    name_col = "Item name" if "Item name" in cols else ("Product name" if "Product name" in cols else None)
-    
-    if not name_col:
-        return []
-    
-    if id_col:
-        query = f'SELECT DISTINCT "{id_col}", "{name_col}" FROM sales_raw WHERE "{name_col}" IS NOT NULL ORDER BY 2'
-    else:
-        query = f'SELECT DISTINCT "{name_col}", "{name_col}" FROM sales_raw WHERE "{name_col}" IS NOT NULL ORDER BY 1'
-        
+    # If the above path doesn't exist, try a more generic one
+    if not any(glob.glob(STOCK_DATA_PATH, recursive=True)):
+        STOCK_DATA_PATH = "./project_data/df_stock/**/*.parquet"
+
     try:
+        # We query directly from the parquet files for the most up-to-date list
+        query = f"""
+            SELECT DISTINCT item_id, item_name 
+            FROM read_parquet('{STOCK_DATA_PATH}')
+            WHERE item_name IS NOT NULL
+            ORDER BY 2
+        """
         res = cursor.execute(query).fetchall()
         return [{"id": str(r[0]), "name": str(r[1])} for r in res]
     except Exception as e:
-        logger.error(f"Error in get_unique_items: {e}")
-        return []
+        logger.error(f"Error in get_unique_items from df_stock: {e}")
+        # Fallback to sales_raw if stock files aren't found or columns differ
+        try:
+            query = 'SELECT DISTINCT "Item name", "Item name" FROM sales_raw WHERE "Item name" IS NOT NULL ORDER BY 1'
+            res = cursor.execute(query).fetchall()
+            return [{"id": str(r[0]), "name": str(r[1])} for r in res]
+        except:
+            return []
 
 def get_unique_counterparties():
     """Returns all unique counterparties from the raw dataset."""
