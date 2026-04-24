@@ -57,8 +57,8 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                                 width={50}
                                                 domain={['auto', 'auto']}
                                             />
-                                            {/* Hidden bar to ensure axis scale */}
-                                            <Bar dataKey="total" hide isAnimationActive={false} />
+                                            {/* Transparent bar to ensure axis scale is calculated */}
+                                            <Bar dataKey="total" fill="transparent" isAnimationActive={false} />
                                         </ComposedChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -177,8 +177,8 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                                         width={45}
                                                         domain={['auto', 'auto']}
                                                     />
-                                                    {/* Hidden bar for scale */}
-                                                    <Bar dataKey={category} hide isAnimationActive={false} />
+                                                    {/* Transparent bar for scale */}
+                                                    <Bar dataKey={category} fill="transparent" isAnimationActive={false} />
                                                 </ComposedChart>
                                             </ResponsiveContainer>
                                         </div>
