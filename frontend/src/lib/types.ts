@@ -65,9 +65,11 @@ export interface ChartSectionProps {
   categories: string[];
   statuses?: Record<string, string>;
   minColWidth?: number;
-  barCategoryGap?: string;
+  barCategoryGap?: string | number;
   isCurrency?: boolean;
   view?: 'combined' | 'multiples';
+  legendDimension?: string;
+  activeFilters?: Record<string, string[]>;
 }
 
 // --- Formatted Trend Data ---

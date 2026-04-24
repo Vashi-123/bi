@@ -10,19 +10,6 @@ import type { ChartSectionProps } from '@/lib/types';
 import { getColor } from '@/lib/constants';
 import { formatValue } from '@/lib/formatters';
 
-interface ChartSectionProps {
-    title: string;
-    label: string;
-    data: any[];
-    categories: string[];
-    statuses?: Record<string, string>;
-    minColWidth?: number;
-    barCategoryGap?: string | number;
-    isCurrency?: boolean;
-    view?: 'combined' | 'multiples';
-    legendDimension?: string;
-    activeFilters?: Record<string, string[]>;
-}
 
 export function ChartSection({ 
     title, 
