@@ -43,7 +43,7 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                 <div ref={containerRef} className="h-[450px] overflow-y-auto overflow-x-auto scrollbar-hide relative">
                     {view === 'combined' ? (
                         Array.isArray(data) && data.length > 0 && (
-                            <div className="flex min-h-full">
+                            <div className="flex min-h-full w-max min-w-full">
                                 {/* Sticky Y-Axis */}
                                 <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[12px_0_20px_-10px_rgba(0,0,0,0.03)] flex-shrink-0" style={{ width: '70px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
