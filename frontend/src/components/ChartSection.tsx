@@ -93,17 +93,19 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                                                     const color = entry.name === 'Other' ? '#0C0C0C' : getColor(actualIndex, categories.length);
                                                                     return (
                                                                         <div key={entry.name} className="flex justify-between items-center gap-6">
-                                                                            <div className="flex items-center gap-3">
-                                                                                <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
-                                                                                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tighter">{entry.name}</span>
+                                                                            <div className="flex-1 flex items-center gap-3 min-w-0">
+                                                                                <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
+                                                                                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tighter truncate">{entry.name}</span>
                                                                             </div>
-                                                                            <div className="flex items-center gap-3">
-                                                                                <span className="text-xs font-black text-[#0C0C0C]">{formatValue(entry.value, isCurrency)}</span>
-                                                                                {catGrowth !== undefined && (
-                                                                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${catGrowth >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
-                                                                                        {catGrowth >= 0 ? '+' : ''}{catGrowth.toFixed(2)}%
-                                                                                    </span>
-                                                                                )}
+                                                                            <div className="flex items-center gap-4 flex-shrink-0">
+                                                                                <span className="text-xs font-black text-[#0C0C0C] w-24 text-right">{formatValue(entry.value, isCurrency)}</span>
+                                                                                <div className="w-16 flex justify-end">
+                                                                                    {catGrowth !== undefined && (
+                                                                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${catGrowth >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+                                                                                            {catGrowth >= 0 ? '+' : ''}{catGrowth.toFixed(2)}%
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     );
@@ -163,7 +165,7 @@ export function ChartSection({ title, label, data, categories, minColWidth = 60,
                                         <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: category === 'Other' ? '#0C0C0C' : getColor(i, categories.length) }} />
                                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">{category}</h3>
                                     </div>
-                                    <div className="flex">
+                                    <div className="flex w-max min-w-full">
                                         {/* Sticky Y-Axis */}
                                         <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[8px_0_12px_-6px_rgba(0,0,0,0.03)] flex-shrink-0" style={{ width: '80px', height: '150px' }}>
                                             <ResponsiveContainer width="100%" height="100%">
