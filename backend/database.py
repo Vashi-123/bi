@@ -366,12 +366,25 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
             type_map = {'Category': 'category', 'Product name': 'product', 'Item name': 'product', 'counterparty': 'client'}
             st_type = type_map.get(dimension, 'category')
             
+            # Implementation of the requested logic:
+            # 1. Dimension=Product & no client filter -> use owner='all'
+            # 2. Dimension=Product & client filter -> use owner=client
+            # 3. Dimension=Client -> use type='client' & owner='all'
+            
+            is_client_filtered = (status_owner != 'all')
+            
+            if st_type == 'product':
+                effective_owner = status_owner # This will be 'all' if no client filter, or the client name if filtered
+            else:
+                # For clients or categories, we always use 'all' as they don't have an owner
+                effective_owner = 'all'
+            
             clean_vals = [str(v).replace("'", "''") for v in val_list]
             st_filter = f"""
                 AND TRIM(UPPER("{dimension}")) IN (
                     SELECT DISTINCT TRIM(UPPER(name)) FROM statuses_view 
                     WHERE status IN ({', '.join([f"'{v}'" for v in clean_vals])})
-                    AND TRIM(UPPER(status_owner)) = TRIM(UPPER('{status_owner.replace("'", "''")}'))
+                    AND TRIM(UPPER(status_owner)) = TRIM(UPPER('{effective_owner.replace("'", "''")}'))
                     AND UPPER(type) = UPPER('{st_type}')
                 )
             """
