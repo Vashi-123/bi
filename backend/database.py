@@ -34,6 +34,7 @@ _CACHE = {}
 _CACHE_LOCK = Lock()
 CACHE_TTL = 300  # 5 minutes
 GROUPS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "groups.json")
+STOCK_SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stock_settings.json")
 
 def get_connection():
     global _CONN
@@ -152,6 +153,39 @@ def save_groups(data):
     except Exception as e:
         logger.error(f"Error saving groups: {e}")
         return False
+
+# --- Stock Settings Management ---
+
+def load_stock_settings():
+    if not os.path.exists(STOCK_SETTINGS_FILE):
+        return {"monitored_skus": [], "authorized_users": [], "notification_recipients": []}
+    try:
+        with open(STOCK_SETTINGS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading stock settings: {e}")
+        return {"monitored_skus": [], "authorized_users": [], "notification_recipients": []}
+
+def save_stock_settings(data):
+    try:
+        with open(STOCK_SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving stock settings: {e}")
+        return False
+
+def get_unique_items():
+    """Returns all unique items (sku/product) for stock monitoring."""
+    cursor = get_cursor()
+    # Combining Item name and Product name as potential SKUs
+    res = cursor.execute("""
+        SELECT DISTINCT "Item name" FROM sales_raw WHERE "Item name" IS NOT NULL
+        UNION
+        SELECT DISTINCT "Product name" FROM sales_raw WHERE "Product name" IS NOT NULL
+        ORDER BY 1
+    """).fetchall()
+    return [r[0] for r in res]
 
 def get_unique_counterparties():
     """Returns all unique counterparties from the raw dataset."""

@@ -223,6 +223,60 @@ def delete_group(name: str, group_type: str = Query(default='counterparties')):
         if database.save_groups(data):
             return {"status": "ok"}
     return JSONResponse(status_code=404, content={"error": "Group not found"})
+    
+# --- Stock Settings Management ---
+
+@app.get("/api/stock/items")
+def get_stock_items():
+    """Returns unique items for stock monitoring."""
+    return {"items": database.get_unique_items()}
+
+@app.get("/api/stock/settings")
+def get_stock_settings():
+    """Returns all stock settings."""
+    return database.load_stock_settings()
+
+@app.post("/api/stock/settings")
+async def save_stock_setting(request: Request, category: str = Query(default='monitored_skus')):
+    """Saves a stock setting entry."""
+    try:
+        body = await request.json()
+        item = body.get("item") # This could be an SKU object {id, name} or User object {id, name}
+        if not item:
+            return JSONResponse(status_code=400, content={"error": "Missing item data"})
+        
+        data = database.load_stock_settings()
+        if category not in data:
+            data[category] = []
+            
+        # If item already exists (by id), update it, otherwise add
+        item_id = str(item.get("id"))
+        found = False
+        for i, existing in enumerate(data[category]):
+            if str(existing.get("id")) == item_id:
+                data[category][i] = item
+                found = True
+                break
+        
+        if not found:
+            data[category].append(item)
+            
+        if database.save_stock_settings(data):
+            return {"status": "ok"}
+        else:
+            return JSONResponse(status_code=500, content={"error": "Failed to save settings"})
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+
+@app.delete("/api/stock/settings/{item_id}")
+def delete_stock_setting(item_id: str, category: str = Query(default='monitored_skus')):
+    """Deletes a stock setting entry."""
+    data = database.load_stock_settings()
+    if category in data:
+        data[category] = [i for i in data[category] if str(i.get("id")) != item_id]
+        if database.save_stock_settings(data):
+            return {"status": "ok"}
+    return JSONResponse(status_code=404, content={"error": "Item not found"})
 
 
 # --- Health Check ---
