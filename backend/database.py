@@ -26,6 +26,7 @@ def extract_column_filters(filters: dict) -> dict:
 # Path to the partitioned parquet dataset
 # Use environment variable DATA_PATH if available, else default to relative path
 DATA_PATH = os.getenv("DATA_PATH", "./project_data/processed/final_df/**/*.parquet")
+STATUS_PATH = os.getenv("STATUS_PATH", "/home/usman/onedrive_folder/project_data/result/unified_status.parquet")
 
 # Global connection and cache
 _CONN = None
@@ -284,6 +285,44 @@ def get_kpi_data(filters=None):
         }
     }
 
+def get_unified_statuses(filters=None):
+    """Fetches statuses from unified_status.parquet based on filters."""
+    if not os.path.exists(STATUS_PATH):
+        # Fallback for local dev if file isn't at the server path
+        local_path = "unified_status.parquet"
+        if not os.path.exists(local_path):
+            return {}
+        path = local_path
+    else:
+        path = STATUS_PATH
+
+    # Determine status_owner
+    owner = 'all'
+    if filters:
+        # Filters from frontend are often lists
+        f_client = filters.get('Groupclient') or filters.get('client')
+        f_product = filters.get('Product name')
+        
+        if f_client and isinstance(f_client, list) and len(f_client) == 1:
+            owner = f_client[0]
+        elif f_client and isinstance(f_client, str):
+            owner = f_client
+        elif f_product and isinstance(f_product, list) and len(f_product) == 1:
+            owner = f_product[0]
+        elif f_product and isinstance(f_product, str):
+            owner = f_product
+
+    try:
+        cursor = get_connection().cursor()
+        # Escaping single quotes in owner name
+        clean_owner = str(owner).replace("'", "''")
+        query = f"SELECT name, status FROM read_parquet('{path}') WHERE status_owner = '{clean_owner}'"
+        rows = cursor.execute(query).fetchall()
+        return {row[0]: row[1] for row in rows}
+    except Exception as e:
+        logger.error(f"Error fetching statuses: {e}")
+        return {}
+
 def build_filter_clause(filters, prefix="WHERE"):
     """Dynamically builds a WHERE clause based on the provided filters dictionary."""
     if not filters:
@@ -443,9 +482,15 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
         return str(d)
 
     df['time_label'] = df.apply(format_label, axis=1)
+    df = df.where(pandas.notnull(df), None)
     out = df.to_dict(orient='records')
-    set_cached_data(cache_key, out)
-    return out
+    
+    # Fetch statuses for the dimensions in this trend
+    statuses = get_unified_statuses(filters)
+    
+    final_output = {"data": out, "statuses": statuses}
+    set_cached_data(cache_key, final_output)
+    return final_output
 
 def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=None):
     cache_key = f"dist_{metric}_{dimension}_{top_n}_{hash(str(filters))}"
