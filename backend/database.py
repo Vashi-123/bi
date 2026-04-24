@@ -207,7 +207,9 @@ def get_current_window(filters):
             # For days, we just take the last X days including today
             start_dt = max_dt - pandas.Timedelta(days=val - 1)
         
-        return start_dt.strftime('%Y-%m-%d'), max_dt.strftime('%Y-%m-%d')
+        res_s, res_e = start_dt.strftime('%Y-%m-%d'), max_dt.strftime('%Y-%m-%d')
+        logger.info(f"DEBUG WINDOW: {mode} {val} {unit} -> {res_s} to {res_e}")
+        return res_s, res_e
     
     return filters.get('startDate'), filters.get('endDate')
 
