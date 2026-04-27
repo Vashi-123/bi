@@ -662,6 +662,8 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
         return str(d)
 
     df['time_label'] = df.apply(format_label, axis=1)
+    # Add a raw ISO date for stable parsing in AI Analysis
+    df['date'] = df['sort_key'].apply(lambda x: x.strftime('%Y-%m-%d') if hasattr(x, 'strftime') else str(x))
     df = df.where(pandas.notnull(df), None)
     out = df.to_dict(orient='records')
     

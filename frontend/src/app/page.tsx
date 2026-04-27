@@ -197,17 +197,14 @@ export default function Dashboard() {
     setAiData(null);
     
     try {
-       // Use raw date if available, fallback to time label
-       const rawDate = currentPoint.date || currentPoint.time;
-       // If it's a range like "Apr 20 - Apr 26", take the start date
-       const cleanDate = typeof rawDate === 'string' && rawDate.includes(' - ') ? rawDate.split(' - ')[0] : rawDate;
-       const d = new Date(cleanDate);
+       // Now we have a reliable ISO date directly from the backend
+       const rawDate = currentPoint.date;
+       if (!rawDate) throw new Error("Missing date in chart point");
        
-       if (isNaN(d.getTime())) {
-          throw new Error("Invalid date received");
-       }
+       const d = new Date(rawDate);
+       if (isNaN(d.getTime())) throw new Error("Invalid date object");
 
-       const endB = d.toISOString().split('T')[0];
+       const endB = rawDate; // Already YYYY-MM-DD
        let startB = endB;
        let startA, endA;
 
@@ -236,7 +233,7 @@ export default function Dashboard() {
        setAiData(result);
     } catch (e) {
        console.error("AI Analysis failed", e);
-       setAiData({ ai_summary: "❌ Ошибка: Не удалось распознать дату для анализа. Попробуйте другой столбец.", status: "error" });
+       setAiData({ ai_summary: "❌ Ошибка: Не удалось получить точную дату для этого столбца.", status: "error" });
     } finally {
        setIsAiLoading(false);
     }
@@ -244,20 +241,20 @@ export default function Dashboard() {
 
   // --- AI Sidebar Component ---
   const AISidebar = () => (
-    <div className={`fixed inset-y-0 right-0 z-[1001] w-full md:w-[500px] bg-white/90 backdrop-blur-3xl border-l border-slate-200 shadow-[-20px_0_60px_rgba(0,0,0,0.08)] transform transition-transform duration-500 ease-out ${showAiSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
-       <div className="h-full flex flex-col p-10">
-          <Flex justifyContent="between" className="mb-10">
-             <div className="flex items-center gap-4">
-                <div className="p-3 bg-[#0C0C0C] rounded-2xl shadow-xl">
-                   <div className="w-4 h-4 bg-[#DDFF55] rounded-full animate-pulse" />
+    <div className={`fixed inset-y-0 right-0 z-[1001] w-full md:w-[500px] bg-white border-l border-slate-200 shadow-[-20px_0_60px_rgba(0,0,0,0.05)] transform transition-transform duration-500 ease-out ${showAiSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
+       <div className="h-full flex flex-col p-12">
+          <Flex justifyContent="between" className="mb-12">
+             <div className="flex items-center gap-5">
+                <div className="w-14 h-14 bg-[#0C0C0C] rounded-[1.25rem] shadow-2xl flex items-center justify-center">
+                   <div className="w-5 h-5 bg-[#DDFF55] rounded-full animate-pulse" />
                 </div>
                 <div>
-                   <h2 className="text-2xl font-black text-[#0C0C0C] italic uppercase tracking-tighter">AI <span className="text-slate-400">Analyst</span></h2>
-                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Period Intelligence v2.0</p>
+                   <h2 className="text-3xl font-black text-[#0C0C0C] italic uppercase tracking-tighter leading-none">AI <span className="text-slate-300">Analyst</span></h2>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Business Intelligence v2.0</p>
                 </div>
              </div>
-             <button onClick={() => setShowAiSidebar(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
-                <XCircle className="w-8 h-8" />
+             <button onClick={() => setShowAiSidebar(false)} className="p-3 hover:bg-slate-50 rounded-2xl text-slate-300 hover:text-rose-500 transition-all">
+                <XCircle className="w-10 h-10" />
              </button>
           </Flex>
 

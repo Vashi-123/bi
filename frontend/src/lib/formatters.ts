@@ -35,7 +35,12 @@ export function formatTrend(data: TrendItem[]): FormattedTrendItem[] {
             existing[curr.dimension_value] = curr.value;
             existing.total += curr.value;
         } else {
-            const entry = { time: curr.time_label, [curr.dimension_value]: curr.value, total: curr.value };
+            const entry = { 
+                time: curr.time_label, 
+                date: curr.date,
+                [curr.dimension_value]: curr.value, 
+                total: curr.value 
+            };
             map.set(curr.time_label, entry);
             ordered.push(curr.time_label);
         }

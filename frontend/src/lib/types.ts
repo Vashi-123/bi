@@ -76,6 +76,7 @@ export interface ChartSectionProps {
 
 export interface FormattedTrendItem {
   time: string;
+  date: string;
   total: number;
   growth: number;
   categoryGrowth: Record<string, number>;
