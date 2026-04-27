@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import useSWR, { mutate } from 'swr';
 import { API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
-import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Package, ShieldCheck, BellRing, UserCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle } from 'lucide-react';
 import Link from 'next/link';
 
 type SettingCategory = 'monitored_skus' | 'authorized_users' | 'notification_recipients';
@@ -28,6 +28,9 @@ export default function StockSettingsPage() {
     const [newAccess, setNewAccess] = useState<'all' | 'view'>('all');
     const [selectedItems, setSelectedItems] = useState<Map<string, string>>(new Map());
     const [isSaving, setIsSaving] = useState(false);
+    
+    // Editing State
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     const allSourceItems = itemsData?.items || [];
     const currentSettings = settingsData?.[activeCategory] || [];
@@ -104,6 +107,7 @@ export default function StockSettingsPage() {
                 setNewItemName('');
                 setNewItemGroup('');
                 setNewAccess('all');
+                setEditingId(null);
             }
         } catch (e) {
             console.error(e);
@@ -124,6 +128,22 @@ export default function StockSettingsPage() {
         } catch (e) {
             console.error(e);
         }
+    };
+
+    const startEditing = (item: any) => {
+        setEditingId(item.id);
+        setNewItemId(item.id);
+        setNewItemName(item.name);
+        if (activeCategory === 'monitored_skus') setNewItemGroup(item.group || 'General');
+        if (activeCategory === 'authorized_users') setNewAccess(item.access || 'view');
+    };
+
+    const cancelEditing = () => {
+        setEditingId(null);
+        setNewItemId('');
+        setNewItemName('');
+        setNewItemGroup('');
+        setNewAccess('all');
     };
 
     return (
@@ -147,21 +167,21 @@ export default function StockSettingsPage() {
                     {/* Tab Switcher */}
                     <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
                         <button 
-                            onClick={() => { setActiveCategory('monitored_skus'); setSelectedItems(new Map()); }}
+                            onClick={() => { setActiveCategory('monitored_skus'); setSelectedItems(new Map()); cancelEditing(); }}
                             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
                                 ${activeCategory === 'monitored_skus' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
                         >
                             <Package className="w-4 h-4" /> SKUs
                         </button>
                         <button 
-                            onClick={() => { setActiveCategory('authorized_users'); setSelectedItems(new Map()); }}
+                            onClick={() => { setActiveCategory('authorized_users'); setSelectedItems(new Map()); cancelEditing(); }}
                             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
                                 ${activeCategory === 'authorized_users' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
                         >
                             <ShieldCheck className="w-4 h-4" /> Access
                         </button>
                         <button 
-                            onClick={() => { setActiveCategory('notification_recipients'); setSelectedItems(new Map()); }}
+                            onClick={() => { setActiveCategory('notification_recipients'); setSelectedItems(new Map()); cancelEditing(); }}
                             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
                                 ${activeCategory === 'notification_recipients' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
                         >
@@ -172,12 +192,17 @@ export default function StockSettingsPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Create Form */}
-                    <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-fit relative overflow-hidden">
+                    <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-fit relative">
+                        {editingId && (
+                            <button onClick={cancelEditing} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors">
+                                <XCircle className="w-5 h-5" />
+                            </button>
+                        )}
                         <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">
-                            Add {activeCategory === 'monitored_skus' ? 'Items' : 'User'}
+                            {editingId ? 'Edit Entry' : `Add ${activeCategory === 'monitored_skus' ? 'Items' : 'User'}`}
                         </Title>
                         <div className="space-y-6">
-                            {activeCategory === 'monitored_skus' ? (
+                            {activeCategory === 'monitored_skus' && !editingId ? (
                                 <>
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Group Name (Tag for all selected)</label>
@@ -232,17 +257,18 @@ export default function StockSettingsPage() {
                             ) : (
                                 <>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Telegram ID</label>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID (Telegram or SKU)</label>
                                         <input 
                                             type="text" 
                                             value={newItemId}
+                                            disabled={!!editingId}
                                             onChange={e => setNewItemId(e.target.value)}
                                             placeholder="e.g. 198799905"
-                                            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
+                                            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5 disabled:opacity-50"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">User Name</label>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Name</label>
                                         <input 
                                             type="text" 
                                             value={newItemName}
@@ -251,6 +277,18 @@ export default function StockSettingsPage() {
                                             className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
                                         />
                                     </div>
+                                    {activeCategory === 'monitored_skus' && (
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Group</label>
+                                            <input 
+                                                type="text" 
+                                                value={newItemGroup}
+                                                onChange={e => setNewItemGroup(e.target.value)}
+                                                placeholder="e.g. PUBG"
+                                                className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
+                                            />
+                                        </div>
+                                    )}
                                     {activeCategory === 'authorized_users' && (
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Access Role</label>
@@ -275,8 +313,8 @@ export default function StockSettingsPage() {
                                         disabled={isSaving || !newItemId || !newItemName}
                                         className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                                     >
-                                        {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                                        Add {activeCategory === 'authorized_users' ? 'User' : 'Recipient'}
+                                        {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingId ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
+                                        {editingId ? 'Update Entry' : `Add ${activeCategory === 'authorized_users' ? 'User' : (activeCategory === 'monitored_skus' ? 'SKU' : 'Recipient')}`}
                                     </button>
                                 </>
                             )}
@@ -288,7 +326,7 @@ export default function StockSettingsPage() {
                         <Title className="text-xl font-bold mb-8 text-[#0C0C0C]">
                             Current {activeCategory.replace('_', ' ')}
                         </Title>
-                        <div className="max-h-[450px] overflow-y-auto pr-2">
+                        <div className="max-h-[500px] overflow-y-auto pr-2">
                             <Table>
                                 <TableHead className="bg-white sticky top-0 z-10 shadow-sm">
                                     <TableRow className="border-b border-slate-100">
@@ -308,21 +346,16 @@ export default function StockSettingsPage() {
                                             <TableCell colSpan={activeCategory === 'authorized_users' ? 4 : 3} className="py-20 text-center text-slate-400 font-bold text-xs uppercase tracking-widest italic">No entries yet</TableCell>
                                         </TableRow>
                                     ) : currentSettings.map((item: any) => (
-                                        <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50">
-                                            {/* Column 1: ID or Group */}
+                                        <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
                                             <TableCell className="text-xs !text-slate-400 font-mono py-5">
                                                 {activeCategory === 'monitored_skus' ? (
                                                     <Badge className="bg-slate-100 text-slate-500 border-none text-[9px] font-bold uppercase">{item.group || 'General'}</Badge>
                                                 ) : item.id}
                                             </TableCell>
-                                            
-                                            {/* Column 2: Name */}
                                             <TableCell className="text-sm !text-[#0C0C0C] font-black">
                                                 {item.name}
                                                 {activeCategory === 'monitored_skus' && <div className="text-[10px] text-slate-300 font-mono">{item.id}</div>}
                                             </TableCell>
-
-                                            {/* Column 3: Access (Only for authorized_users) */}
                                             {activeCategory === 'authorized_users' && (
                                                 <TableCell className="text-center">
                                                     <Badge className={`text-[9px] font-black uppercase px-2 py-1 rounded-md border-none ${item.access === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
@@ -330,16 +363,23 @@ export default function StockSettingsPage() {
                                                     </Badge>
                                                 </TableCell>
                                             )}
-
-                                            {/* Column 4 (or 3): Action */}
                                             <TableCell className="text-right">
-                                                <button 
-                                                    onClick={() => handleDeleteSetting(item.id)}
-                                                    className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"
-                                                    title="Remove entry"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex justify-end gap-1">
+                                                    <button 
+                                                        onClick={() => startEditing(item)}
+                                                        className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"
+                                                        title="Edit"
+                                                    >
+                                                        <Edit3 className="w-4 h-4" />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDeleteSetting(item.id)}
+                                                        className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"
+                                                        title="Remove"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
