@@ -419,6 +419,7 @@ export default function Dashboard() {
                                         paddingAngle={5} 
                                         dataKey="value" 
                                         nameKey="dimension_value"
+                                        // @ts-ignore - activeIndex exists in recharts but might have typing issues in beta 3.x
                                         activeIndex={activePieIndex !== null ? activePieIndex : undefined}
                                         activeShape={(props: any) => {
                                             const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
