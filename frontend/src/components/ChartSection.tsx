@@ -110,15 +110,16 @@ export function ChartSection({
                                             <ReTooltip 
                                                 cursor={{ fill: '#f8fafc', radius: 12 }}
                                                 content={(props) => {
+                                                    // If we have a custom tooltip (with AI button), use it!
                                                     if (customTooltip) {
                                                         const { active, payload, label } = props;
                                                         if (active && payload && payload.length) {
-                                                            // Clone the element and pass props
                                                             const React = require('react');
                                                             return React.cloneElement(customTooltip, { active, payload, label });
                                                         }
-                                                        return null;
                                                     }
+                                                    
+                                                    // Fallback to standard tooltip logic
                                                     const { payload, active, label: timeLabel } = props;
                                                     if (!active || !payload || payload.length === 0) return null;
                                                     const growth = payload[0].payload.growth;
