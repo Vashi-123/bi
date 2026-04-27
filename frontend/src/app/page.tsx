@@ -111,6 +111,25 @@ export default function Dashboard() {
     ].filter(item => item.value > 0);
   }, [fullDistData, topN]);
 
+  // --- Performance Logging ---
+  useEffect(() => {
+    const mountTime = performance.now();
+    console.log("%c[System] %cDashboard Mounted", "color: #638994; font-weight: bold;", "color: #191B1D;");
+    
+    return () => console.log("%c[System] %cDashboard Unmounted", "color: #8F3F48; font-weight: bold;", "color: #191B1D;");
+  }, []);
+
+  const allLoaded = !kpiLoading && !weeklyLoading && !monthlyLoading && !dailyLoading && !distLoading;
+  useEffect(() => {
+    if (allLoaded) {
+      const readyTime = performance.now();
+      console.log(`%c[System] %cAll Data Ready %c${readyTime.toFixed(0)}ms from start`, 
+        "color: #79783F; font-weight: bold;", 
+        "color: #191B1D;",
+        "color: #0C0C0C; font-weight: 800;");
+    }
+  }, [allLoaded]);
+
   // --- Data Transforms ---
   const weeklyData = useMemo(() => formatTrend(weeklyRaw?.data), [weeklyRaw]);
   const monthlyData = useMemo(() => formatTrend(monthlyRaw?.data), [monthlyRaw]);

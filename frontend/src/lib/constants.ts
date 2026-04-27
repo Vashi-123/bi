@@ -10,10 +10,28 @@ export const getColor = (index: number, total: number): string => {
 };
 
 // --- SWR Fetcher ---
-export const fetcher = (url: string) => fetch(url).then((res) => {
-    if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-    return res.json();
-});
+export const fetcher = async (url: string) => {
+    const start = performance.now();
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+        const data = await res.json();
+        const end = performance.now();
+        
+        // Pretty log for performance tracking
+        const endpoint = url.split('/api/')[1]?.split('?')[0] || url;
+        console.log(
+            `%c[API] %c${endpoint.padEnd(15)} %c${(end - start).toFixed(0)}ms`,
+            "color: #FF843B; font-weight: bold;",
+            "color: #191B1D; font-weight: 500;",
+            `color: ${end - start > 500 ? '#8F3F48' : '#79783F'}; font-weight: bold;`
+        );
+        return data;
+    } catch (error) {
+        console.error(`%c[API Error] %c${url}`, "color: white; background: #8F3F48; padding: 2px 5px; border-radius: 4px;", "color: #8F3F48;", error);
+        throw error;
+    }
+};
 
 // --- Metric Maps ---
 export const METRIC_DB_MAP: Record<string, string> = {
