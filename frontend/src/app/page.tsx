@@ -190,20 +190,27 @@ export default function Dashboard() {
   const [aiData, setAiData] = useState<any>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showAiSidebar, setShowAiSidebar] = useState(false);
-
+  
   const handleAIAnalysis = async (currentPoint: any, interval: 'day' | 'week' | 'month') => {
     setIsAiLoading(true);
     setShowAiSidebar(true);
     setAiData(null);
     
     try {
-       // 1. Determine dates for Period B (current) and Period A (previous)
-       const endB = currentPoint.date; 
+       // Use raw date if available, fallback to time label
+       const rawDate = currentPoint.date || currentPoint.time;
+       // If it's a range like "Apr 20 - Apr 26", take the start date
+       const cleanDate = typeof rawDate === 'string' && rawDate.includes(' - ') ? rawDate.split(' - ')[0] : rawDate;
+       const d = new Date(cleanDate);
+       
+       if (isNaN(d.getTime())) {
+          throw new Error("Invalid date received");
+       }
+
+       const endB = d.toISOString().split('T')[0];
        let startB = endB;
        let startA, endA;
 
-       // Simple logic to find previous period based on interval
-       const d = new Date(endB);
        if (interval === 'day') {
           const prev = new Date(d); prev.setDate(d.getDate() - 1);
           startA = endA = prev.toISOString().split('T')[0];
@@ -229,6 +236,7 @@ export default function Dashboard() {
        setAiData(result);
     } catch (e) {
        console.error("AI Analysis failed", e);
+       setAiData({ ai_summary: "❌ Ошибка: Не удалось распознать дату для анализа. Попробуйте другой столбец.", status: "error" });
     } finally {
        setIsAiLoading(false);
     }
@@ -236,78 +244,81 @@ export default function Dashboard() {
 
   // --- AI Sidebar Component ---
   const AISidebar = () => (
-    <div className={`fixed inset-y-0 right-0 z-[1001] w-full md:w-[450px] bg-[#0C0C0C]/95 backdrop-blur-2xl border-l border-white/10 shadow-2xl transform transition-transform duration-500 ease-out ${showAiSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
-       <div className="h-full flex flex-col p-8">
-          <Flex justifyContent="between" className="mb-8">
-             <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#DDFF55] rounded-xl">
-                   <div className="w-4 h-4 bg-black rounded-full animate-pulse" />
+    <div className={`fixed inset-y-0 right-0 z-[1001] w-full md:w-[500px] bg-white/90 backdrop-blur-3xl border-l border-slate-200 shadow-[-20px_0_60px_rgba(0,0,0,0.08)] transform transition-transform duration-500 ease-out ${showAiSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
+       <div className="h-full flex flex-col p-10">
+          <Flex justifyContent="between" className="mb-10">
+             <div className="flex items-center gap-4">
+                <div className="p-3 bg-[#0C0C0C] rounded-2xl shadow-xl">
+                   <div className="w-4 h-4 bg-[#DDFF55] rounded-full animate-pulse" />
                 </div>
                 <div>
-                   <h2 className="text-xl font-black text-white italic uppercase tracking-tighter">AI <span className="text-[#DDFF55]">Analyst</span></h2>
-                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Period Intelligence Engine</p>
+                   <h2 className="text-2xl font-black text-[#0C0C0C] italic uppercase tracking-tighter">AI <span className="text-slate-400">Analyst</span></h2>
+                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Period Intelligence v2.0</p>
                 </div>
              </div>
-             <button onClick={() => setShowAiSidebar(false)} className="p-2 hover:bg-white/5 rounded-full text-slate-400 transition-colors">
-                <XCircle className="w-6 h-6" />
+             <button onClick={() => setShowAiSidebar(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                <XCircle className="w-8 h-8" />
              </button>
           </Flex>
 
-          <div className="flex-1 overflow-y-auto pr-2 space-y-8 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto pr-2 space-y-10 scrollbar-hide">
              {isAiLoading ? (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                   <div className="w-16 h-16 border-4 border-[#DDFF55]/20 border-t-[#DDFF55] rounded-full animate-spin" />
-                   <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] animate-pulse">Calculating Deltas & Drivers...</p>
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
+                   <div className="w-20 h-20 border-4 border-slate-100 border-t-[#0C0C0C] rounded-full animate-spin shadow-inner" />
+                   <div>
+                      <p className="text-xs font-black text-[#0C0C0C] uppercase tracking-[0.3em] animate-pulse mb-2">Analyzing Performance</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Crunching market data...</p>
+                   </div>
                 </div>
              ) : aiData ? (
                 <>
                    {/* Scenario Badge */}
-                   <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Current Scenario</p>
-                      <div className="flex items-center gap-3">
-                         <Badge className="bg-[#DDFF55] text-black border-none text-xs font-black italic px-4 py-1.5 uppercase">
+                   <div className="p-8 rounded-[2.5rem] bg-slate-50 border border-slate-100 shadow-inner">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Market Scenario</p>
+                      <div className="flex items-center gap-4">
+                         <Badge className="bg-[#0C0C0C] text-[#DDFF55] border-none text-xs font-black italic px-5 py-2 uppercase tracking-tight">
                             {aiData.payload?.scenario?.replace('_', ' ')}
                          </Badge>
                          {aiData.payload?.analysis_metadata?.is_systemic_trend && (
-                            <Badge className="bg-blue-500/20 text-blue-400 border-none text-[9px] font-bold">SYSTEMIC TREND</Badge>
+                            <Badge className="bg-blue-50 text-blue-600 border-none text-[10px] font-black">SYSTEMIC</Badge>
                          )}
                       </div>
                    </div>
 
                    {/* AI Text Output */}
-                   <div className="space-y-4">
-                      <p className="text-[10px] font-bold text-[#DDFF55] uppercase tracking-widest">Executive Summary</p>
-                      <div className="prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed font-medium bg-white/5 p-6 rounded-3xl border border-white/5">
+                   <div className="space-y-6">
+                      <p className="text-[10px] font-black text-[#0C0C0C] uppercase tracking-[0.2em]">Executive Interpretation</p>
+                      <div className="prose prose-slate prose-sm max-w-none text-slate-600 leading-relaxed font-bold bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                          {aiData.ai_summary}
                       </div>
                    </div>
 
                    {/* Math Stats */}
-                   <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                         <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Net Delta</p>
-                         <p className={`text-xl font-black ${aiData.payload?.global_metrics?.net_delta >= 0 ? 'text-[#DDFF55]' : 'text-rose-500'}`}>
+                   <div className="grid grid-cols-2 gap-6">
+                      <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                         <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Net Delta</p>
+                         <p className={`text-2xl font-black ${aiData.payload?.global_metrics?.net_delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {aiData.payload?.global_metrics?.net_delta >= 0 ? '+' : ''}{aiData.payload?.global_metrics?.net_delta?.toLocaleString()}$
                          </p>
                       </div>
-                      <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-                         <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Concentration</p>
-                         <p className="text-xl font-black text-white">
-                            {(aiData.payload?.analysis_metadata?.negative_concentration * 100).toFixed(0)}%
+                      <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                         <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Confidence</p>
+                         <p className="text-2xl font-black text-[#0C0C0C]">
+                            {aiData.payload ? (aiData.payload.analysis_metadata.negative_concentration * 100).toFixed(0) : '0'}%
                          </p>
                       </div>
                    </div>
 
-                   {/* Debug Section */}
+                   {/* Debug Information */}
                    {aiData.debug && (
-                      <div className="mt-12 pt-8 border-t border-white/5">
+                      <div className="pt-8 border-t border-slate-100">
                          <details className="group">
                             <summary className="flex items-center justify-between cursor-pointer list-none">
-                               <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em] group-hover:text-slate-400 transition-colors">Debug Information</p>
-                               <Badge className="bg-white/5 text-slate-500 border-none text-[8px] font-bold">{aiData.debug.tokens} TOKENS</Badge>
+                               <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] group-hover:text-slate-500 transition-colors">Debug Logs</p>
+                               <Badge className="bg-slate-50 text-slate-400 border-none text-[8px] font-bold uppercase">{aiData.debug.tokens} Tokens</Badge>
                             </summary>
-                            <div className="mt-4 p-6 bg-black rounded-3xl border border-white/5 text-[10px] font-mono text-slate-500 leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                               <p className="text-[#DDFF55] mb-2 uppercase font-black tracking-widest">[SYSTEM PROMPT]</p>
+                            <div className="mt-6 p-8 bg-slate-50 rounded-[2rem] border border-slate-100 text-[10px] font-mono text-slate-500 leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                               <p className="text-[#0C0C0C] mb-4 uppercase font-black tracking-widest">[PROMPT SENT]</p>
                                {aiData.debug.prompt}
                             </div>
                          </details>
