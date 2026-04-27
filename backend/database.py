@@ -137,6 +137,34 @@ def refresh_groups_table():
         LEFT JOIN custom_country_groups cg ON UPPER(TRIM(s."Product country")) = cg.country_code
     """)
 
+def refresh_in_memory_data():
+    """Forces a reload of parquet files into the in-memory tables."""
+    conn = get_connection()
+    start_load = time.time()
+    
+    # 1. Reload Sales Data
+    max_row = conn.execute(f"SELECT MAX(date) FROM read_parquet('{DATA_PATH}')").fetchone()
+    if max_row and max_row[0]:
+        max_date = max_row[0]
+        query = f"""
+            CREATE OR REPLACE TABLE sales_raw AS 
+            SELECT * FROM read_parquet('{DATA_PATH}') 
+            WHERE CAST(date AS DATE) >= CAST('{max_date}' AS DATE) - INTERVAL '6 month'
+        """
+        conn.execute(query)
+    
+    # 2. Reload Statuses
+    if os.path.exists(STATUS_PATH):
+        conn.execute(f"CREATE OR REPLACE TABLE statuses_view AS SELECT * FROM read_parquet('{STATUS_PATH}')")
+    elif os.path.exists("unified_status.parquet"):
+        conn.execute("CREATE OR REPLACE TABLE statuses_view AS SELECT * FROM read_parquet('unified_status.parquet')")
+        
+    # 3. Re-apply groups and views
+    refresh_groups_table()
+    
+    logger.info(f"HOT REFRESH: Data reloaded into RAM in {time.time() - start_load:.2f}s")
+    return True
+
 def load_groups():
     if not os.path.exists(GROUPS_FILE):
         return {"counterparties": {}, "countries": {}}

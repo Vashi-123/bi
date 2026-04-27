@@ -75,14 +75,70 @@ export default function Dashboard() {
   }, [dateFilter.mode]);
 
   // --- Data Fetching ---
-  const swrConfig = { keepPreviousData: true, revalidateOnFocus: false };
-  const { data: kpiData, isLoading: kpiLoading } = useSWR(kpiUrl, fetcher, swrConfig);
+  const swrConfig = { 
+    keepPreviousData: true, 
+    revalidateOnFocus: false, 
+    shouldRetryOnError: true, 
+    errorRetryCount: 20, 
+    errorRetryInterval: 3000 
+  };
+  const { data: kpiData, isLoading: kpiLoading, error: kpiError } = useSWR(kpiUrl, fetcher, swrConfig);
   const { data: weeklyRaw, isLoading: weeklyLoading } = useSWR(trendsUrl('week'), fetcher, swrConfig);
   const { data: monthlyRaw, isLoading: monthlyLoading } = useSWR(trendsUrl('month'), fetcher, swrConfig);
   const { data: dailyRaw, isLoading: dailyLoading } = useSWR(trendsUrl('day'), fetcher, swrConfig);
   const { data: fullDistData, isLoading: distLoading } = useSWR(fullDistUrl, fetcher, swrConfig);
   const { data: masterData, isLoading: masterLoading } = useSWR(masterUrl, fetcher, swrConfig);
   const { data: detailData, isLoading: detailLoading } = useSWR(detailUrl, fetcher, swrConfig);
+
+  // Check if server is potentially restarting (connection refused or 5xx)
+  const isServerInitializing = kpiError && !kpiData;
+
+  // --- Initializing Overlay ---
+  if (isServerInitializing) {
+    return (
+      <div className="fixed inset-0 z-[1000] bg-[#0C0C0C] flex flex-col items-center justify-center overflow-hidden font-sans">
+        {/* Background Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#DDFF55]/10 blur-[120px] rounded-full animate-pulse" />
+        
+        <div className="relative z-10 flex flex-col items-center text-center px-6">
+          {/* Animated Logo Container */}
+          <div className="w-24 h-24 mb-10 relative animate-bounce">
+             <svg viewBox="0 0 60 60" fill="none" className="w-full h-full drop-shadow-[0_0_15px_rgba(221,255,85,0.4)]">
+                <path d="M34.6569 6.37258C31.5327 3.24839 26.4673 3.24839 23.3431 6.37258L6.37258 23.3431C3.24839 26.4673 3.24839 31.5327 6.37258 34.6569L23.3431 51.6274C26.4673 54.7516 31.5327 54.7516 34.6569 51.6274L51.6274 34.6569C54.7516 31.5327 54.7516 26.4673 51.6274 23.3431L34.6569 6.37258ZM29.9685 11.5117L33.3918 23.9838L45.8642 27.9743C46.8117 28.2775 46.7836 29.6277 45.8243 29.8911L33.0787 33.3902L29.9395 46.1884C29.6926 47.1948 28.2663 47.2076 28.0015 46.2058L24.6134 33.3902L11.4162 29.9028C10.4413 29.6451 10.4173 28.2701 11.3827 27.9786L24.6134 23.9838L28.0399 11.5115C28.3091 10.5313 29.6994 10.5314 29.9685 11.5117Z" fill="#DDFF55" stroke="black" strokeWidth="1.5"/>
+             </svg>
+          </div>
+
+          <h1 className="text-3xl md:text-5xl font-black text-white mb-4 tracking-tighter uppercase italic">
+            Engine <span className="text-[#DDFF55]">Initializing</span>
+          </h1>
+          
+          <div className="flex items-center gap-3 justify-center mb-8">
+             <div className="w-2 h-2 bg-[#DDFF55] rounded-full animate-ping" />
+             <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px]">
+                Synchronizing Large-Scale Datasets
+             </p>
+          </div>
+
+          <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden mb-12">
+             <div className="h-full bg-[#DDFF55] w-full animate-[loading_1.5s_infinite_ease-in-out]" style={{
+               animation: 'loading 1.5s infinite ease-in-out'
+             }} />
+          </div>
+          
+          <style jsx>{`
+            @keyframes loading {
+              0% { transform: translateX(-100%); }
+              100% { transform: translateX(100%); }
+            }
+          `}</style>
+
+          <p className="text-slate-500 text-[9px] font-bold uppercase tracking-[0.2em] max-w-[240px] mx-auto leading-relaxed opacity-60">
+            Please wait while we load analytics into memory for maximum performance.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Derive donut data (top N + Other) from full distribution
   const ratingData = fullDistData;

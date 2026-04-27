@@ -318,6 +318,14 @@ async def save_stock_settings_bulk(request: Request, category: str = Query(defau
 def health_check():
     return {"status": "ok", "version": "2.0.0"}
 
+@app.get("/api/refresh")
+def refresh_data():
+    """Hot-reloads the in-memory data tables from disk."""
+    try:
+        database.refresh_in_memory_data()
+        return {"status": "ok", "message": "Data refreshed in RAM successfully"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 if __name__ == "__main__":
     import uvicorn
