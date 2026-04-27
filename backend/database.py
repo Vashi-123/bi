@@ -808,3 +808,145 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     result_data = query_res.to_dict(orient='records')
     set_cached_data(cache_key, result_data)
     return result_data
+def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
+    """
+    Implements the core mathematical logic for AI Summary.
+    Compares Period B (target) vs Period A (baseline).
+    """
+    conn = get_connection()
+    
+    # Validation
+    if not (validate_date(start_a) and validate_date(end_a) and validate_date(start_b) and validate_date(end_b)):
+        return {"error": "Invalid date format"}
+
+    # 1. Base query for metrics per counterparty and product
+    # We use a single query to get all required data for both periods
+    metrics_query = f"""
+        WITH period_data AS (
+            SELECT 
+                counterparty,
+                "Item name" as product,
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN revenue ELSE 0 END) as rev_a,
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN revenue ELSE 0 END) as rev_b
+            FROM sales
+            WHERE (CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}')
+               OR (CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}')
+            GROUP BY 1, 2
+        ),
+        client_deltas AS (
+            SELECT 
+                counterparty,
+                SUM(rev_a) as client_rev_a,
+                SUM(rev_b) as client_rev_b,
+                SUM(rev_b) - SUM(rev_a) as client_delta
+            FROM period_data
+            GROUP BY 1
+        )
+        SELECT * FROM client_deltas
+    """
+    
+    try:
+        # Load client deltas into pandas for classification and driver selection
+        df_clients = conn.execute(metrics_query).df()
+        
+        # Global Metrics
+        total_rev_a = df_clients['client_rev_a'].sum()
+        total_rev_b = df_clients['client_rev_b'].sum()
+        net_delta = total_rev_b - total_rev_a
+        
+        gross_positive = df_clients[df_clients['client_delta'] > 0]['client_delta'].sum()
+        gross_negative = df_clients[df_clients['client_delta'] < 0]['client_delta'].sum()
+        
+        # Threshold X (3% of Period A revenue, minimum 100 to avoid noise)
+        X = max(total_rev_a * 0.03, 100)
+        
+        # 2. Scenario Trigger
+        scenario = "UNKNOWN"
+        if abs(net_delta) < X:
+            if gross_positive > X or abs(gross_negative) > X:
+                scenario = "HIDDEN_ROTATION"
+            else:
+                scenario = "FLAT_SYSTEMIC"
+        elif net_delta <= -X:
+            scenario = "SIGNIFICANT_DROP"
+        elif net_delta >= X:
+            scenario = "SIGNIFICANT_GROWTH"
+            
+        # 3. Top Drivers (Gainers and Decliners)
+        top_gainers_list = df_clients.sort_values('client_delta', ascending=False).head(5)
+        top_decliners_list = df_clients.sort_values('client_delta', ascending=True).head(5)
+        
+        # Remove small/irrelevant noise from drivers
+        top_gainers_list = top_gainers_list[top_gainers_list['client_delta'] > (X * 0.1)]
+        top_decliners_list = top_decliners_list[top_decliners_list['client_delta'] < -(X * 0.1)]
+        
+        # Helper to get top products for a client
+        def get_top_products(client_name, is_gain):
+            p_query = f"""
+                SELECT 
+                    "Item name" as product,
+                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN revenue ELSE 0 END) -
+                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN revenue ELSE 0 END) as product_delta
+                FROM sales
+                WHERE counterparty = '{client_name.replace("'", "''")}'
+                GROUP BY 1
+                ORDER BY product_delta {'DESC' if is_gain else 'ASC'}
+                LIMIT 3
+            """
+            p_res = conn.execute(p_query).fetchall()
+            return [{"name": r[0], "delta": round(r[1], 2)} for r in p_res]
+
+        top_gainers = []
+        for _, row in top_gainers_list.iterrows():
+            top_gainers.append({
+                "client": row['counterparty'],
+                "delta": round(row['client_delta'], 2),
+                "products": get_top_products(row['counterparty'], True)
+            })
+            
+        top_decliners = []
+        for _, row in top_decliners_list.iterrows():
+            top_decliners.append({
+                "client": row['counterparty'],
+                "delta": round(row['client_delta'], 2),
+                "products": get_top_products(row['counterparty'], False)
+            })
+            
+        # 4. Concentration Check
+        neg_concentration = abs(top_decliners_list['client_delta'].sum() / (gross_negative or 1))
+        pos_concentration = abs(top_gainers_list['client_delta'].sum() / (gross_positive or 1))
+        
+        # is_systemic if top 5 don't explain at least 60% of the movement
+        is_systemic_trend = neg_concentration < 0.6 if net_delta < 0 else pos_concentration < 0.6
+        
+        # Final JSON Payload
+        payload = {
+            "period_info": {
+                "period_a": {"start": start_a, "end": end_a},
+                "period_b": {"start": start_b, "end": end_b}
+            },
+            "global_metrics": {
+                "rev_a": round(total_rev_a, 2),
+                "rev_b": round(total_rev_b, 2),
+                "net_delta": round(net_delta, 2),
+                "gross_positive": round(gross_positive, 2),
+                "gross_negative": round(gross_negative, 2),
+                "threshold_x": round(X, 2)
+            },
+            "scenario": scenario,
+            "drivers": {
+                "top_gainers": top_gainers,
+                "top_decliners": top_decliners
+            },
+            "analysis_metadata": {
+                "negative_concentration": round(neg_concentration, 2),
+                "positive_concentration": round(pos_concentration, 2),
+                "is_systemic_trend": bool(is_systemic_trend)
+            }
+        }
+        
+        return payload
+
+    except Exception as e:
+        logger.error(f"Error calculating AI payload: {e}")
+        return {"error": str(e)}

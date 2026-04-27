@@ -186,6 +186,178 @@ export default function Dashboard() {
     }
   }, [allLoaded]);
 
+  // --- AI Summary State ---
+  const [aiData, setAiData] = useState<any>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [showAiSidebar, setShowAiSidebar] = useState(false);
+
+  const handleAIAnalysis = async (currentPoint: any, interval: 'day' | 'week' | 'month') => {
+    setIsAiLoading(true);
+    setShowAiSidebar(true);
+    setAiData(null);
+    
+    try {
+       // 1. Determine dates for Period B (current) and Period A (previous)
+       const endB = currentPoint.date; 
+       let startB = endB;
+       let startA, endA;
+
+       // Simple logic to find previous period based on interval
+       const d = new Date(endB);
+       if (interval === 'day') {
+          const prev = new Date(d); prev.setDate(d.getDate() - 1);
+          startA = endA = prev.toISOString().split('T')[0];
+       } else if (interval === 'week') {
+          const sB = new Date(d); sB.setDate(d.getDate() - 6);
+          startB = sB.toISOString().split('T')[0];
+          const eA = new Date(sB); eA.setDate(sB.getDate() - 1);
+          const sA = new Date(eA); sA.setDate(eA.getDate() - 6);
+          endA = eA.toISOString().split('T')[0];
+          startA = sA.toISOString().split('T')[0];
+       } else { // month
+          const sB = new Date(d.getFullYear(), d.getMonth(), 1);
+          startB = sB.toISOString().split('T')[0];
+          const eA = new Date(d.getFullYear(), d.getMonth(), 0);
+          const sA = new Date(eA.getFullYear(), eA.getMonth(), 1);
+          endA = eA.toISOString().split('T')[0];
+          startA = sA.toISOString().split('T')[0];
+       }
+
+       const url = `${API_BASE}/api/ai/analyze?start_a=${startA}&end_a=${endA}&start_b=${startB}&end_b=${endB}`;
+       const res = await fetch(url);
+       const result = await res.json();
+       setAiData(result);
+    } catch (e) {
+       console.error("AI Analysis failed", e);
+    } finally {
+       setIsAiLoading(false);
+    }
+  };
+
+  // --- AI Sidebar Component ---
+  const AISidebar = () => (
+    <div className={`fixed inset-y-0 right-0 z-[1001] w-full md:w-[450px] bg-[#0C0C0C]/95 backdrop-blur-2xl border-l border-white/10 shadow-2xl transform transition-transform duration-500 ease-out ${showAiSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
+       <div className="h-full flex flex-col p-8">
+          <Flex justifyContent="between" className="mb-8">
+             <div className="flex items-center gap-3">
+                <div className="p-2 bg-[#DDFF55] rounded-xl">
+                   <div className="w-4 h-4 bg-black rounded-full animate-pulse" />
+                </div>
+                <div>
+                   <h2 className="text-xl font-black text-white italic uppercase tracking-tighter">AI <span className="text-[#DDFF55]">Analyst</span></h2>
+                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Period Intelligence Engine</p>
+                </div>
+             </div>
+             <button onClick={() => setShowAiSidebar(false)} className="p-2 hover:bg-white/5 rounded-full text-slate-400 transition-colors">
+                <XCircle className="w-6 h-6" />
+             </button>
+          </Flex>
+
+          <div className="flex-1 overflow-y-auto pr-2 space-y-8 scrollbar-hide">
+             {isAiLoading ? (
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
+                   <div className="w-16 h-16 border-4 border-[#DDFF55]/20 border-t-[#DDFF55] rounded-full animate-spin" />
+                   <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] animate-pulse">Calculating Deltas & Drivers...</p>
+                </div>
+             ) : aiData ? (
+                <>
+                   {/* Scenario Badge */}
+                   <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Current Scenario</p>
+                      <div className="flex items-center gap-3">
+                         <Badge className="bg-[#DDFF55] text-black border-none text-xs font-black italic px-4 py-1.5 uppercase">
+                            {aiData.payload?.scenario?.replace('_', ' ')}
+                         </Badge>
+                         {aiData.payload?.analysis_metadata?.is_systemic_trend && (
+                            <Badge className="bg-blue-500/20 text-blue-400 border-none text-[9px] font-bold">SYSTEMIC TREND</Badge>
+                         )}
+                      </div>
+                   </div>
+
+                   {/* AI Text Output */}
+                   <div className="space-y-4">
+                      <p className="text-[10px] font-bold text-[#DDFF55] uppercase tracking-widest">Executive Summary</p>
+                      <div className="prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed font-medium bg-white/5 p-6 rounded-3xl border border-white/5">
+                         {aiData.ai_summary}
+                      </div>
+                   </div>
+
+                   {/* Math Stats */}
+                   <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                         <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Net Delta</p>
+                         <p className={`text-xl font-black ${aiData.payload?.global_metrics?.net_delta >= 0 ? 'text-[#DDFF55]' : 'text-rose-500'}`}>
+                            {aiData.payload?.global_metrics?.net_delta >= 0 ? '+' : ''}{aiData.payload?.global_metrics?.net_delta?.toLocaleString()}$
+                         </p>
+                      </div>
+                      <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                         <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Concentration</p>
+                         <p className="text-xl font-black text-white">
+                            {(aiData.payload?.analysis_metadata?.negative_concentration * 100).toFixed(0)}%
+                         </p>
+                      </div>
+                   </div>
+
+                   {/* Debug Section */}
+                   {aiData.debug && (
+                      <div className="mt-12 pt-8 border-t border-white/5">
+                         <details className="group">
+                            <summary className="flex items-center justify-between cursor-pointer list-none">
+                               <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em] group-hover:text-slate-400 transition-colors">Debug Information</p>
+                               <Badge className="bg-white/5 text-slate-500 border-none text-[8px] font-bold">{aiData.debug.tokens} TOKENS</Badge>
+                            </summary>
+                            <div className="mt-4 p-6 bg-black rounded-3xl border border-white/5 text-[10px] font-mono text-slate-500 leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                               <p className="text-[#DDFF55] mb-2 uppercase font-black tracking-widest">[SYSTEM PROMPT]</p>
+                               {aiData.debug.prompt}
+                            </div>
+                         </details>
+                      </div>
+                   )}
+                </>
+             ) : (
+                <div className="text-center py-20 text-slate-600 font-bold uppercase text-xs">No analysis data</div>
+             )}
+          </div>
+       </div>
+    </div>
+  );
+
+  // --- Custom Tooltip Content ---
+  const CustomTooltip = ({ active, payload, label, interval }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const isCurrency = activeMetric !== 'qty' && activeMetric !== 'margin';
+      
+      return (
+        <div className="bg-[#0C0C0C] border border-white/10 p-5 rounded-3xl shadow-2xl backdrop-blur-xl">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">{label}</p>
+          <div className="flex flex-col gap-2 mb-4">
+            {payload.map((entry: any, index: number) => (
+              <div key={index} className="flex items-center justify-between gap-8">
+                <span className="text-[10px] font-bold text-white uppercase">{entry.name}</span>
+                <span className="text-sm font-black text-[#DDFF55]">
+                  {isCurrency ? '$' : ''}{entry.value?.toLocaleString()}{entry.name === 'margin' ? '%' : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+          
+          <button 
+             onClick={(e) => {
+                e.stopPropagation();
+                handleAIAnalysis(data, interval);
+             }}
+             className="w-full py-2.5 bg-white/10 hover:bg-[#DDFF55] text-white hover:text-black rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 group"
+          >
+             <div className="w-1.5 h-1.5 bg-[#DDFF55] group-hover:bg-black rounded-full animate-pulse" />
+             AI Summary
+          </button>
+        </div>
+      );
+    }
+    return null;
+  };
+
   // --- Data Transforms ---
   const weeklyData = useMemo(() => formatTrend(weeklyRaw?.data), [weeklyRaw]);
   const monthlyData = useMemo(() => formatTrend(monthlyRaw?.data), [monthlyRaw]);
@@ -251,6 +423,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen text-[#0C0C0C] font-sans selection:bg-blue-100 selection:text-blue-900 bg-[#F8FAFC]">
+      <AISidebar />
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-[#E8ECEF] via-[#F8FAFC] to-[#FDF1D6] opacity-100" />
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#638994]/10 blur-[120px] rounded-full" />
@@ -444,9 +617,48 @@ export default function Dashboard() {
 
         {/* Trends */}
         <section className="space-y-12">
-            <ChartSection title="Weekly Trend" label="Weekly Analysis" data={weeklyData} categories={sharedCategories} statuses={allStatuses} minColWidth={130} barCategoryGap="20%" isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} />
-            <ChartSection title="Monthly Trend" label="Monthly Overview" data={monthlyData} categories={sharedCategories} statuses={allStatuses} minColWidth={50} barCategoryGap="25%" isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} />
-            <ChartSection title="Daily Trend" label="Day-by-Day" data={dailyData} categories={sharedCategories} statuses={allStatuses} minColWidth={60} barCategoryGap="15%" isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} />
+            <ChartSection 
+                title="Weekly Trend" 
+                label="Weekly Analysis" 
+                data={weeklyData} 
+                categories={sharedCategories} 
+                statuses={allStatuses} 
+                minColWidth={130} 
+                barCategoryGap="20%" 
+                isCurrency={isCurrencyMetric} 
+                view={chartView} 
+                legendDimension={legendDimension} 
+                activeFilters={filters}
+                customTooltip={<CustomTooltip interval="week" />}
+            />
+            <ChartSection 
+                title="Monthly Trend" 
+                label="Monthly Overview" 
+                data={monthlyData} 
+                categories={sharedCategories} 
+                statuses={allStatuses} 
+                minColWidth={50} 
+                barCategoryGap="25%" 
+                isCurrency={isCurrencyMetric} 
+                view={chartView} 
+                legendDimension={legendDimension} 
+                activeFilters={filters}
+                customTooltip={<CustomTooltip interval="month" />}
+            />
+            <ChartSection 
+                title="Daily Trend" 
+                label="Day-by-Day" 
+                data={dailyData} 
+                categories={sharedCategories} 
+                statuses={allStatuses} 
+                minColWidth={60} 
+                barCategoryGap="15%" 
+                isCurrency={isCurrencyMetric} 
+                view={chartView} 
+                legendDimension={legendDimension} 
+                activeFilters={filters}
+                customTooltip={<CustomTooltip interval="day" />}
+            />
         </section>
 
         {/* Distribution Row */}

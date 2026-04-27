@@ -22,8 +22,9 @@ export function ChartSection({
     isCurrency = true,
     view = 'combined',
     legendDimension = '',
-    activeFilters = {}
-}: ChartSectionProps) {
+    activeFilters = {},
+    customTooltip = null
+}: any) {
     const containerRef = useRef<HTMLDivElement>(null);
     
     const isStatusFiltered = activeFilters.status && activeFilters.status.length > 0 && activeFilters.status[0] !== '';
@@ -109,6 +110,15 @@ export function ChartSection({
                                             <ReTooltip 
                                                 cursor={{ fill: '#f8fafc', radius: 12 }}
                                                 content={(props) => {
+                                                    if (customTooltip) {
+                                                        const { active, payload, label } = props;
+                                                        if (active && payload && payload.length) {
+                                                            // Clone the element and pass props
+                                                            const React = require('react');
+                                                            return React.cloneElement(customTooltip, { active, payload, label });
+                                                        }
+                                                        return null;
+                                                    }
                                                     const { payload, active, label: timeLabel } = props;
                                                     if (!active || !payload || payload.length === 0) return null;
                                                     const growth = payload[0].payload.growth;
@@ -227,6 +237,14 @@ export function ChartSection({
                                                     <ReTooltip 
                                                         cursor={{ fill: '#f8fafc', radius: 12 }}
                                                         content={(props) => {
+                                                            if (customTooltip) {
+                                                                const { active, payload, label } = props;
+                                                                if (active && payload && payload.length) {
+                                                                    const React = require('react');
+                                                                    return React.cloneElement(customTooltip, { active, payload, label });
+                                                                }
+                                                                return null;
+                                                            }
                                                             const { payload, active, label: timeLabel } = props;
                                                             if (!active || !payload || payload.length === 0) return null;
                                                             const entry = payload.find(p => p.dataKey === category);

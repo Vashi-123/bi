@@ -8,6 +8,10 @@ from typing import Optional, List
 from enum import Enum
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure structured logging
 logging.basicConfig(
@@ -324,6 +328,90 @@ def refresh_data():
     try:
         database.refresh_in_memory_data()
         return {"status": "ok", "message": "Data refreshed in RAM successfully"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.get("/api/ai/analyze")
+async def analyze_period(
+    start_a: str, end_a: str, 
+    start_b: str, end_b: str
+):
+    """
+    Combines mathematical payload with AI interpretation.
+    """
+    try:
+        # 1. Get raw math data
+        payload = database.get_period_ai_payload(start_a, end_a, start_b, end_b)
+        if "error" in payload:
+            return JSONResponse(status_code=400, content=payload)
+
+        # 2. Try to get AI interpretation
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return {
+                "payload": payload,
+                "ai_summary": "⚠️ AI Analysis unavailable: OPENAI_API_KEY not set on server. Showing raw data only.",
+                "status": "partial"
+            }
+
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+
+            prompt = f"""
+            You are a Senior Business Intelligence Analyst. Analyze the following JSON data representing sales performance between two periods (Period B is target, Period A is baseline).
+            
+            SCENARIO RULES:
+            - HIDDEN_ROTATION: Net delta is small, but there are large shifts between clients.
+            - SIGNIFICANT_DROP/GROWTH: Clear trend in one direction.
+            - FLAT_SYSTEMIC: Nothing is happening, stagnation.
+            
+            CONCENTRATION RULES:
+            - is_systemic_trend = true: The trend is spread across many clients. Don't blame specific ones.
+            - is_systemic_trend = false: The trend is driven by the Top 5 clients listed.
+            
+            DATA:
+            {json.dumps(payload, indent=2)}
+            
+            TASK:
+            1. Write a 2-sentence Executive Summary (What happened?).
+            2. Explain the Scenario ({payload['scenario']}).
+            3. Highlight the primary drivers (Top Gainers/Decliners and their products).
+            4. Suggest 2-3 specific business actions.
+            
+            Format: Use clean Markdown. Keep it professional, concise, and direct. Language: Russian.
+            """
+            
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a professional BI assistant specialized in gift card and voucher sales analytics."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3
+            )
+            
+            # Approximate token count (1 token ≈ 4 chars for English, ~2 for Russian/Complex)
+            token_estimate = len(prompt) // 3 
+
+            return {
+                "payload": payload,
+                "ai_summary": response.choices[0].message.content,
+                "debug": {
+                    "prompt": prompt,
+                    "tokens": token_estimate,
+                    "model": "gpt-4o-mini"
+                },
+                "status": "complete"
+            }
+        except Exception as ai_err:
+            logger.error(f"OpenAI Generation failed: {ai_err}")
+            return {
+                "payload": payload,
+                "ai_summary": f"⚠️ OpenAI Error: {str(ai_err)}",
+                "status": "partial"
+            }
+
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
