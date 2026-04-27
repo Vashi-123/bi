@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Giftery Analytics — Performance Intelligence",
+  title: "Giftery Analytics",
   description: "Real-time analytics dashboard for Giftery business performance: revenue, profit margins, and sales trends.",
 };
 
