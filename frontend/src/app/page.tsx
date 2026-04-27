@@ -439,7 +439,7 @@ export default function Dashboard() {
                                         onMouseEnter={(_, index) => setActivePieIndex(index)}
                                         onMouseLeave={() => setActivePieIndex(null)}
                                         label={({ cx, cy, midAngle, outerRadius, fill, percent }) => {
-                                            if (distLoading || !percent) return null;
+                                            if (distLoading || !percent || midAngle === undefined) return null;
                                             const RADIAN = Math.PI / 180;
                                             const radius = Number(outerRadius) + 15;
                                             const x = Number(cx) + radius * Math.cos(-midAngle * RADIAN);
