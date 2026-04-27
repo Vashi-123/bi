@@ -211,31 +211,40 @@ def save_stock_settings(data):
         return False
 
 def get_unique_items():
-    """Returns all unique items (sku/product) for stock monitoring from df_stock."""
+    """Returns all unique items (sku/product) for stock monitoring from df_product (catalog)."""
     cursor = get_cursor()
     
-    # Path to stock data (contains all items even without sales)
-    # On server: ~/onedrive_folder/project_data/df_stock/
-    # Locally: relative to backend
-    STOCK_DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "onedrive_folder", "project_data", "df_stock", "**", "*.parquet")
+    # Path to product catalog (more comprehensive than df_stock)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    PRODUCT_DATA_PATH = os.path.join(base_dir, "..", "onedrive_folder", "project_data", "df_product", "**", "*.parquet")
+    STOCK_DATA_PATH = os.path.join(base_dir, "..", "onedrive_folder", "project_data", "df_stock", "**", "*.parquet")
     
-    # If the above path doesn't exist, try a more generic one
-    if not any(glob.glob(STOCK_DATA_PATH, recursive=True)):
-        STOCK_DATA_PATH = "./project_data/df_stock/**/*.parquet"
+    # Try df_product first, fallback to df_stock
+    target_path = None
+    if any(glob.glob(PRODUCT_DATA_PATH, recursive=True)):
+        target_path = PRODUCT_DATA_PATH
+        logger.info(f"Using df_product as item source: {target_path}")
+    elif any(glob.glob(STOCK_DATA_PATH, recursive=True)):
+        target_path = STOCK_DATA_PATH
+        logger.info(f"Fallback to df_stock as item source: {target_path}")
+
+    if not target_path:
+        # Final fallback for local development or missing folders
+        target_path = "./project_data/df_product/**/*.parquet"
 
     try:
-        # We query directly from the parquet files for the most up-to-date list
+        # We query for the most comprehensive list of items
         query = f"""
             SELECT DISTINCT item_id, item_name 
-            FROM read_parquet('{STOCK_DATA_PATH}')
-            WHERE item_name IS NOT NULL
+            FROM read_parquet('{target_path}')
+            WHERE item_id IS NOT NULL AND item_name IS NOT NULL
             ORDER BY 2
         """
         res = cursor.execute(query).fetchall()
         return [{"id": str(r[0]), "name": str(r[1])} for r in res]
     except Exception as e:
-        logger.error(f"Error in get_unique_items from df_stock: {e}")
-        # Fallback to sales_raw if stock files aren't found or columns differ
+        logger.error(f"Error in get_unique_items from {target_path}: {e}")
+        # Fallback to current memory table sales_raw if parquet is unavailable
         try:
             query = 'SELECT DISTINCT "Item name", "Item name" FROM sales_raw WHERE "Item name" IS NOT NULL ORDER BY 1'
             res = cursor.execute(query).fetchall()
