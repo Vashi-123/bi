@@ -25,6 +25,7 @@ export default function StockSettingsPage() {
     const [newItemId, setNewItemId] = useState('');
     const [newItemName, setNewItemName] = useState('');
     const [newItemGroup, setNewItemGroup] = useState('');
+    const [newAccess, setNewAccess] = useState<'all' | 'view'>('all');
     const [selectedItems, setSelectedItems] = useState<Map<string, string>>(new Map());
     const [isSaving, setIsSaving] = useState(false);
 
@@ -81,22 +82,28 @@ export default function StockSettingsPage() {
         if (!newItemId || !newItemName) return;
         setIsSaving(true);
         try {
+            const itemPayload: any = { 
+                id: newItemId, 
+                name: newItemName, 
+            };
+            
+            if (activeCategory === 'monitored_skus') {
+                itemPayload.group = newItemGroup || 'General';
+            } else if (activeCategory === 'authorized_users') {
+                itemPayload.access = newAccess;
+            }
+
             const res = await fetch(`${API_BASE}/api/stock/settings?category=${activeCategory}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    item: { 
-                        id: newItemId, 
-                        name: newItemName, 
-                        group: activeCategory === 'monitored_skus' ? (newItemGroup || 'General') : undefined 
-                    } 
-                })
+                body: JSON.stringify({ item: itemPayload })
             });
             if (res.ok) {
                 mutate(`${API_BASE}/api/stock/settings`);
                 setNewItemId('');
                 setNewItemName('');
                 setNewItemGroup('');
+                setNewAccess('all');
             }
         } catch (e) {
             console.error(e);
@@ -165,7 +172,7 @@ export default function StockSettingsPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Create Form */}
-                    <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-fit">
+                    <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-fit relative overflow-hidden">
                         <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">
                             Add {activeCategory === 'monitored_skus' ? 'Items' : 'User'}
                         </Title>
@@ -244,13 +251,32 @@ export default function StockSettingsPage() {
                                             className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
                                         />
                                     </div>
+                                    {activeCategory === 'authorized_users' && (
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Access Role</label>
+                                            <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                                                <button 
+                                                    onClick={() => setNewAccess('view')}
+                                                    className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${newAccess === 'view' ? 'bg-white text-[#0C0C0C] shadow-sm' : 'text-slate-400'}`}
+                                                >
+                                                    View Only
+                                                </button>
+                                                <button 
+                                                    onClick={() => setNewAccess('all')}
+                                                    className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${newAccess === 'all' ? 'bg-white text-[#0C0C0C] shadow-sm' : 'text-slate-400'}`}
+                                                >
+                                                    Full Access
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                     <button 
                                         onClick={handleSaveSingle}
                                         disabled={isSaving || !newItemId || !newItemName}
                                         className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                                     >
                                         {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                                        Add User
+                                        Add {activeCategory === 'authorized_users' ? 'User' : 'Recipient'}
                                     </button>
                                 </>
                             )}
@@ -270,13 +296,16 @@ export default function StockSettingsPage() {
                                             {activeCategory === 'monitored_skus' ? 'Group' : 'ID'}
                                         </TableHeaderCell>
                                         <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Name</TableHeaderCell>
+                                        {activeCategory === 'authorized_users' && (
+                                            <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4 text-center">Access</TableHeaderCell>
+                                        )}
                                         <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
                                     {currentSettings.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="py-20 text-center text-slate-400 font-bold text-xs uppercase tracking-widest italic">No entries yet</TableCell>
+                                            <TableCell colSpan={activeCategory === 'authorized_users' ? 4 : 3} className="py-20 text-center text-slate-400 font-bold text-xs uppercase tracking-widest italic">No entries yet</TableCell>
                                         </TableRow>
                                     ) : currentSettings.map((item: any) => (
                                         <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50">
@@ -289,6 +318,13 @@ export default function StockSettingsPage() {
                                                 {item.name}
                                                 {activeCategory === 'monitored_skus' && <div className="text-[10px] text-slate-300 font-mono">{item.id}</div>}
                                             </TableCell>
+                                            {activeCategory === 'authorized_users' && (
+                                                <TableCell className="text-center">
+                                                    <Badge className={`text-[9px] font-black uppercase px-2 py-1 rounded-md border-none ${item.access === 'all' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+                                                        {item.access === 'all' ? 'ALL' : 'VIEW'}
+                                                    </Badge>
+                                                </TableCell>
+                                            )}
                                             <TableCell className="text-right">
                                                 <button 
                                                     onClick={() => handleDeleteSetting(item.id)}
