@@ -427,8 +427,8 @@ export default function Dashboard() {
             <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[580px] flex flex-col">
                 <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">Portfolio Structure</Title>
                 <div className="flex-1 flex flex-col md:flex-row items-center gap-8 min-h-0">
-                    <div className="w-full md:w-1/2 flex justify-center">
-                        <div className="h-72 w-72">
+                    <div className="w-full md:w-1/2 flex justify-center items-center h-72">
+                        <div className="h-full w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie 

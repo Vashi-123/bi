@@ -43,32 +43,38 @@ def get_connection():
         # Initialize one global connection
         _CONN = duckdb.connect(database=':memory:')
         try:
-            # Efficiently find max date to set the window for the entire dashboard
+            # Load into actual TABLE for speed (uses RAM)
+            logger.info("Loading sales data into memory...")
+            start_load = time.time()
+            
+            # Efficiently find max date to set the window
             max_row = _CONN.execute(f"SELECT MAX(date) FROM read_parquet('{DATA_PATH}')").fetchone()
             if max_row and max_row[0]:
                 max_date = max_row[0]
-                # DEFAULT: 6 months limit as requested
+                # Pre-filter to 6 months and load into TABLE
                 query = f"""
-                    CREATE OR REPLACE VIEW sales_raw AS 
+                    CREATE OR REPLACE TABLE sales_raw AS 
                     SELECT * FROM read_parquet('{DATA_PATH}') 
                     WHERE CAST(date AS DATE) >= CAST('{max_date}' AS DATE) - INTERVAL '6 month'
                 """
                 _CONN.execute(query)
-                logger.info(f"Database initialized. Window: Last 6 months from {max_date}")
+                logger.info(f"Loaded sales data into RAM in {time.time() - start_load:.2f}s. Window: 6 months from {max_date}")
             else:
-                _CONN.execute(f"CREATE OR REPLACE VIEW sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}')")
+                _CONN.execute(f"CREATE OR REPLACE TABLE sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}')")
             
-            # Load custom groups if they exist
+            # Load custom groups
             refresh_groups_table()
 
-            # Create a view for statuses to enable filtering
+            # Create an in-memory TABLE for statuses
             if os.path.exists(STATUS_PATH):
-                _CONN.execute(f"CREATE OR REPLACE VIEW statuses_view AS SELECT * FROM read_parquet('{STATUS_PATH}')")
+                _CONN.execute(f"CREATE OR REPLACE TABLE statuses_view AS SELECT * FROM read_parquet('{STATUS_PATH}')")
             elif os.path.exists("unified_status.parquet"):
-                _CONN.execute("CREATE OR REPLACE VIEW statuses_view AS SELECT * FROM read_parquet('unified_status.parquet')")
+                _CONN.execute("CREATE OR REPLACE TABLE statuses_view AS SELECT * FROM read_parquet('unified_status.parquet')")
+            
+            logger.info("Database initialized with in-memory tables.")
 
         except Exception as e:
-            logger.warning(f"Could not pre-filter data: {e}")
+            logger.error(f"Critical error during DB initialization: {e}")
             _CONN.execute(f"CREATE OR REPLACE VIEW sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}')")
             _CONN.execute("CREATE TABLE IF NOT EXISTS custom_groups (counterparty VARCHAR, group_name VARCHAR)")
             _CONN.execute("CREATE OR REPLACE VIEW sales AS SELECT * FROM sales_raw")
@@ -105,7 +111,7 @@ def refresh_groups_table():
         df_c = pandas.DataFrame(country_flattened)
         conn.execute("INSERT INTO custom_country_groups SELECT * FROM df_c")
     
-    # 3. Create Enriched View dynamically to avoid errors if columns don't exist
+    # 3. Create Enriched View dynamically (pointing to the in-memory sales_raw table)
     cols_res = conn.execute("DESCRIBE sales_raw").fetchall()
     existing_cols = [row[0] for row in cols_res]
     
@@ -376,7 +382,8 @@ def get_unified_statuses(filters=None):
         cursor = get_connection().cursor()
         # Escaping single quotes in owner name
         clean_owner = str(owner).replace("'", "''")
-        query = f"SELECT name, status FROM read_parquet('{path}') WHERE status_owner = '{clean_owner}'"
+        # Use in-memory table statuses_view
+        query = f"SELECT name, status FROM statuses_view WHERE status_owner = '{clean_owner}'"
         rows = cursor.execute(query).fetchall()
         return {row[0]: row[1] for row in rows}
     except Exception as e:
@@ -428,21 +435,21 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
                 clean_vals = [str(v).replace("'", "''") for v in val_list]
                 st_list_str = ', '.join([f"'{v}'" for v in clean_vals])
                 
-                # Subquery for Products
+                # Subquery for Products (Using in-memory statuses_view)
                 prod_owner = status_owner
                 prod_subquery = f"""
-                    SELECT DISTINCT TRIM(UPPER(name)) FROM read_parquet('{STATUS_PATH}')
+                    SELECT DISTINCT name FROM statuses_view
                     WHERE status IN ({st_list_str})
-                    AND TRIM(UPPER(status_owner)) = TRIM(UPPER('{prod_owner.replace("'", "''")}'))
-                    AND UPPER(type) = 'PRODUCT'
+                    AND status_owner = '{prod_owner.replace("'", "''")}'
+                    AND type = 'PRODUCT'
                 """
                 
-                # Subquery for Clients
+                # Subquery for Clients (Using in-memory statuses_view)
                 client_subquery = f"""
-                    SELECT DISTINCT TRIM(UPPER(name)) FROM read_parquet('{STATUS_PATH}')
+                    SELECT DISTINCT name FROM statuses_view
                     WHERE status IN ({st_list_str})
-                    AND TRIM(UPPER(status_owner)) = 'ALL'
-                    AND UPPER(type) = 'CLIENT'
+                    AND status_owner = 'all'
+                    AND type = 'CLIENT'
                 """
                 
                 st_clauses = []
