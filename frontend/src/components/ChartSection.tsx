@@ -59,7 +59,7 @@ export function ChartSection({
                 </div>
                 {view === 'combined' && (
                     <div className="hidden md:flex gap-6 items-center bg-white px-4 py-1.5 rounded-lg border border-slate-100 shadow-sm">
-                        {Array.isArray(categories) && categories.map((cat, i) => (
+                        {Array.isArray(categories) && categories.map((cat: string, i: number) => (
                             <div key={cat} className="flex items-center gap-2 group cursor-default">
                                 <div className="w-3 h-3 rounded-sm shadow-sm border border-white" style={{ backgroundColor: cat === 'Other' ? '#0C0C0C' : getColor(i, categories.length) }} />
                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-[#0C0C0C] transition-colors">{cat}</span>
@@ -162,7 +162,7 @@ export function ChartSection({
                                                     );
                                                 }}
                                             />
-                                            {Array.isArray(categories) && categories.map((category, i) => (
+                                            {Array.isArray(categories) && categories.map((category: string, i: number) => (
                                                 <Bar 
                                                     key={category} 
                                                     dataKey={category} 
@@ -200,7 +200,7 @@ export function ChartSection({
                         )
                     ) : (
                         <div className="space-y-12">
-                            {categories.map((category, i) => (
+                            {categories.map((category: string, i: number) => (
                                 <div key={category} className="space-y-4 relative">
                                     <div className="flex items-center gap-3 sticky left-0 z-30 bg-white/50 backdrop-blur-sm w-fit pr-4 rounded-r-lg">
                                         <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: category === 'Other' ? '#0C0C0C' : getColor(i, categories.length) }} />
