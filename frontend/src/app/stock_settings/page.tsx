@@ -309,22 +309,29 @@ export default function StockSettingsPage() {
                                         </TableRow>
                                     ) : currentSettings.map((item: any) => (
                                         <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50">
+                                            {/* Column 1: ID or Group */}
                                             <TableCell className="text-xs !text-slate-400 font-mono py-5">
                                                 {activeCategory === 'monitored_skus' ? (
                                                     <Badge className="bg-slate-100 text-slate-500 border-none text-[9px] font-bold uppercase">{item.group || 'General'}</Badge>
                                                 ) : item.id}
                                             </TableCell>
+                                            
+                                            {/* Column 2: Name */}
                                             <TableCell className="text-sm !text-[#0C0C0C] font-black">
                                                 {item.name}
                                                 {activeCategory === 'monitored_skus' && <div className="text-[10px] text-slate-300 font-mono">{item.id}</div>}
                                             </TableCell>
+
+                                            {/* Column 3: Access (Only for authorized_users) */}
                                             {activeCategory === 'authorized_users' && (
                                                 <TableCell className="text-center">
-                                                    <Badge className={`text-[9px] font-black uppercase px-2 py-1 rounded-md border-none ${item.access === 'all' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
-                                                        {item.access === 'all' ? 'ALL' : 'VIEW'}
+                                                    <Badge className={`text-[9px] font-black uppercase px-2 py-1 rounded-md border-none ${item.access === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
+                                                        {item.access === 'all' ? 'FULL ACCESS' : 'VIEW ONLY'}
                                                     </Badge>
                                                 </TableCell>
                                             )}
+
+                                            {/* Column 4 (or 3): Action */}
                                             <TableCell className="text-right">
                                                 <button 
                                                     onClick={() => handleDeleteSetting(item.id)}
