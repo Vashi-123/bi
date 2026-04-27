@@ -464,16 +464,21 @@ export default function Dashboard() {
                                             />
                                         ))}
                                     </Pie>
-                                    <ReTooltip 
-                                      active={activePieIndex !== null}
-                                      payload={activePieIndex !== null && distData[activePieIndex] ? [{
-                                          name: distData[activePieIndex].dimension_value,
-                                          value: distData[activePieIndex].value,
-                                          payload: distData[activePieIndex]
-                                      }] : []}
-                                      formatter={(value: any) => [formatValue(Number(value) || 0), activeMetric.charAt(0).toUpperCase() + activeMetric.slice(1)]}
-                                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold', fontSize: '12px' }}
-                                    />
+                                    {(() => {
+                                        const TooltipComp = ReTooltip as any;
+                                        return (
+                                            <TooltipComp 
+                                              active={activePieIndex !== null}
+                                              payload={activePieIndex !== null && distData[activePieIndex] ? [{
+                                                  name: distData[activePieIndex].dimension_value,
+                                                  value: distData[activePieIndex].value,
+                                                  payload: distData[activePieIndex]
+                                              }] : []}
+                                              formatter={(value: any) => [formatValue(Number(value) || 0), activeMetric.charAt(0).toUpperCase() + activeMetric.slice(1)]}
+                                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold', fontSize: '12px' }}
+                                            />
+                                        );
+                                    })()}
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
