@@ -75,7 +75,7 @@ export function ChartSection({
                         Array.isArray(data) && data.length > 0 && (
                             <div className="flex min-h-full w-max min-w-full">
                                 {/* Sticky Y-Axis */}
-                                <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[12px_0_20px_-10px_rgba(0,0,0,0.03)] flex-shrink-0" style={{ width: '85px' }}>
+                                <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[12px_0_20px_-10px_rgba(0,0,0,0.03)] flex-shrink-0 h-[450px]" style={{ width: '85px' }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={data} margin={{ top: 30, right: 0, left: 5, bottom: 40 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -94,7 +94,7 @@ export function ChartSection({
                                 </div>
 
                                 {/* Scrollable Chart Content */}
-                                <div style={{ minWidth: `${Math.max(800, data.length * minColWidth)}px` }} className="flex-1">
+                                <div style={{ minWidth: `${Math.max(800, data.length * minColWidth)}px` }} className="flex-1 h-[450px]">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={data} barCategoryGap={barCategoryGap} margin={{ top: 30, right: 30, left: 0, bottom: 40 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -197,9 +197,9 @@ export function ChartSection({
                                             {category}
                                         </h3>
                                     </div>
-                                    <div className="flex w-max min-w-full">
+                                    <div className="flex w-max min-w-full h-[150px]">
                                         {/* Sticky Y-Axis */}
-                                        <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[8px_0_12px_-6px_rgba(0,0,0,0.03)] flex-shrink-0" style={{ width: '80px', height: '150px' }}>
+                                        <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[8px_0_12px_-6px_rgba(0,0,0,0.03)] flex-shrink-0 h-full" style={{ width: '80px' }}>
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <ComposedChart data={data} margin={{ top: 20, right: 0, left: 5, bottom: 20 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -218,7 +218,7 @@ export function ChartSection({
                                         </div>
 
                                         {/* Scrollable Chart Content */}
-                                        <div style={{ minWidth: `${Math.max(800, data.length * minColWidth)}px`, height: '150px' }} className="flex-1">
+                                        <div style={{ minWidth: `${Math.max(800, data.length * minColWidth)}px` }} className="flex-1 h-full">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <ComposedChart data={data} barCategoryGap={barCategoryGap} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
