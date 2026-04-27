@@ -420,24 +420,6 @@ export default function Dashboard() {
                                         paddingAngle={5} 
                                         dataKey="value" 
                                         nameKey="dimension_value"
-                                        // @ts-ignore
-                                        activeIndex={activePieIndex !== null ? activePieIndex : undefined}
-                                        activeShape={(props: any) => {
-                                            const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
-                                            return (
-                                                <Sector
-                                                    cx={cx}
-                                                    cy={cy}
-                                                    innerRadius={innerRadius}
-                                                    outerRadius={outerRadius + 8}
-                                                    startAngle={startAngle}
-                                                    endAngle={endAngle}
-                                                    fill={fill}
-                                                />
-                                            );
-                                        }}
-                                        onMouseEnter={(_, index) => setActivePieIndex(index)}
-                                        onMouseLeave={() => setActivePieIndex(null)}
                                         label={({ cx, cy, midAngle, outerRadius, fill, percent }) => {
                                             if (distLoading || !percent || midAngle === undefined) return null;
                                             const RADIAN = Math.PI / 180;
@@ -457,28 +439,13 @@ export default function Dashboard() {
                                             <Cell 
                                               key={`cell-${index}`} 
                                               fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)}
-                                              style={{ 
-                                                opacity: activePieIndex === null || activePieIndex === index ? 1 : 0.4,
-                                                transition: 'opacity 0.2s ease'
-                                              }}
                                             />
                                         ))}
                                     </Pie>
-                                    {(() => {
-                                        const TooltipComp = ReTooltip as any;
-                                        return (
-                                            <TooltipComp 
-                                              active={activePieIndex !== null}
-                                              payload={activePieIndex !== null && distData[activePieIndex] ? [{
-                                                  name: distData[activePieIndex].dimension_value,
-                                                  value: distData[activePieIndex].value,
-                                                  payload: distData[activePieIndex]
-                                              }] : []}
-                                              formatter={(value: any) => [formatValue(Number(value) || 0), activeMetric.charAt(0).toUpperCase() + activeMetric.slice(1)]}
-                                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold', fontSize: '12px' }}
-                                            />
-                                        );
-                                    })()}
+                                    <ReTooltip 
+                                      formatter={(value: any) => [formatValue(Number(value) || 0), activeMetric.charAt(0).toUpperCase() + activeMetric.slice(1)]}
+                                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold', fontSize: '12px' }}
+                                    />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
@@ -486,21 +453,10 @@ export default function Dashboard() {
                     <div className="w-full md:w-1/2 flex-1 overflow-y-auto pr-2 scrollbar-thin space-y-3">
                         {Array.isArray(distData) && distData.map((item: any, i: number) => {
                             const color = item.dimension_value === 'Other' ? '#0C0C0C' : getColor(i, distData.length);
-                            const isActive = activePieIndex === i;
                             return (
-                                <div 
-                                  key={item.dimension_value} 
-                                  onMouseEnter={() => setActivePieIndex(i)}
-                                  onMouseLeave={() => setActivePieIndex(null)}
-                                  className={`flex items-center gap-3 p-3 rounded-xl transition-all border border-transparent cursor-default
-                                              ${isActive ? 'bg-slate-50 border-slate-100 shadow-sm' : 'hover:bg-slate-50/50'}`}
-                                >
-                                    <div className="w-3.5 h-3.5 rounded-full shadow-md border-2 border-white shrink-0" style={{ backgroundColor: color }} />
-                                    <span className={`text-[11px] font-bold uppercase tracking-tight transition-colors truncate flex-1
-                                                      ${isActive ? 'text-[#0C0C0C]' : 'text-slate-400'}`}>
-                                      {item.dimension_value}
-                                    </span>
-                                    {isActive && <span className="text-[10px] font-black text-[#0C0C0C]">{formatValue(item.value)}</span>}
+                                <div key={item.dimension_value} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all border border-transparent group">
+                                    <div className="w-3.5 h-3.5 rounded-full shadow-md border-2 border-white" style={{ backgroundColor: color }} />
+                                    <span className="text-[11px] font-bold text-slate-400 group-hover:text-[#0C0C0C] uppercase tracking-tight transition-colors">{item.dimension_value}</span>
                                 </div>
                             );
                         })}
