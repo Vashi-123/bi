@@ -22,6 +22,7 @@ export interface TrendItem {
   dimension_value: string;
   value: number;
   time_label: string;
+  date: string;
 }
 
 export interface DistItem {
