@@ -30,6 +30,7 @@ export default function Dashboard() {
   const [expandedTable, setExpandedTable] = useState<'master' | 'detail' | null>(null);
   const [fullscreenTable, setFullscreenTable] = useState<'master' | 'detail' | null>(null);
   const [chartView, setChartView] = useState<'combined' | 'multiples'>('combined');
+  const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
 
   // Initialize date filter with default 6-month window (max - 6 months to max)
   const { data: globalRange } = useSWR(`${API_BASE}/api/filters/date-range`, fetcher);
@@ -418,6 +419,21 @@ export default function Dashboard() {
                                         paddingAngle={5} 
                                         dataKey="value" 
                                         nameKey="dimension_value"
+                                        activeIndex={activePieIndex !== null ? activePieIndex : undefined}
+                                        activeShape={(props: any) => {
+                                            const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+                                            return (
+                                                <g>
+                                                    <path
+                                                        d={`M ${cx + outerRadius * Math.cos(-startAngle * Math.PI / 180)} ${cy + outerRadius * Math.sin(-startAngle * Math.PI / 180)} A ${outerRadius} ${outerRadius} 0 0 1 ${cx + outerRadius * Math.cos(-endAngle * Math.PI / 180)} ${cy + outerRadius * Math.sin(-endAngle * Math.PI / 180)} L ${cx + (outerRadius + 10) * Math.cos(-endAngle * Math.PI / 180)} ${cy + (outerRadius + 10) * Math.sin(-endAngle * Math.PI / 180)} A ${outerRadius + 10} ${outerRadius + 10} 0 0 0 ${cx + (outerRadius + 10) * Math.cos(-startAngle * Math.PI / 180)} ${cy + (outerRadius + 10) * Math.sin(-startAngle * Math.PI / 180)} Z`}
+                                                        fill={fill}
+                                                        style={{ filter: 'drop-shadow(0 4px 6px rgb(0 0 0 / 0.1))' }}
+                                                    />
+                                                </g>
+                                            );
+                                        }}
+                                        onMouseEnter={(_, index) => setActivePieIndex(index)}
+                                        onMouseLeave={() => setActivePieIndex(null)}
                                         label={({ cx, cy, midAngle, outerRadius, fill, percent }) => {
                                             if (cx === undefined || cy === undefined || midAngle === undefined || outerRadius === undefined || percent === undefined) return null;
                                             const RADIAN = Math.PI / 180;
@@ -434,22 +450,42 @@ export default function Dashboard() {
                                         labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
                                     >
                                         {Array.isArray(distData) && distData.map((item: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)} />
+                                            <Cell 
+                                              key={`cell-${index}`} 
+                                              fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)}
+                                              style={{ 
+                                                opacity: activePieIndex === null || activePieIndex === index ? 1 : 0.6,
+                                                transition: 'all 0.3s ease'
+                                              }}
+                                            />
                                         ))}
                                     </Pie>
-                                    <ReTooltip />
+                                    <ReTooltip 
+                                      formatter={(value: number) => [formatValue(value), activeMetric.charAt(0).toUpperCase() + activeMetric.slice(1)]}
+                                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold', fontSize: '12px' }}
+                                    />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
                     <div className="w-full md:w-1/2 flex-1 overflow-y-auto pr-2 scrollbar-thin space-y-3">
                         {Array.isArray(distData) && distData.map((item: any, i: number) => {
-                            const total = distData.reduce((acc: number, curr: any) => acc + curr.value, 0) || 1;
                             const color = item.dimension_value === 'Other' ? '#0C0C0C' : getColor(i, distData.length);
+                            const isActive = activePieIndex === i;
                             return (
-                                <div key={item.dimension_value} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all border border-transparent group">
-                                    <div className="w-3.5 h-3.5 rounded-full shadow-md border-2 border-white" style={{ backgroundColor: color }} />
-                                    <span className="text-[11px] font-bold text-slate-400 group-hover:text-[#0C0C0C] uppercase tracking-tight transition-colors">{item.dimension_value}</span>
+                                <div 
+                                  key={item.dimension_value} 
+                                  onMouseEnter={() => setActivePieIndex(i)}
+                                  onMouseLeave={() => setActivePieIndex(null)}
+                                  className={`flex items-center gap-3 p-3 rounded-xl transition-all border border-transparent cursor-default
+                                              ${isActive ? 'bg-slate-50 border-slate-100 shadow-sm' : 'hover:bg-slate-50/50'}`}
+                                >
+                                    <div className="w-3.5 h-3.5 rounded-full shadow-md border-2 border-white shrink-0" style={{ backgroundColor: color }} />
+                                    <span className={`text-[11px] font-bold uppercase tracking-tight transition-colors truncate flex-1
+                                                      ${isActive ? 'text-[#0C0C0C]' : 'text-slate-400'}`}>
+                                      {item.dimension_value}
+                                    </span>
+                                    {isActive && <span className="text-[10px] font-black text-[#0C0C0C]">{formatValue(item.value)}</span>}
                                 </div>
                             );
                         })}
@@ -596,7 +632,13 @@ export default function Dashboard() {
       {/* Fullscreen Table Overlay */}
       {fullscreenTable && (
           <div className="fixed inset-0 z-[200] bg-white flex flex-col p-10 animate-in zoom-in-95 duration-200">
-              <div className="flex justify-end items-center mb-8 shrink-0">
+              <div className="flex justify-between items-center mb-8 shrink-0">
+                  <div className="flex items-center gap-4">
+                      <Title className="text-2xl font-bold text-[#0C0C0C]">
+                          {fullscreenTable === 'master' ? `Top Groups by ${activeMetric}` : `SKU Details for ${selectedGroup || 'All'}`}
+                      </Title>
+                      <Badge className="bg-slate-50 text-slate-600 rounded-md border-slate-100 px-3 py-1 font-bold text-xs uppercase tracking-wider">{legendDimension}</Badge>
+                  </div>
                   <div className="flex items-center gap-3">
                       <button 
                           onClick={handleExport}
@@ -621,10 +663,16 @@ export default function Dashboard() {
                               <TableHeaderCell className="text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">
                                   {fullscreenTable === 'master' ? 'Group Name' : 'SKU Name'}
                               </TableHeaderCell>
-                              <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Revenue</TableHeaderCell>
-                              <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Profit</TableHeaderCell>
-                              <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Margin</TableHeaderCell>
-                              <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Qty</TableHeaderCell>
+                              {['revenue', 'profit', 'margin', 'qty'].map((metric) => (
+                                  <Fragment key={metric}>
+                                      {activeMetric === metric && (
+                                          <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">Growth</TableHeaderCell>
+                                      )}
+                                      <TableHeaderCell className="text-right text-[11px] font-black !text-slate-500 uppercase tracking-widest py-6">
+                                          {metric === 'qty' ? 'Qty' : metric.charAt(0).toUpperCase() + metric.slice(1)}
+                                      </TableHeaderCell>
+                                  </Fragment>
+                              ))}
                           </TableRow>
                       </TableHead>
                       <TableBody className="bg-white">
@@ -633,9 +681,18 @@ export default function Dashboard() {
                                   <TableCell className={`text-base !text-[#0C0C0C] py-6 font-bold ${fullscreenTable === 'detail' ? 'max-w-[600px] truncate' : ''}`} title={item.name}>
                                       {item.name}
                                   </TableCell>
+                                  
+                                  {/* Dynamic Metric Columns */}
+                                  {activeMetric === 'revenue' && renderGrowthCell(item.revenue_growth)}
                                   <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{formatValue(item.revenue)}</TableCell>
+                                  
+                                  {activeMetric === 'profit' && renderGrowthCell(item.profit_growth)}
                                   <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{formatValue(item.profit)}</TableCell>
+                                  
+                                  {activeMetric === 'margin' && renderGrowthCell(item.margin_growth)}
                                   <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{item.margin?.toFixed(2) ?? '0.00'}%</TableCell>
+                                  
+                                  {activeMetric === 'qty' && renderGrowthCell(item.qty_growth)}
                                   <TableCell className="text-right text-base !text-[#0C0C0C] py-6">{Math.round(item.qty).toLocaleString()}</TableCell>
                               </TableRow>
                           ))}
