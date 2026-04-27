@@ -335,10 +335,23 @@ export default function Dashboard() {
           className="relative p-10 -m-10 pointer-events-auto group/tooltip"
           onMouseEnter={(e) => e.stopPropagation()}
         >
-          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[320px] z-[100] relative">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{label}</p>
+          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[340px] z-[100] relative">
+            <div className="flex justify-between items-center mb-4 border-b border-slate-50 pb-3 gap-8">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
+               <button 
+                  onMouseDown={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                     handleAIAnalysis(data, interval);
+                  }}
+                  className="px-3 py-1 bg-[#0C0C0C] hover:bg-[#DDFF55] text-white hover:text-black rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-2 group shadow-sm shrink-0"
+               >
+                  <div className="w-1.5 h-1.5 bg-[#DDFF55] group-hover:bg-black rounded-full animate-pulse" />
+                  Analyze
+               </button>
+            </div>
           
-          <div className="space-y-4 mb-5">
+          <div className="space-y-4">
             {payload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
               const catGrowth = entry.payload.categoryGrowth?.[entry.name];
               const actualIndex = sharedCategories.indexOf(entry.name);
@@ -367,7 +380,7 @@ export default function Dashboard() {
             })}
           </div>
 
-          <div className="bg-slate-50 rounded-xl p-4 flex justify-between items-center border border-slate-100 mb-4">
+          <div className="bg-slate-50 rounded-xl p-4 flex justify-between items-center border border-slate-100 mt-5">
             <div className="flex items-center gap-3">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">TOTAL</p>
               <p className="text-xl font-bold text-[#0C0C0C]">{isCurrency ? '$' : ''}{total?.toLocaleString()}</p>
@@ -376,18 +389,6 @@ export default function Dashboard() {
               {(growth ?? 0) >= 0 ? '+' : ''}{(growth ?? 0).toFixed(1)}%
             </div>
           </div>
-
-          <button 
-             onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleAIAnalysis(data, interval);
-             }}
-             className="w-full py-3 bg-[#0C0C0C] hover:bg-[#DDFF55] text-white hover:text-black rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 group shadow-lg"
-          >
-             <div className="w-1.5 h-1.5 bg-[#DDFF55] group-hover:bg-black rounded-full animate-pulse" />
-             Analyze with AI
-          </button>
         </div>
       </div>
       );
