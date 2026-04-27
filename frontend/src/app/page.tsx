@@ -331,8 +331,12 @@ export default function Dashboard() {
       const total = data.total;
 
       return (
-        <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[320px] z-[100] relative pointer-events-auto">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{label}</p>
+        <div 
+          className="relative p-10 -m-10 pointer-events-auto group/tooltip"
+          onMouseEnter={(e) => e.stopPropagation()}
+        >
+          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[320px] z-[100] relative">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{label}</p>
           
           <div className="space-y-4 mb-5">
             {payload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
@@ -385,6 +389,7 @@ export default function Dashboard() {
              Analyze with AI
           </button>
         </div>
+      </div>
       );
     }
     return null;

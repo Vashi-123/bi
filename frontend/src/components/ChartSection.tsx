@@ -108,6 +108,7 @@ export function ChartSection({
                                             />
                                             <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
                                             <ReTooltip 
+                                                offset={0}
                                                 wrapperStyle={{ pointerEvents: 'auto' }}
                                                 cursor={{ fill: '#f8fafc', radius: 12 }}
                                                 content={(props) => {
@@ -237,6 +238,7 @@ export function ChartSection({
                                                     <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 700 }} />
                                                     <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
                                                     <ReTooltip 
+                                                        offset={0}
                                                         wrapperStyle={{ pointerEvents: 'auto' }}
                                                         cursor={{ fill: '#f8fafc', radius: 12 }}
                                                         content={(props) => {
