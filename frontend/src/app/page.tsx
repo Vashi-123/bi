@@ -462,7 +462,7 @@ export default function Dashboard() {
                                         ))}
                                     </Pie>
                                     <ReTooltip 
-                                      formatter={(value: number) => [formatValue(value), activeMetric.charAt(0).toUpperCase() + activeMetric.slice(1)]}
+                                      formatter={(value: any) => [formatValue(Number(value) || 0), activeMetric.charAt(0).toUpperCase() + activeMetric.slice(1)]}
                                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold', fontSize: '12px' }}
                                     />
                                 </PieChart>
