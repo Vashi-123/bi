@@ -325,32 +325,64 @@ export default function Dashboard() {
   // --- Custom Tooltip Content ---
   const CustomTooltip = ({ active, payload, label, interval }: any) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload;
       const isCurrency = activeMetric !== 'qty' && activeMetric !== 'margin';
-      
+      const data = payload[0].payload;
+      const growth = data.growth;
+      const total = data.total;
+
       return (
-        <div className="bg-[#0C0C0C] border border-white/10 p-5 rounded-3xl shadow-2xl backdrop-blur-xl">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">{label}</p>
-          <div className="flex flex-col gap-2 mb-4">
-            {payload.map((entry: any, index: number) => (
-              <div key={index} className="flex items-center justify-between gap-8">
-                <span className="text-[10px] font-bold text-white uppercase">{entry.name}</span>
-                <span className="text-sm font-black text-[#DDFF55]">
-                  {isCurrency ? '$' : ''}{entry.value?.toLocaleString()}{entry.name === 'margin' ? '%' : ''}
-                </span>
-              </div>
-            ))}
-          </div>
+        <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[320px] z-[100] relative pointer-events-auto">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{label}</p>
           
+          <div className="space-y-4 mb-5">
+            {payload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
+              const catGrowth = entry.payload.categoryGrowth?.[entry.name];
+              const actualIndex = sharedCategories.indexOf(entry.name);
+              const color = entry.name === 'Other' ? '#0C0C0C' : getColor(actualIndex, sharedCategories.length);
+              
+              return (
+                <div key={entry.name} className="flex justify-between items-center gap-6">
+                  <div className="flex-1 flex items-center gap-3 min-w-0">
+                    <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tighter truncate">{entry.name}</span>
+                  </div>
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <span className="text-xs font-black text-[#0C0C0C] w-24 text-right">
+                      {isCurrency ? '$' : ''}{entry.value?.toLocaleString()}{entry.name === 'margin' ? '%' : ''}
+                    </span>
+                    <div className="w-16 flex justify-end">
+                      {catGrowth !== undefined && (
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${catGrowth >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'}`}>
+                          {catGrowth >= 0 ? '+' : ''}{catGrowth.toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="bg-slate-50 rounded-xl p-4 flex justify-between items-center border border-slate-100 mb-4">
+            <div className="flex items-center gap-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">TOTAL</p>
+              <p className="text-xl font-bold text-[#0C0C0C]">{isCurrency ? '$' : ''}{total?.toLocaleString()}</p>
+            </div>
+            <div className={`px-3 py-1 rounded-md text-[11px] font-bold ${(growth ?? 0) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+              {(growth ?? 0) >= 0 ? '+' : ''}{(growth ?? 0).toFixed(1)}%
+            </div>
+          </div>
+
           <button 
-             onClick={(e) => {
+             onMouseDown={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 handleAIAnalysis(data, interval);
              }}
-             className="w-full py-2.5 bg-white/10 hover:bg-[#DDFF55] text-white hover:text-black rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 group"
+             className="w-full py-3 bg-[#0C0C0C] hover:bg-[#DDFF55] text-white hover:text-black rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-2 group shadow-lg"
           >
              <div className="w-1.5 h-1.5 bg-[#DDFF55] group-hover:bg-black rounded-full animate-pulse" />
-             AI Summary
+             Analyze with AI
           </button>
         </div>
       );
