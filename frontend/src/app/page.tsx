@@ -3,7 +3,7 @@
 import { useDashboardStore } from '@/store/useDashboardStore';
 import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex } from '@tremor/react';
 import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus, Layout, LayoutGrid, Package } from 'lucide-react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Sector, Tooltip as ReTooltip } from 'recharts';
 import useSWR from 'swr';
 import { useEffect, useState, useMemo, Fragment } from 'react';
 
@@ -75,13 +75,14 @@ export default function Dashboard() {
   }, [dateFilter.mode]);
 
   // --- Data Fetching ---
-  const { data: kpiData, isLoading: kpiLoading } = useSWR(kpiUrl, fetcher);
-  const { data: weeklyRaw, isLoading: weeklyLoading } = useSWR(trendsUrl('week'), fetcher);
-  const { data: monthlyRaw, isLoading: monthlyLoading } = useSWR(trendsUrl('month'), fetcher);
-  const { data: dailyRaw, isLoading: dailyLoading } = useSWR(trendsUrl('day'), fetcher);
-  const { data: fullDistData, isLoading: distLoading } = useSWR(fullDistUrl, fetcher);
-  const { data: masterData, isLoading: masterLoading } = useSWR(masterUrl, fetcher);
-  const { data: detailData, isLoading: detailLoading } = useSWR(detailUrl, fetcher);
+  const swrConfig = { keepPreviousData: true, revalidateOnFocus: false };
+  const { data: kpiData, isLoading: kpiLoading } = useSWR(kpiUrl, fetcher, swrConfig);
+  const { data: weeklyRaw, isLoading: weeklyLoading } = useSWR(trendsUrl('week'), fetcher, swrConfig);
+  const { data: monthlyRaw, isLoading: monthlyLoading } = useSWR(trendsUrl('month'), fetcher, swrConfig);
+  const { data: dailyRaw, isLoading: dailyLoading } = useSWR(trendsUrl('day'), fetcher, swrConfig);
+  const { data: fullDistData, isLoading: distLoading } = useSWR(fullDistUrl, fetcher, swrConfig);
+  const { data: masterData, isLoading: masterLoading } = useSWR(masterUrl, fetcher, swrConfig);
+  const { data: detailData, isLoading: detailLoading } = useSWR(detailUrl, fetcher, swrConfig);
 
   // Derive donut data (top N + Other) from full distribution
   const ratingData = fullDistData;
@@ -419,31 +420,33 @@ export default function Dashboard() {
                                         paddingAngle={5} 
                                         dataKey="value" 
                                         nameKey="dimension_value"
-                                        // @ts-ignore - activeIndex exists in recharts but might have typing issues in beta 3.x
+                                        // @ts-ignore
                                         activeIndex={activePieIndex !== null ? activePieIndex : undefined}
                                         activeShape={(props: any) => {
                                             const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
                                             return (
-                                                <g>
-                                                    <path
-                                                        d={`M ${cx + outerRadius * Math.cos(-startAngle * Math.PI / 180)} ${cy + outerRadius * Math.sin(-startAngle * Math.PI / 180)} A ${outerRadius} ${outerRadius} 0 0 1 ${cx + outerRadius * Math.cos(-endAngle * Math.PI / 180)} ${cy + outerRadius * Math.sin(-endAngle * Math.PI / 180)} L ${cx + (outerRadius + 10) * Math.cos(-endAngle * Math.PI / 180)} ${cy + (outerRadius + 10) * Math.sin(-endAngle * Math.PI / 180)} A ${outerRadius + 10} ${outerRadius + 10} 0 0 0 ${cx + (outerRadius + 10) * Math.cos(-startAngle * Math.PI / 180)} ${cy + (outerRadius + 10) * Math.sin(-startAngle * Math.PI / 180)} Z`}
-                                                        fill={fill}
-                                                        style={{ filter: 'drop-shadow(0 4px 6px rgb(0 0 0 / 0.1))' }}
-                                                    />
-                                                </g>
+                                                <Sector
+                                                    cx={cx}
+                                                    cy={cy}
+                                                    innerRadius={innerRadius}
+                                                    outerRadius={outerRadius + 8}
+                                                    startAngle={startAngle}
+                                                    endAngle={endAngle}
+                                                    fill={fill}
+                                                />
                                             );
                                         }}
                                         onMouseEnter={(_, index) => setActivePieIndex(index)}
                                         onMouseLeave={() => setActivePieIndex(null)}
                                         label={({ cx, cy, midAngle, outerRadius, fill, percent }) => {
-                                            if (cx === undefined || cy === undefined || midAngle === undefined || outerRadius === undefined || percent === undefined) return null;
+                                            if (distLoading || !percent) return null;
                                             const RADIAN = Math.PI / 180;
                                             const radius = Number(outerRadius) + 15;
                                             const x = Number(cx) + radius * Math.cos(-midAngle * RADIAN);
                                             const y = Number(cy) + radius * Math.sin(-midAngle * RADIAN);
-                                            if (percent < 0.02) return null; // Hide very small labels
+                                            if (percent < 0.01) return null; 
                                             return (
-                                                <text x={x} y={y} fill={fill} textAnchor={x > Number(cx) ? 'start' : 'end'} dominantBaseline="central" className="text-[11px] font-extrabold">
+                                                <text x={x} y={y} fill={fill} textAnchor={x > Number(cx) ? 'start' : 'end'} dominantBaseline="central" className="text-[10px] font-extrabold">
                                                     {(percent * 100).toFixed(1)}%
                                                 </text>
                                             );
@@ -455,13 +458,19 @@ export default function Dashboard() {
                                               key={`cell-${index}`} 
                                               fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)}
                                               style={{ 
-                                                opacity: activePieIndex === null || activePieIndex === index ? 1 : 0.6,
-                                                transition: 'all 0.3s ease'
+                                                opacity: activePieIndex === null || activePieIndex === index ? 1 : 0.4,
+                                                transition: 'opacity 0.2s ease'
                                               }}
                                             />
                                         ))}
                                     </Pie>
                                     <ReTooltip 
+                                      active={activePieIndex !== null}
+                                      payload={activePieIndex !== null && distData[activePieIndex] ? [{
+                                          name: distData[activePieIndex].dimension_value,
+                                          value: distData[activePieIndex].value,
+                                          payload: distData[activePieIndex]
+                                      }] : []}
                                       formatter={(value: any) => [formatValue(Number(value) || 0), activeMetric.charAt(0).toUpperCase() + activeMetric.slice(1)]}
                                       contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 'bold', fontSize: '12px' }}
                                     />
