@@ -828,8 +828,8 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
             SELECT 
                 counterparty,
                 "Item name" as product,
-                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN revenue ELSE 0 END) as rev_a,
-                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN revenue ELSE 0 END) as rev_b
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as rev_a,
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as rev_b
             FROM sales
             WHERE (CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}')
                OR (CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}')
@@ -887,8 +887,8 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
             p_query = f"""
                 SELECT 
                     "Item name" as product,
-                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN revenue ELSE 0 END) -
-                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN revenue ELSE 0 END) as product_delta
+                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) -
+                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as product_delta
                 FROM sales
                 WHERE counterparty = '{client_name.replace("'", "''")}'
                 GROUP BY 1
