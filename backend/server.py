@@ -372,76 +372,14 @@ async def analyze_period(
     start_b: str, end_b: str
 ):
     """
-    Combines mathematical payload with AI interpretation.
+    Returns mathematical payload for data-driven analysis.
     """
     try:
-        # 1. Get raw math data
+        # Get raw math data
         payload = database.get_period_ai_payload(start_a, end_a, start_b, end_b)
         if "error" in payload:
             return JSONResponse(status_code=400, content=payload)
 
-        # 2. Try to get AI interpretation
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            return {
-                "payload": payload,
-                "ai_summary": "⚠️ AI Analysis unavailable: OPENAI_API_KEY not set on server. Showing raw data only.",
-                "status": "partial"
-            }
-
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=api_key)
-            prompt = f"""
-            Ты — финансовый аналитик. Твоя задача: превратить JSON в структурированный отчет для CEO.
-            
-            СТРОГИЕ ПРАВИЛА ФОРМАТИРОВАНИЯ:
-            1. Используй только 4 раздела С ЭТИМИ ЗАГОЛОВКАМИ: 
-               📊 1. Общая динамика и характер тренда
-               🏢 2. Поведение ключевых клиентов
-               📦 3. Глобальное здоровье продуктов
-               🌱 4. Новые источники выручки (New Business)
-            2. НЕ ИСПОЛЬЗУЙ СИМВОЛ '#' (никаких решеток!).
-            3. ПИШИ ПОДРОБНО: Перечисляй всех значимых драйверов (минимум 3-5, если они есть в данных).
-            4. В разделе 4 выведи два списка: «Новые клиенты» и «Новые продукты». 
-            5. Для новых источников всегда пиши формат: (Было: $0 → Стало: $X).
-            6. Стиль: сухой, плотный, информативный. 
-
-            ПРИМЕР ИДЕАЛЬНОГО ОТВЕТА:
-            📊 1. Общая динамика и характер тренда
-            Выручка выросла на 15%, тренд системный. Основной рост обеспечен восстановлением спроса во второй декаде.
-
-            🏢 2. Поведение ключевых клиентов
-            - Client A: рост на $50k (драйвер: Product X).
-            - Client B: рост на $30k (восстановление закупок Product Y).
-            - Client C: падение на $15k (переход на альтернативы).
-            - Client D: стабильность (+2%).
-            - Остальной рынок: средний рост 4%.
-
-            📦 3. Глобальное здоровье продуктов
-            SKU count стабилен. Продукт Y показывает взрывной рост в регионе Z.
-
-            🌱 4. Новые источники выручки (New Business)
-            Новые клиенты: 
-            - Company Name: (Было: $0 → Стало: $45,000)
-            Новые продукты:
-            - Product Name: (Было: $0 → Стало: $12,000)
-
-            ДАННЫЕ ДЛЯ АНАЛИЗА:
-            {json.dumps(payload, indent=2)}
-            """
-            
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "system", 
-                        "content": "Ты — финансовый аналитик. Твой стиль: сухой, жесткий, краткий. НИКАКИХ СИМВОЛОВ '#' ИЛИ '##'. Всегда следуй структуре из 4-х разделов с эмодзи: 📊, 🏢, 📦, 🌱. Оперируй только цифрами из JSON."
-                    },
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3
-            )
             
             # Approximate token count (1 token ≈ 4 chars for English, ~2 for Russian/Complex)
             token_estimate = len(prompt) // 3 

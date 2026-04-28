@@ -922,47 +922,60 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
         elif net_delta >= X:
             scenario = "SIGNIFICANT_GROWTH"
             
-        # 3. Top Drivers (Gainers and Decliners)
-        top_gainers_list = df_clients.sort_values('client_delta', ascending=False).head(10)
-        top_decliners_list = df_clients.sort_values('client_delta', ascending=True).head(10)
+        # 3. Top Drivers (Filtered by SIGNIFICANCE)
+        # We only show clients that contribute > 15% to gross movement
+        pos_threshold = gross_positive * 0.15
+        neg_threshold = abs(gross_negative) * 0.15
         
-        # Remove small/irrelevant noise from drivers (lower threshold to 5% of X)
-        top_gainers_list = top_gainers_list[top_gainers_list['client_delta'] > (X * 0.05)]
-        top_decliners_list = top_decliners_list[top_decliners_list['client_delta'] < -(X * 0.05)]
+        top_gainers_list = df_clients[df_clients['client_delta'] >= pos_threshold].sort_values('client_delta', ascending=False)
+        top_decliners_list = df_clients[df_clients['client_delta'] <= -neg_threshold].sort_values('client_delta', ascending=True)
         
-        # Helper to get top products for a client
-        def get_top_products(client_name, is_gain):
+        # Helper to get significant products for a client (> 30% of client delta)
+        def get_significant_products(client_name, client_delta):
             p_query = f"""
                 SELECT 
                     "Item name" as product,
+                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
+                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b,
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) -
-                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as product_delta
+                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_delta
                 FROM sales
                 WHERE counterparty = '{client_name.replace("'", "''")}'
                 GROUP BY 1
-                ORDER BY product_delta {'DESC' if is_gain else 'ASC'}
-                LIMIT 3
+                HAVING ABS(p_delta) >= ABS({client_delta} * 0.3)
+                ORDER BY ABS(p_delta) DESC
             """
             p_res = conn.execute(p_query).fetchall()
-            return [{"name": r[0], "delta": round(r[1], 2)} for r in p_res]
+            return [{
+                "name": r[0], 
+                "rev_a": round(r[1], 2),
+                "rev_b": round(r[2], 2),
+                "delta": round(r[3], 2)
+            } for r in p_res]
 
         top_gainers = []
         for _, row in top_gainers_list.iterrows():
             top_gainers.append({
                 "client": row['counterparty'],
+                "rev_a": round(row['client_rev_a'], 2),
+                "rev_b": round(row['client_rev_b'], 2),
                 "delta": round(row['client_delta'], 2),
-                "products": get_top_products(row['counterparty'], True)
+                "products": get_significant_products(row['counterparty'], row['client_delta'])
             })
             
         top_decliners = []
         for _, row in top_decliners_list.iterrows():
             top_decliners.append({
                 "client": row['counterparty'],
+                "rev_a": round(row['client_rev_a'], 2),
+                "rev_b": round(row['client_rev_b'], 2),
                 "delta": round(row['client_delta'], 2),
-                "products": get_top_products(row['counterparty'], False)
+                "products": get_significant_products(row['counterparty'], row['client_delta'])
             })
             
-        # 4. Global Product Health (Overall Gainers/Decliners)
+        # 4. Global Product Health (Significant movers)
+        # Threshold: 15% of gross movement
+        gp_threshold = (gross_positive if net_delta > 0 else abs(gross_negative)) * 0.15
         global_products_query = f"""
             SELECT 
                 "Item name" as product,
@@ -974,58 +987,66 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
             WHERE CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}'
                OR CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}'
             GROUP BY 1
+            HAVING ABS(delta) >= {gp_threshold}
             ORDER BY ABS(delta) DESC
-            LIMIT 15
         """
         df_gp = conn.execute(global_products_query).df()
         global_product_health = {
-            "top_gainers": df_gp[df_gp['delta'] > 0].sort_values('delta', ascending=False).head(5).to_dict(orient='records'),
-            "top_decliners": df_gp[df_gp['delta'] < 0].sort_values('delta', ascending=True).head(5).to_dict(orient='records')
+            "top_gainers": df_gp[df_gp['delta'] > 0].sort_values('delta', ascending=False).to_dict(orient='records'),
+            "top_decliners": df_gp[df_gp['delta'] < 0].sort_values('delta', ascending=True).to_dict(orient='records')
         }
 
-        # 5. Concentration Check
-        neg_concentration = abs(top_decliners_list['client_delta'].sum() / (gross_negative or 1))
-        pos_concentration = abs(top_gainers_list['client_delta'].sum() / (gross_positive or 1))
-        
-        # is_systemic if top 10 don't explain at least 60% of the movement
-        is_systemic_trend = neg_concentration < 0.6 if net_delta < 0 else pos_concentration < 0.6
-        
-        # 6. New Business (Clients and Products that started in Period B)
+        # 5. New Business & Churn (In-Out analysis)
+        # New Clients
         new_clients = df_clients[(df_clients['client_rev_a'] == 0) & (df_clients['client_rev_b'] > 0)]
         new_clients_list = [
-            {"name": row['counterparty'], "revenue": round(row['client_rev_b'], 2)} 
-            for _, row in new_clients.sort_values('client_rev_b', ascending=False).head(5).iterrows()
+            {"name": row['counterparty'], "rev_a": 0, "rev_b": round(row['client_rev_b'], 2)} 
+            for _, row in new_clients.sort_values('client_rev_b', ascending=False).head(10).iterrows()
+        ]
+        
+        # Churned Clients
+        churned_clients = df_clients[(df_clients['client_rev_a'] > 0) & (df_clients['client_rev_b'] == 0)]
+        churned_clients_list = [
+            {"name": row['counterparty'], "rev_a": round(row['client_rev_a'], 2), "rev_b": 0} 
+            for _, row in churned_clients.sort_values('client_rev_a', ascending=False).head(10).iterrows()
         ]
 
-        # Query for new products (rev_a = 0, rev_b > 0)
+        # New Products
         new_products_query = f"""
             SELECT 
                 "Item name" as product,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b
             FROM sales
-            WHERE CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}'
-               OR CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}'
             GROUP BY 1
             HAVING p_rev_a = 0 AND p_rev_b > 0
             ORDER BY p_rev_b DESC
-            LIMIT 5
+            LIMIT 10
         """
         new_products_res = conn.execute(new_products_query).fetchall()
         new_products_list = [
-            {"name": r[0], "revenue": round(r[1], 2)} 
+            {"name": r[0], "rev_a": 0, "rev_b": round(r[2], 2)} 
             for r in new_products_res
         ]
+        
+        # Churned Products
+        churned_products_query = f"""
+            SELECT 
+                "Item name" as product,
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b
+            FROM sales
+            GROUP BY 1
+            HAVING p_rev_a > 0 AND p_rev_b = 0
+            ORDER BY p_rev_a DESC
+            LIMIT 10
+        """
+        churned_products_res = conn.execute(churned_products_query).fetchall()
+        churned_products_list = [
+            {"name": r[0], "rev_a": round(r[1], 2), "rev_b": 0} 
+            for r in churned_products_res
+        ]
 
-        # 7. Rest of Market Metrics (those NOT in top drivers)
-        top_driver_ids = set(top_gainers_list['counterparty']).union(set(top_decliners_list['counterparty']))
-        df_rest = df_clients[~df_clients['counterparty'].isin(top_driver_ids)]
-        
-        rest_rev_a = df_rest['client_rev_a'].sum()
-        rest_rev_b = df_rest['client_rev_b'].sum()
-        rest_delta = rest_rev_b - rest_rev_a
-        rest_growth = (rest_delta / rest_rev_a * 100) if rest_rev_a > 0 else 0
-        
         # Final JSON Payload
         payload = {
             "period_info": {
@@ -1037,10 +1058,8 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 "rev_b": round(total_rev_b, 2),
                 "net_delta": round(net_delta, 2),
                 "gross_positive": round(gross_positive, 2),
-                "gross_negative": round(gross_negative, 2),
-                "threshold_x": round(X, 2)
+                "gross_negative": round(gross_negative, 2)
             },
-            "scenario": scenario,
             "drivers": {
                 "top_gainers": top_gainers,
                 "top_decliners": top_decliners
@@ -1050,17 +1069,9 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 "new_clients": new_clients_list,
                 "new_products_sold": new_products_list
             },
-            "rest_of_market": {
-                "client_count": len(df_rest),
-                "rev_a": round(rest_rev_a, 2),
-                "rev_b": round(rest_rev_b, 2),
-                "net_delta": round(rest_delta, 2),
-                "avg_growth_pct": round(rest_growth, 2)
-            },
-            "analysis_metadata": {
-                "negative_concentration": round(neg_concentration, 2),
-                "positive_concentration": round(pos_concentration, 2),
-                "is_systemic_trend": bool(is_systemic_trend)
+            "churn": {
+                "churned_clients": churned_clients_list,
+                "churned_products": churned_products_list
             }
         }
         
