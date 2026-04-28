@@ -79,9 +79,11 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                             </div>
                                             <div className="space-y-2 border-t border-emerald-100/30 pt-3">
                                                {c.products?.map((p: any, pi: number) => (
-                                                  <div key={pi} className="flex justify-between items-center text-[10px]">
-                                                     <span className="font-bold text-slate-500 truncate max-w-[200px]">{p.name}</span>
-                                                     <span className="font-black text-emerald-600/80 tracking-tighter">{formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}</span>
+                                                  <div key={pi} className={`flex justify-between items-center text-[10px] ${p.is_summary ? 'italic text-slate-400 mt-1' : ''}`}>
+                                                     <span className="font-bold truncate max-w-[200px]">{p.name}</span>
+                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-slate-400' : 'text-emerald-600/80'}`}>
+                                                        {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
+                                                     </span>
                                                   </div>
                                                ))}
                                             </div>
@@ -109,9 +111,11 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                             </div>
                                             <div className="space-y-2 border-t border-rose-100/30 pt-3">
                                                {c.products?.map((p: any, pi: number) => (
-                                                  <div key={pi} className="flex justify-between items-center text-[10px]">
-                                                     <span className="font-bold text-slate-500 truncate max-w-[200px]">{p.name}</span>
-                                                     <span className="font-black text-rose-600/80 tracking-tighter">{formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}</span>
+                                                  <div key={pi} className={`flex justify-between items-center text-[10px] ${p.is_summary ? 'italic text-slate-400 mt-1' : ''}`}>
+                                                     <span className="font-bold truncate max-w-[200px]">{p.name}</span>
+                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-slate-400' : 'text-rose-600/80'}`}>
+                                                        {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
+                                                     </span>
                                                   </div>
                                                ))}
                                             </div>

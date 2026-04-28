@@ -930,8 +930,8 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
         top_gainers_list = df_clients[df_clients['client_delta'] >= pos_threshold].sort_values('client_delta', ascending=False)
         top_decliners_list = df_clients[df_clients['client_delta'] <= -neg_threshold].sort_values('client_delta', ascending=True)
         
-        # Helper to get significant products for a client (> 30% of client delta)
-        def get_significant_products(client_name, client_delta):
+        # Helper to get significant products for a client (> 25% of client delta) + Summary for others
+        def get_detailed_products(client_name, client_delta):
             p_query = f"""
                 SELECT 
                     "Item name" as product,
@@ -942,16 +942,37 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 FROM sales
                 WHERE counterparty = '{client_name.replace("'", "''")}'
                 GROUP BY 1
-                HAVING ABS(p_delta) >= ABS({client_delta} * 0.3)
+                HAVING p_delta != 0
                 ORDER BY ABS(p_delta) DESC
             """
-            p_res = conn.execute(p_query).fetchall()
-            return [{
-                "name": r[0], 
-                "rev_a": round(r[1], 2),
-                "rev_b": round(r[2], 2),
-                "delta": round(r[3], 2)
-            } for r in p_res]
+            df_p = conn.execute(p_query).df()
+            if df_p.empty: return []
+
+            # Filter significant (> 25%)
+            threshold = abs(client_delta) * 0.25
+            sig_mask = df_p['p_delta'].abs() >= threshold
+            df_sig = df_p[sig_mask].head(3)
+            
+            res = [{
+                "name": r['product'], 
+                "rev_a": round(r['p_rev_a'], 2),
+                "rev_b": round(r['p_rev_b'], 2),
+                "delta": round(r['p_delta'], 2)
+            } for _, r in df_sig.iterrows()]
+            
+            # If others exist and account for significant part (> 5% of client delta)
+            df_others = df_p[~df_p.index.isin(df_sig.index)]
+            others_delta = df_others['p_delta'].sum()
+            
+            if not df_others.empty and abs(others_delta) >= abs(client_delta) * 0.05:
+                res.append({
+                    "name": f"Other {len(df_others)} items (avg movement)",
+                    "rev_a": round(df_others['p_rev_a'].sum(), 2),
+                    "rev_b": round(df_others['p_rev_b'].sum(), 2),
+                    "delta": round(others_delta, 2),
+                    "is_summary": True
+                })
+            return res
 
         top_gainers = []
         for _, row in top_gainers_list.iterrows():
@@ -960,7 +981,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 "rev_a": round(row['client_rev_a'], 2),
                 "rev_b": round(row['client_rev_b'], 2),
                 "delta": round(row['client_delta'], 2),
-                "products": get_significant_products(row['counterparty'], row['client_delta'])
+                "products": get_detailed_products(row['counterparty'], row['client_delta'])
             })
             
         top_decliners = []
@@ -970,7 +991,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 "rev_a": round(row['client_rev_a'], 2),
                 "rev_b": round(row['client_rev_b'], 2),
                 "delta": round(row['client_delta'], 2),
-                "products": get_significant_products(row['counterparty'], row['client_delta'])
+                "products": get_detailed_products(row['counterparty'], row['client_delta'])
             })
             
         # 4. Global Product Health (Significant movers)
