@@ -359,31 +359,30 @@ async def analyze_period(
             client = OpenAI(api_key=api_key)
 
             prompt = f"""
-            You are a Senior Business Intelligence Analyst. Analyze the following JSON data representing sales performance between two periods (Period B is target, Period A is baseline).
-            
-            SCENARIO RULES:
-            - HIDDEN_ROTATION: Net delta is small, but there are large shifts between clients.
-            - SIGNIFICANT_DROP/GROWTH: Clear trend in one direction.
-            - FLAT_SYSTEMIC: Nothing is happening, stagnation.
-            
-            CONCENTRATION RULES:
-            - is_systemic_trend = true: The trend is spread across many clients. Don't blame specific ones.
-            - is_systemic_trend = false: The trend is driven by the Top 5 clients listed.
-            
-            DATA:
+            Ты — строгий финансовый аналитик B2B сектора. 
+            Твоя задача: перевести математический JSON-отчет в сухую, жесткую выжимку для CEO.
+
+            ПРАВИЛА:
+            1. НИКАКОЙ ВОДЫ. Пиши короткими рублеными предложениями.
+            2. Не придумывай причины (почему упало/выросло), если их нет в данных. Указывай только ФАКТЫ (кто и на чем сделал разницу).
+            3. Используй метрику `positive_concentration` или `is_systemic_trend`, чтобы показать долю влияния топов.
+            4. Не дублируй точные суммы в валюте, используй слова: "основная часть", "почти всё", "незначительно".
+            5. Бизнес-совет должен быть строго из B2B-реалий (склад, аккаунт-менеджмент, удержание), а не маркетинг.
+            6. Длина ответа: строго 3 пункта.
+
+            ДАННЫЕ:
             {json.dumps(payload, indent=2)}
-            
-            TASK:
-            1. Write a 2-sentence Executive Summary (What happened?).
-            2. Explain the Scenario ({payload['scenario']}).
-            3. Highlight the primary drivers (Top Gainers/Decliners and their products).
-            4. Suggest 2-3 specific business actions.
-            
-            Format: Use clean Markdown. Keep it professional, concise, and direct. Language: Russian.
+
+            ПРИМЕР ОЖИДАЕМОГО ОТВЕТА (Тон и стиль):
+            **Суть:** Зафиксирован рост выручки, однако он не системный: 85% всего прироста обеспечили топ-клиенты.
+            **Аномалии:** Вся динамика держится на клиенте "ООО Альфа", который резко нарастил закупку "Товар X". При этом клиент "Бета" обнулил закупки "Товар Y".
+            **Действие:** Срочно связаться с "Бета" для выяснения причин отказа от "Товар Y" и проверить складские запасы "Товар X" под возросший спрос "Альфы".
+
+            ВЫВЕДИ АНАЛИЗ ПО СТРУКТУРЕ (Суть, Аномалии, Действие):
             """
             
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are a professional BI assistant specialized in gift card and voucher sales analytics."},
                     {"role": "user", "content": prompt}
@@ -400,7 +399,7 @@ async def analyze_period(
                 "debug": {
                     "prompt": prompt,
                     "tokens": token_estimate,
-                    "model": "gpt-4o-mini"
+                    "model": "gpt-4o"
                 },
                 "status": "complete"
             }

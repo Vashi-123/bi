@@ -2,7 +2,7 @@
 
 import { useDashboardStore } from '@/store/useDashboardStore';
 import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex } from '@tremor/react';
-import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus, Layout, LayoutGrid, Package, XCircle } from 'lucide-react';
+import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus, Layout, LayoutGrid, Package, XCircle, TrendingUp, TrendingDown, Zap, Target, Lightbulb } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Sector, Tooltip as ReTooltip } from 'recharts';
 import useSWR from 'swr';
 import { useEffect, useState, useMemo, Fragment } from 'react';
@@ -270,38 +270,87 @@ export default function Dashboard() {
              ) : aiData ? (
                 <>
                    {/* Scenario Badge */}
-                   <div className="p-8 rounded-[2.5rem] bg-slate-50 border border-slate-100 shadow-inner">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Market Scenario</p>
-                      <div className="flex items-center gap-4">
-                         <Badge className="bg-[#0C0C0C] text-[#DDFF55] border-none text-xs font-black italic px-5 py-2 uppercase tracking-tight">
+                   <div className="p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/20 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#DDFF55]/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-[#DDFF55]/10 transition-colors" />
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                        <Zap className="w-3 h-3 text-[#DDFF55]" /> Market Scenario
+                      </p>
+                      <div className="flex items-center gap-4 relative z-10">
+                         <div className="text-2xl font-black italic uppercase tracking-tighter text-[#0C0C0C]">
                             {aiData.payload?.scenario?.replace('_', ' ')}
-                         </Badge>
+                         </div>
                          {aiData.payload?.analysis_metadata?.is_systemic_trend && (
-                            <Badge className="bg-blue-50 text-blue-600 border-none text-[10px] font-black">SYSTEMIC</Badge>
+                            <Badge className="bg-blue-50 text-blue-600 border-none text-[10px] font-black px-3 py-1 rounded-full">SYSTEMIC</Badge>
                          )}
                       </div>
                    </div>
 
-                   {/* AI Text Output */}
-                   <div className="space-y-6">
-                      <p className="text-[10px] font-black text-[#0C0C0C] uppercase tracking-[0.2em]">Executive Interpretation</p>
-                      <div className="prose prose-slate prose-sm max-w-none text-slate-600 leading-relaxed font-bold bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                         {aiData.ai_summary}
-                      </div>
-                   </div>
+                    {/* AI Interpretation Blocks */}
+                    <div className="space-y-6">
+                       <div className="flex items-center justify-between">
+                         <p className="text-[10px] font-black text-[#0C0C0C] uppercase tracking-[0.2em] flex items-center gap-2">
+                           <Target className="w-3 h-3" /> Financial Analysis
+                         </p>
+                         <div className="h-px flex-1 bg-slate-100 mx-6" />
+                       </div>
+                       
+                       <div className="space-y-4">
+                          {aiData.ai_summary.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
+                             const isHeader = line.startsWith('**');
+                             const cleanLine = line.replace(/\*\*/g, '');
+                             
+                             let icon = <Lightbulb className="w-4 h-4" />;
+                             let colorClass = "bg-slate-50 border-slate-100 text-slate-600";
+                             let title = "Insight";
+
+                             if (line.includes('Суть:')) {
+                                icon = <Zap className="w-4 h-4 text-[#DDFF55]" />;
+                                colorClass = "bg-[#0C0C0C] border-[#1a1a1a] text-white";
+                                title = "Executive Essence";
+                             } else if (line.includes('Аномалии:')) {
+                                icon = <TrendingDown className="w-4 h-4 text-rose-500" />;
+                                colorClass = "bg-white border-slate-100 text-slate-600 shadow-sm";
+                                title = "Market Anomalies";
+                             } else if (line.includes('Действие:')) {
+                                icon = <Target className="w-4 h-4 text-blue-500" />;
+                                colorClass = "bg-blue-50/30 border-blue-100 text-slate-700";
+                                title = "Strategic Action";
+                             }
+
+                             if (!isHeader) return null; // We only want the main blocks now
+
+                             return (
+                                <div key={i} className={`p-8 rounded-[2rem] border ${colorClass} transition-all hover:scale-[1.02] duration-300`}>
+                                   <div className="flex items-center gap-3 mb-3 opacity-80">
+                                      {icon}
+                                      <span className="text-[9px] font-black uppercase tracking-[0.2em]">{title}</span>
+                                   </div>
+                                   <p className="text-sm font-bold leading-relaxed">
+                                      {cleanLine.split(':').slice(1).join(':').trim()}
+                                   </p>
+                                </div>
+                             );
+                          })}
+                       </div>
+                    </div>
 
                    {/* Math Stats */}
                    <div className="grid grid-cols-2 gap-6">
-                      <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                         <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Net Delta</p>
-                         <p className={`text-2xl font-black ${aiData.payload?.global_metrics?.net_delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-[#DDFF55] transition-colors">
+                         <p className="text-[10px] font-black text-slate-400 uppercase mb-3 flex items-center gap-2">
+                            {aiData.payload?.global_metrics?.net_delta >= 0 ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-rose-500" />}
+                            Net Delta
+                         </p>
+                         <p className={`text-2xl font-black tracking-tighter ${aiData.payload?.global_metrics?.net_delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                             {aiData.payload?.global_metrics?.net_delta >= 0 ? '+' : ''}{aiData.payload?.global_metrics?.net_delta?.toLocaleString()}$
                          </p>
                       </div>
-                      <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                         <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Confidence</p>
-                         <p className="text-2xl font-black text-[#0C0C0C]">
-                            {aiData.payload ? (aiData.payload.analysis_metadata.negative_concentration * 100).toFixed(0) : '0'}%
+                      <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-blue-200 transition-colors">
+                         <p className="text-[10px] font-black text-slate-400 uppercase mb-3 flex items-center gap-2">
+                            <Target className="w-3 h-3 text-blue-500" /> Trend Intensity
+                         </p>
+                         <p className="text-2xl font-black text-[#0C0C0C] tracking-tighter">
+                            {aiData.payload ? (Math.max(aiData.payload.analysis_metadata.negative_concentration, aiData.payload.analysis_metadata.positive_concentration) * 100).toFixed(0) : '0'}%
                          </p>
                       </div>
                    </div>
