@@ -114,6 +114,8 @@ def refresh_groups_table():
     # 3. Create Enriched View dynamically (pointing to the in-memory sales_raw table)
     # We remove the JOIN here to avoid row duplication when a client belongs to multiple groups.
     # This ensures SUM(revenue) matches the original data even if a client has many groups.
+    gc_fallback = "s.Groupclient" if "Groupclient" in existing_cols else "NULL"
+    cg_fallback = "s.CountryGroup" if "CountryGroup" in existing_cols else "NULL"
     conn.execute(f"""
         CREATE OR REPLACE VIEW sales AS 
         SELECT 
