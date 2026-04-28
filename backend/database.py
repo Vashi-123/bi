@@ -921,6 +921,15 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
         # is_systemic if top 5 don't explain at least 60% of the movement
         is_systemic_trend = neg_concentration < 0.6 if net_delta < 0 else pos_concentration < 0.6
         
+        # 5. Rest of Market Metrics (those NOT in top 5 gainers/decliners)
+        top_driver_ids = set(top_gainers_list['counterparty']).union(set(top_decliners_list['counterparty']))
+        df_rest = df_clients[~df_clients['counterparty'].isin(top_driver_ids)]
+        
+        rest_rev_a = df_rest['client_rev_a'].sum()
+        rest_rev_b = df_rest['client_rev_b'].sum()
+        rest_delta = rest_rev_b - rest_rev_a
+        rest_growth = (rest_delta / rest_rev_a * 100) if rest_rev_a > 0 else 0
+        
         # Final JSON Payload
         payload = {
             "period_info": {
@@ -939,6 +948,13 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
             "drivers": {
                 "top_gainers": top_gainers,
                 "top_decliners": top_decliners
+            },
+            "rest_of_market": {
+                "client_count": len(df_rest),
+                "rev_a": round(rest_rev_a, 2),
+                "rev_b": round(rest_rev_b, 2),
+                "net_delta": round(rest_delta, 2),
+                "avg_growth_pct": round(rest_growth, 2)
             },
             "analysis_metadata": {
                 "negative_concentration": round(neg_concentration, 2),

@@ -321,8 +321,7 @@ export default function Dashboard() {
 
                              const sections = [
                                 { key: 'Суть', title: 'Executive Essence', icon: <Zap className="w-4 h-4 text-[#DDFF55]" />, color: 'bg-[#0C0C0C] border-[#1a1a1a] text-white' },
-                                { key: 'Аномалии', title: 'Market Anomalies', icon: <TrendingDown className="w-4 h-4 text-rose-500" />, color: 'bg-white border-slate-100 text-slate-600 shadow-sm' },
-                                { key: 'Действие', title: 'Strategic Action', icon: <Target className="w-4 h-4 text-blue-500" />, color: 'bg-blue-50/30 border-blue-100 text-slate-700' }
+                                { key: 'Drivers', title: 'Market Drivers', icon: <TrendingDown className="w-4 h-4 text-rose-500" />, color: 'bg-white border-slate-100 text-slate-600 shadow-sm' }
                              ];
 
                              return sections.map((sec, i) => {
@@ -330,14 +329,40 @@ export default function Dashboard() {
                                 if (!content) return null;
 
                                 return (
-                                   <div key={i} className={`p-8 rounded-[2rem] border ${sec.color} transition-all hover:scale-[1.02] duration-300`}>
-                                      <div className="flex items-center gap-3 mb-3 opacity-80">
-                                         {sec.icon}
-                                         <span className="text-[9px] font-black uppercase tracking-[0.2em]">{sec.title}</span>
+                                   <div key={i} className={`p-10 rounded-[2.5rem] border ${sec.color} transition-all hover:scale-[1.01] duration-500 relative overflow-hidden group`}>
+                                      {/* Decorative gradient flare for premium feel */}
+                                      <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors" />
+                                      
+                                      <div className="flex items-center gap-4 mb-6 opacity-90">
+                                         <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 shadow-sm">
+                                            {sec.icon}
+                                         </div>
+                                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">{sec.title}</span>
                                       </div>
-                                      <p className="text-sm font-bold leading-relaxed whitespace-pre-line">
-                                         {content}
-                                      </p>
+
+                                      {sec.key === 'Drivers' ? (
+                                         <div className="space-y-4">
+                                            {content.split('\n').filter(l => l.trim()).map((item, idx) => {
+                                               const isBullet = item.trim().startsWith('-');
+                                               const text = item.trim().replace(/^-/, '').trim();
+                                               
+                                               return (
+                                                  <div key={idx} className={`flex gap-4 ${isBullet ? 'bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50' : ''}`}>
+                                                     {isBullet && (
+                                                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
+                                                     )}
+                                                     <p className={`text-[13px] leading-relaxed ${isBullet ? 'font-bold text-slate-700' : 'font-medium text-slate-500'}`}>
+                                                        {text}
+                                                     </p>
+                                                  </div>
+                                               );
+                                            })}
+                                         </div>
+                                      ) : (
+                                         <p className="text-sm font-bold leading-relaxed whitespace-pre-line">
+                                            {content}
+                                         </p>
+                                      )}
                                    </div>
                                 );
                              });
