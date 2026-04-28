@@ -319,7 +319,7 @@ export function ChartSection({
                                                                     </div>
                                                                 );
                                                             }
-                                                            const entry = payload.find(p => p.dataKey === category);
+                                                            const entry = payload.find((p: any) => p.dataKey === category);
                                                             if (!entry) return null;
                                                             const catGrowth = entry.payload.categoryGrowth?.[category];
                                                             const color = category === 'Other' ? '#0C0C0C' : getColor(i, categories.length);
