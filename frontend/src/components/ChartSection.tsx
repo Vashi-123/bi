@@ -48,13 +48,6 @@ export function ChartSection({
         const chartX = state?.chartX;
         const chartY = state?.chartY;
         
-        console.log("[Chart] Click Coordinates:", { 
-            active: coords, 
-            chartX, 
-            chartY,
-            index: state?.activeTooltipIndex
-        });
-        
         let payload = state?.activePayload;
         let label = state?.activeLabel;
 
@@ -63,7 +56,6 @@ export function ChartSection({
             const index = Number(state.activeTooltipIndex);
             const item = data[index];
             if (item) {
-                console.log("[Chart] Recovering data from source at index", index);
                 label = item.time;
                 payload = categories.map((cat: string) => ({
                     name: cat,
@@ -75,12 +67,9 @@ export function ChartSection({
         }
 
         if (payload && payload.length > 0) {
-            // Use activeCoordinate if available as it's centered on the bar, 
-            // otherwise fallback to raw chartX
             const finalX = coords?.x || chartX || 0;
             const finalY = coords?.y || chartY || 0;
 
-            console.log("[Chart] Pinning Tooltip at:", { x: finalX, y: finalY });
             setPinnedPoint({
                 payload,
                 label: label || "",
@@ -88,7 +77,6 @@ export function ChartSection({
                 y: finalY
             });
         } else {
-            console.log("[Chart] Clearing Pinned Tooltip (No Payload)");
             setPinnedPoint(null);
         }
     };
@@ -158,7 +146,6 @@ export function ChartSection({
                                             barCategoryGap={barCategoryGap} 
                                             margin={{ top: 30, right: 30, left: 0, bottom: 40 }}
                                             onClick={(state: any) => {
-                                                console.log("[Chart] Container Clicked. Full State:", state);
                                                 handleChartClick(state);
                                             }}
                                         >
@@ -194,14 +181,6 @@ export function ChartSection({
                                                         const React = require('react');
                                                         return (
                                                             <div className="relative">
-                                                                {isPinned && (
-                                                                    <button 
-                                                                        onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
-                                                                        className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
-                                                                    >
-                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                                    </button>
-                                                                )}
                                                                 {React.cloneElement(customTooltip, { active: true, payload: displayPayload, label: displayLabel })}
                                                             </div>
                                                         );
@@ -211,14 +190,6 @@ export function ChartSection({
                                                     const total = displayPayload[0].payload.total;
                                                     return (
                                                         <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[320px] z-[100] relative">
-                                                            {isPinned && (
-                                                                <button 
-                                                                    onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
-                                                                    className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
-                                                                >
-                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                                </button>
-                                                            )}
                                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{displayLabel}</p>
                                                             <div className="space-y-4 mb-5">
                                                                 {displayPayload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
@@ -266,9 +237,7 @@ export function ChartSection({
                                                     stroke="#fff"
                                                     strokeWidth={2}
                                                     style={{ cursor: 'pointer' }}
-                                                    onMouseEnter={() => console.log("[Bar] Mouse Enter", category)}
                                                     onClick={(data, index, e) => {
-                                                        console.log("[Bar] Clicked", { category, index, data });
                                                         if (e) e.stopPropagation();
                                                         handleChartClick(data);
                                                     }}
@@ -337,7 +306,6 @@ export function ChartSection({
                                                     barCategoryGap={barCategoryGap} 
                                                     margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
                                                     onClick={(state: any) => {
-                                                        console.log("[Chart Multiples] Container Clicked. Full State:", state);
                                                         handleChartClick(state);
                                                     }}
                                                 >
@@ -364,14 +332,6 @@ export function ChartSection({
                                                                 const React = require('react');
                                                                 return (
                                                                     <div className="relative">
-                                                                        {isPinned && (
-                                                                            <button 
-                                                                                onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
-                                                                                className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
-                                                                            >
-                                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                                            </button>
-                                                                        )}
                                                                         {React.cloneElement(customTooltip, { active: true, payload: displayPayload, label: displayLabel })}
                                                                     </div>
                                                                 );
@@ -382,14 +342,6 @@ export function ChartSection({
                                                             const color = category === 'Other' ? '#0C0C0C' : getColor(i, categories.length);
                                                             return (
                                                                 <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[280px] z-[100] relative">
-                                                                    {isPinned && (
-                                                                        <button 
-                                                                            onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
-                                                                            className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
-                                                                        >
-                                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
-                                                                        </button>
-                                                                    )}
                                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{displayLabel}</p>
                                                                     <div className="flex justify-between items-center gap-6">
                                                                         <div className="flex items-center gap-3">
@@ -415,9 +367,7 @@ export function ChartSection({
                                                         radius={[4, 4, 0, 0]} 
                                                         isAnimationActive={true}
                                                         style={{ cursor: 'pointer' }}
-                                                        onMouseEnter={() => console.log("[Bar Multiples] Mouse Enter", category)}
                                                         onClick={(data, index, e) => {
-                                                            console.log("[Bar Multiples] Clicked", { category, index, data });
                                                             if (e) e.stopPropagation();
                                                             handleChartClick(data);
                                                         }}
