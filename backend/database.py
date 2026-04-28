@@ -112,29 +112,15 @@ def refresh_groups_table():
         conn.execute("INSERT INTO custom_country_groups SELECT * FROM df_c")
     
     # 3. Create Enriched View dynamically (pointing to the in-memory sales_raw table)
-    cols_res = conn.execute("DESCRIBE sales_raw").fetchall()
-    existing_cols = [row[0] for row in cols_res]
-    
-    exclude_cols = []
-    if 'Groupclient' in existing_cols:
-        exclude_cols.append('Groupclient')
-    if 'CountryGroup' in existing_cols:
-        exclude_cols.append('CountryGroup')
-        
-    exclude_clause = f"EXCLUDE ({', '.join(exclude_cols)})" if exclude_cols else ""
-    
-    gc_fallback = "s.Groupclient" if "Groupclient" in existing_cols else "NULL"
-    cg_fallback = "s.CountryGroup" if "CountryGroup" in existing_cols else "NULL"
-    
+    # We remove the JOIN here to avoid row duplication when a client belongs to multiple groups.
+    # This ensures SUM(revenue) matches the original data even if a client has many groups.
     conn.execute(f"""
         CREATE OR REPLACE VIEW sales AS 
         SELECT 
             s.* {exclude_clause},
-            COALESCE(g.group_name, {gc_fallback}, s.counterparty) as Groupclient,
-            COALESCE(cg.group_name, {cg_fallback}, 'Other') as CountryGroup
+            COALESCE({gc_fallback}, s.counterparty) as Groupclient,
+            COALESCE({cg_fallback}, 'Other') as CountryGroup
         FROM sales_raw s
-        LEFT JOIN custom_groups g ON LOWER(TRIM(s.counterparty)) = g.counterparty
-        LEFT JOIN custom_country_groups cg ON UPPER(TRIM(s."Product country")) = cg.country_code
     """)
 
 def refresh_in_memory_data():
@@ -506,6 +492,30 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
                 logger.error(f"CRITICAL ERROR in status filtering: {e}")
             continue
 
+        # Handle custom Groupclient filtering via subquery
+        if col == 'Groupclient':
+            clean_vals = [str(v).replace("'", "''") for v in values]
+            list_str = ', '.join([f"'{v}'" for v in clean_vals])
+            clauses.append(f"""
+                AND (
+                    LOWER(TRIM(counterparty)) IN (SELECT counterparty FROM custom_groups WHERE group_name IN ({list_str}))
+                    OR "{col}" IN ({list_str})
+                )
+            """)
+            continue
+
+        # Handle custom CountryGroup filtering via subquery
+        if col == 'CountryGroup':
+            clean_vals = [str(v).replace("'", "''") for v in values]
+            list_str = ', '.join([f"'{v}'" for v in clean_vals])
+            clauses.append(f"""
+                AND (
+                    UPPER(TRIM("Product country")) IN (SELECT country_code FROM custom_country_groups WHERE group_name IN ({list_str}))
+                    OR "{col}" IN ({list_str})
+                )
+            """)
+            continue
+
         if isinstance(values, list):
             clean_values = [str(v).replace("'", "''") for v in values]
             clauses.append(f"AND \"{col}\" IN ({', '.join([f"'{v}'" for v in clean_values])})")
@@ -566,12 +576,29 @@ def get_filter_options(dimension, search=None):
     if cached: return cached
 
     cursor = get_cursor()
-    where_clause = f"WHERE \"{dimension}\" IS NOT NULL"
-    if search:
-        clean_search = str(search).replace("'", "''")
-        where_clause += f" AND \"{dimension}\" ILIKE '%{clean_search}%'"
     
-    query = f"SELECT DISTINCT \"{dimension}\" FROM sales {where_clause} ORDER BY \"{dimension}\" ASC LIMIT 5000"
+    # Handle custom group dimensions
+    if dimension == 'Groupclient':
+        query = "SELECT DISTINCT group_name FROM custom_groups"
+        if search:
+            query += f" WHERE group_name ILIKE '%{str(search).replace(\"'\", \"''\")}%'"
+        query += " UNION SELECT DISTINCT Groupclient FROM sales WHERE Groupclient IS NOT NULL"
+        if search:
+            query += f" AND Groupclient ILIKE '%{str(search).replace(\"'\", \"''\")}%'"
+    elif dimension == 'CountryGroup':
+        query = "SELECT DISTINCT group_name FROM custom_country_groups"
+        if search:
+            query += f" WHERE group_name ILIKE '%{str(search).replace(\"'\", \"''\")}%'"
+        query += " UNION SELECT DISTINCT CountryGroup FROM sales WHERE CountryGroup IS NOT NULL"
+        if search:
+            query += f" AND CountryGroup ILIKE '%{str(search).replace(\"'\", \"''\")}%'"
+    else:
+        where_clause = f"WHERE \"{dimension}\" IS NOT NULL"
+        if search:
+            clean_search = str(search).replace("'", "''")
+            where_clause += f" AND \"{dimension}\" ILIKE '%{clean_search}%'"
+        query = f"SELECT DISTINCT \"{dimension}\" FROM sales {where_clause} ORDER BY 1 ASC LIMIT 5000"
+
     try:
         res = cursor.execute(query).fetchall()
         out = [row[0] for row in res if row[0] is not None]
