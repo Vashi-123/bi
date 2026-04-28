@@ -44,24 +44,44 @@ export function ChartSection({
     }, [data]);
 
     const handleChartClick = (state: any) => {
-        console.log("[Chart] Click Event:", { 
-            hasState: !!state, 
-            hasPayload: !!state?.activePayload,
+        console.log("[Chart] Click Logic Start", { 
+            index: state?.activeTooltipIndex,
             label: state?.activeLabel,
-            x: state?.chartX,
-            y: state?.chartY 
+            hasPayload: !!state?.activePayload 
         });
+        
+        let payload = state?.activePayload;
+        let label = state?.activeLabel;
+        let chartX = state?.chartX;
+        let chartY = state?.chartY;
 
-        if (state && state.activePayload) {
-            console.log("[Chart] Pinning Tooltip to:", state.activeLabel);
+        // Recovery logic: if Recharts didn't provide payload, get it from source data
+        if (!payload && state && state.activeTooltipIndex !== undefined) {
+            const index = Number(state.activeTooltipIndex);
+            const item = data[index];
+            if (item) {
+                console.log("[Chart] Recovering data from source at index", index);
+                label = item.time;
+                // Reconstruct payload structure for the tooltip
+                payload = categories.map((cat: string) => ({
+                    name: cat,
+                    dataKey: cat,
+                    value: item[cat],
+                    payload: item
+                }));
+            }
+        }
+
+        if (payload && payload.length > 0) {
+            console.log("[Chart] Pinning Tooltip to:", label);
             setPinnedPoint({
-                payload: state.activePayload,
-                label: state.activeLabel,
-                x: state.chartX + 20,
-                y: state.chartY
+                payload,
+                label: label || "",
+                x: (chartX || 0) + 20,
+                y: chartY || 0
             });
         } else {
-            console.log("[Chart] Clearing Pinned Tooltip");
+            console.log("[Chart] Clearing Pinned Tooltip (No Payload)");
             setPinnedPoint(null);
         }
     };
@@ -254,6 +274,7 @@ export function ChartSection({
                                                 stroke="none" 
                                                 dot={false} 
                                                 isAnimationActive={false}
+                                                style={{ pointerEvents: 'none' }}
                                             >
                                                 <LabelList dataKey="growth" position="top" content={(props: any) => {
                                                     const { x, y, value, index } = props;
@@ -401,6 +422,7 @@ export function ChartSection({
                                                         stroke="none" 
                                                         dot={false} 
                                                         isAnimationActive={false}
+                                                        style={{ pointerEvents: 'none' }}
                                                     >
                                                         <LabelList dataKey="categoryGrowth" position="top" content={(props: any) => {
                                                             const { x, y, value, index } = props;
