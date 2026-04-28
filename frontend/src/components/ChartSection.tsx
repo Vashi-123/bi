@@ -136,8 +136,6 @@ export function ChartSection({
                                             <ReTooltip 
                                                 offset={0}
                                                 active={pinnedPoint ? true : undefined}
-                                                payload={pinnedPoint ? pinnedPoint.payload : undefined}
-                                                label={pinnedPoint ? pinnedPoint.label : undefined}
                                                 position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 100 } : undefined}
                                                 wrapperStyle={{ pointerEvents: 'auto', zIndex: 1000 }}
                                                 cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12 }}
@@ -296,8 +294,6 @@ export function ChartSection({
                                                     <ReTooltip 
                                                         offset={0}
                                                         active={pinnedPoint ? true : undefined}
-                                                        payload={pinnedPoint ? pinnedPoint.payload : undefined}
-                                                        label={pinnedPoint ? pinnedPoint.label : undefined}
                                                         position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 100 } : undefined}
                                                         wrapperStyle={{ pointerEvents: 'auto', zIndex: 1000 }}
                                                         cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12 }}
