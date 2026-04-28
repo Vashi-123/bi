@@ -923,12 +923,12 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
             scenario = "SIGNIFICANT_GROWTH"
             
         # 3. Top Drivers (Gainers and Decliners)
-        top_gainers_list = df_clients.sort_values('client_delta', ascending=False).head(5)
-        top_decliners_list = df_clients.sort_values('client_delta', ascending=True).head(5)
+        top_gainers_list = df_clients.sort_values('client_delta', ascending=False).head(10)
+        top_decliners_list = df_clients.sort_values('client_delta', ascending=True).head(10)
         
-        # Remove small/irrelevant noise from drivers
-        top_gainers_list = top_gainers_list[top_gainers_list['client_delta'] > (X * 0.1)]
-        top_decliners_list = top_decliners_list[top_decliners_list['client_delta'] < -(X * 0.1)]
+        # Remove small/irrelevant noise from drivers (lower threshold to 5% of X)
+        top_gainers_list = top_gainers_list[top_gainers_list['client_delta'] > (X * 0.05)]
+        top_decliners_list = top_decliners_list[top_decliners_list['client_delta'] < -(X * 0.05)]
         
         # Helper to get top products for a client
         def get_top_products(client_name, is_gain):
@@ -962,21 +962,42 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 "products": get_top_products(row['counterparty'], False)
             })
             
-        # 4. Concentration Check
+        # 4. Global Product Health (Overall Gainers/Decliners)
+        global_products_query = f"""
+            SELECT 
+                "Item name" as product,
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as rev_a,
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as rev_b,
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) - 
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as delta
+            FROM sales
+            WHERE CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}'
+               OR CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}'
+            GROUP BY 1
+            ORDER BY ABS(delta) DESC
+            LIMIT 15
+        """
+        df_gp = conn.execute(global_products_query).df()
+        global_product_health = {
+            "top_gainers": df_gp[df_gp['delta'] > 0].sort_values('delta', ascending=False).head(5).to_dict(orient='records'),
+            "top_decliners": df_gp[df_gp['delta'] < 0].sort_values('delta', ascending=True).head(5).to_dict(orient='records')
+        }
+
+        # 5. Concentration Check
         neg_concentration = abs(top_decliners_list['client_delta'].sum() / (gross_negative or 1))
         pos_concentration = abs(top_gainers_list['client_delta'].sum() / (gross_positive or 1))
         
-        # is_systemic if top 5 don't explain at least 60% of the movement
+        # is_systemic if top 10 don't explain at least 60% of the movement
         is_systemic_trend = neg_concentration < 0.6 if net_delta < 0 else pos_concentration < 0.6
         
-        # 5. New Business (Clients and Products that started in Period B)
+        # 6. New Business (Clients and Products that started in Period B)
         new_clients = df_clients[(df_clients['client_rev_a'] == 0) & (df_clients['client_rev_b'] > 0)]
         new_clients_list = [
             {"name": row['counterparty'], "revenue": round(row['client_rev_b'], 2)} 
             for _, row in new_clients.sort_values('client_rev_b', ascending=False).head(5).iterrows()
         ]
 
-        # Query for new products (rev_a == 0, rev_b > 0)
+        # Query for new products (rev_a = 0, rev_b > 0)
         new_products_query = f"""
             SELECT 
                 "Item name" as product,
@@ -996,7 +1017,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
             for r in new_products_res
         ]
 
-        # 6. Rest of Market Metrics (those NOT in top 5 gainers/decliners)
+        # 7. Rest of Market Metrics (those NOT in top drivers)
         top_driver_ids = set(top_gainers_list['counterparty']).union(set(top_decliners_list['counterparty']))
         df_rest = df_clients[~df_clients['counterparty'].isin(top_driver_ids)]
         
@@ -1024,6 +1045,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 "top_gainers": top_gainers,
                 "top_decliners": top_decliners
             },
+            "global_product_health": global_product_health,
             "new_business": {
                 "new_clients": new_clients_list,
                 "new_products_sold": new_products_list

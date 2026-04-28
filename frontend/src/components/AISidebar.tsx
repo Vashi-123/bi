@@ -47,24 +47,8 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
             </div>
           ) : data ? (
             <>
-              {/* Scenario Badge */}
-              <div className="p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/20 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#DDFF55]/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-[#DDFF55]/10 transition-colors" />
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                  <Zap className="w-3 h-3 text-[#DDFF55]" /> Market Scenario
-                </p>
-                <div className="flex items-center gap-4 relative z-10">
-                  <div className="text-2xl font-black italic uppercase tracking-tighter text-[#0C0C0C]">
-                    {data.payload?.scenario?.replace('_', ' ')}
-                  </div>
-                  {data.payload?.analysis_metadata?.is_systemic_trend && (
-                    <Badge className="bg-blue-50 text-blue-600 border-none text-[10px] font-black px-3 py-1 rounded-full">SYSTEMIC</Badge>
-                  )}
-                </div>
-              </div>
-
               {/* AI Interpretation Blocks */}
-              <div className="space-y-8">
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-black text-[#0C0C0C] uppercase tracking-[0.2em] flex items-center gap-2">
                     <Target className="w-3 h-3" /> Intelligence Report
@@ -76,124 +60,176 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                   {(() => {
                     const text = data.ai_summary || "";
                     
-                    // More robust extraction that handles variations in emojis and formatting
                     const extract = (key: string) => {
-                      // Try to find the section starting with the key word, regardless of emoji/numbers
                       const regex = new RegExp(`(?:[^\\w\\n]|^)\\s*(?:\\d\\.\\s*)?${key}[^\\n]*\\n?([\\s\\S]*?)(?=(?:📊|🏢|📦|🌱|\\*\\*|#|^)\\s*(?:\\d\\.\\s*)?(?:Общая|Поведение|Глобальное|Новые|Суть|Drivers|Аномалии|Summary):?|$)`, 'im');
                       const match = text.match(regex);
                       if (!match) return null;
                       return match[1].replace(/[#*]/g, '').trim();
                     };
 
-                    const sections = [
-                      { id: 1, key: 'Общая', title: 'Trend Dynamics', icon: <Zap className="w-4 h-4 text-[#DDFF55]" />, color: 'bg-[#0C0C0C] border-[#1a1a1a] text-white' },
-                      { id: 2, key: 'Поведение', title: 'Key Clients', icon: <UserPlus className="w-4 h-4 text-emerald-500" />, color: 'bg-white border-slate-100 text-slate-600 shadow-sm' },
-                      { id: 3, key: 'Глобальное', title: 'Product Health', icon: <Package className="w-4 h-4 text-blue-500" />, color: 'bg-white border-slate-100 text-slate-600 shadow-sm' },
-                      { id: 4, key: 'Новые', title: 'New Business', icon: <Target className="w-4 h-4 text-[#FF843B]" />, color: 'bg-white border-slate-100 text-slate-600 shadow-sm' }
-                    ];
+                    const essence = extract('Общая');
 
-                    const renderedSections = sections.map((sec) => {
-                      const content = extract(sec.key);
-                      if (!content && sec.id !== 4) return null;
-
-                      return (
-                        <div key={sec.id} className={`p-8 rounded-[2rem] border ${sec.color} transition-all hover:shadow-lg duration-500 relative overflow-hidden group`}>
-                          <div className="flex items-center gap-4 mb-6 opacity-90">
-                            <div className={`p-2.5 rounded-xl ${sec.id === 1 ? 'bg-white/10' : 'bg-slate-50'} backdrop-blur-md border border-white/10`}>
-                              {sec.icon}
+                    return (
+                      <>
+                        {/* SHELF 1: AI ESSENCE */}
+                        <div className="p-6 rounded-2xl border bg-[#0C0C0C] border-[#1a1a1a] text-white transition-all hover:shadow-lg duration-500 relative overflow-hidden group">
+                          <div className="flex items-center gap-4 mb-4 opacity-90">
+                            <div className="p-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/10">
+                              <Zap className="w-4 h-4 text-[#DDFF55]" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em]">{sec.title}</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Trend Dynamics</span>
                           </div>
+                          <p className="text-[13px] leading-relaxed font-bold">
+                            {essence || text.split('\n')[0] || "Analyzing market movement..."}
+                          </p>
+                        </div>
 
+                        {/* SHELF 2: KEY CLIENTS (DATA DRIVEN) */}
+                        <div className="p-6 rounded-2xl border bg-white border-slate-100 text-slate-600 shadow-sm transition-all hover:shadow-lg duration-500">
+                          <div className="flex items-center gap-4 mb-5 opacity-90">
+                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                              <UserPlus className="w-4 h-4 text-emerald-500" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Key Market Drivers</span>
+                          </div>
+                          
+                          <div className="space-y-6">
+                             {/* Gainers */}
+                             {data.payload?.drivers?.top_gainers?.length > 0 && (
+                                <div>
+                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                      <TrendingUp className="w-3 h-3 text-emerald-500" /> Key Growth
+                                   </p>
+                                   <div className="space-y-2">
+                                      {data.payload.drivers.top_gainers.map((c: any, idx: number) => (
+                                         <div key={idx} className="bg-emerald-50/30 p-4 rounded-xl border border-emerald-100/20">
+                                            <div className="flex justify-between items-start mb-1">
+                                               <span className="text-[11px] font-black text-slate-800 uppercase truncate pr-4">{c.client}</span>
+                                               <span className="text-[11px] font-black text-emerald-600">+{formatCompact(c.delta)}</span>
+                                            </div>
+                                            <div className="flex gap-2 flex-wrap">
+                                               {c.products?.slice(0,2).map((p: any, pi: number) => (
+                                                  <span key={pi} className="text-[9px] font-bold text-slate-400 bg-white/50 px-2 py-0.5 rounded border border-slate-100">{p.name}</span>
+                                               ))}
+                                            </div>
+                                         </div>
+                                      ))}
+                                   </div>
+                                </div>
+                             )}
+
+                             {/* Decliners */}
+                             {data.payload?.drivers?.top_decliners?.length > 0 && (
+                                <div>
+                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                      <TrendingDown className="w-3 h-3 text-rose-500" /> Key Declines
+                                   </p>
+                                   <div className="space-y-2">
+                                      {data.payload.drivers.top_decliners.map((c: any, idx: number) => (
+                                         <div key={idx} className="bg-rose-50/30 p-4 rounded-xl border border-rose-100/20">
+                                            <div className="flex justify-between items-start mb-1">
+                                               <span className="text-[11px] font-black text-slate-800 uppercase truncate pr-4">{c.client}</span>
+                                               <span className="text-[11px] font-black text-rose-600">{formatCompact(c.delta)}</span>
+                                            </div>
+                                            <div className="flex gap-2 flex-wrap">
+                                               {c.products?.slice(0,2).map((p: any, pi: number) => (
+                                                  <span key={pi} className="text-[9px] font-bold text-slate-400 bg-white/50 px-2 py-0.5 rounded border border-slate-100">{p.name}</span>
+                                               ))}
+                                            </div>
+                                         </div>
+                                      ))}
+                                   </div>
+                                </div>
+                             )}
+                          </div>
+                        </div>
+
+                        {/* SHELF 3: PRODUCT HEALTH (DATA DRIVEN) */}
+                        <div className="p-6 rounded-2xl border bg-white border-slate-100 text-slate-600 shadow-sm transition-all hover:shadow-lg duration-500">
+                          <div className="flex items-center gap-4 mb-5 opacity-90">
+                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                              <Package className="w-4 h-4 text-blue-500" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Global Product Health</span>
+                          </div>
+                          
                           <div className="space-y-4">
-                            {sec.id === 4 ? (
-                              <div className="space-y-6">
-                                {data.payload?.new_business?.new_clients?.length > 0 && (
-                                  <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">First-Time Clients</p>
-                                    <div className="space-y-2">
-                                      {data.payload.new_business.new_clients.map((c: any, idx: number) => (
-                                        <div key={idx} className="flex justify-between items-center bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/30">
-                                          <span className="text-[11px] font-bold text-slate-700">{c.name}</span>
-                                          <span className="text-[11px] font-black text-emerald-600 tracking-tighter">
-                                            $0 → {formatCompact(c.revenue)}
-                                          </span>
-                                        </div>
-                                      ))}
+                             {data.payload?.global_product_health?.top_gainers?.slice(0, 3).map((p: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-center bg-blue-50/30 p-3.5 rounded-xl border border-blue-100/20">
+                                   <div className="flex flex-col">
+                                      <span className="text-[11px] font-bold text-slate-700 truncate max-w-[200px]">{p.product}</span>
+                                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">WAS: {formatCompact(p.rev_a)}</span>
+                                   </div>
+                                   <div className="text-right">
+                                      <span className="text-[11px] font-black text-emerald-600 block">{formatCompact(p.rev_b)}</span>
+                                      <span className="text-[9px] font-bold text-emerald-600/60">+{((p.delta / (p.rev_a || 1)) * 100).toFixed(1)}%</span>
+                                   </div>
+                                </div>
+                             ))}
+                             <div className="h-px bg-slate-100 my-2" />
+                             {data.payload?.global_product_health?.top_decliners?.slice(0, 3).map((p: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-center bg-slate-50/50 p-3.5 rounded-xl border border-slate-100/50">
+                                   <div className="flex flex-col">
+                                      <span className="text-[11px] font-bold text-slate-500 truncate max-w-[200px]">{p.product}</span>
+                                      <span className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">WAS: {formatCompact(p.rev_a)}</span>
+                                   </div>
+                                   <div className="text-right">
+                                      <span className="text-[11px] font-black text-rose-600 block">{formatCompact(p.rev_b)}</span>
+                                      <span className="text-[9px] font-bold text-rose-600/60">{((p.delta / (p.rev_a || 1)) * 100).toFixed(1)}%</span>
+                                   </div>
+                                </div>
+                             ))}
+                          </div>
+                        </div>
+
+                        {/* SHELF 4: NEW BUSINESS (DATA DRIVEN) */}
+                        <div className="p-6 rounded-2xl border bg-white border-slate-100 text-slate-600 shadow-sm transition-all hover:shadow-lg duration-500">
+                          <div className="flex items-center gap-4 mb-5 opacity-90">
+                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                              <Target className="w-4 h-4 text-[#FF843B]" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em]">New Business</span>
+                          </div>
+                          
+                          <div className="space-y-6">
+                            {data.payload?.new_business?.new_clients?.length > 0 && (
+                              <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">First-Time Clients</p>
+                                <div className="space-y-2">
+                                  {data.payload.new_business.new_clients.map((c: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between items-center bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/30">
+                                      <span className="text-[11px] font-bold text-slate-700">{c.name}</span>
+                                      <span className="text-[11px] font-black text-emerald-600 tracking-tighter">
+                                        $0 → {formatCompact(c.revenue)}
+                                      </span>
                                     </div>
-                                  </div>
-                                )}
-                                {data.payload?.new_business?.new_products_sold?.length > 0 && (
-                                  <div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">New Products Sold</p>
-                                    <div className="space-y-2">
-                                      {data.payload.new_business.new_products_sold.map((p: any, idx: number) => (
-                                        <div key={idx} className="flex justify-between items-center bg-blue-50/50 p-3 rounded-xl border border-blue-100/30">
-                                          <span className="text-[11px] font-bold text-slate-700 truncate max-w-[180px]">{p.name}</span>
-                                          <span className="text-[11px] font-black text-blue-600 tracking-tighter">
-                                            $0 → {formatCompact(p.revenue)}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                {(!data.payload?.new_business?.new_clients?.length && !data.payload?.new_business?.new_products_sold?.length) && (
-                                  <p className="text-xs font-bold text-slate-400 italic">No new business sources detected in this period.</p>
-                                )}
+                                  ))}
+                                </div>
                               </div>
-                            ) : (
-                              <p className={`text-[13px] leading-relaxed whitespace-pre-line ${sec.id === 1 ? 'font-bold' : 'font-medium opacity-80'}`}>
-                                {content}
-                              </p>
+                            )}
+                            {data.payload?.new_business?.new_products_sold?.length > 0 && (
+                              <div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">New Products Sold</p>
+                                <div className="space-y-2">
+                                  {data.payload.new_business.new_products_sold.map((p: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between items-center bg-blue-50/50 p-3 rounded-xl border border-blue-100/30">
+                                      <span className="text-[11px] font-bold text-slate-700 truncate max-w-[180px]">{p.name}</span>
+                                      <span className="text-[11px] font-black text-blue-600 tracking-tighter">
+                                        $0 → {formatCompact(p.revenue)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {(!data.payload?.new_business?.new_clients?.length && !data.payload?.new_business?.new_products_sold?.length) && (
+                              <p className="text-xs font-bold text-slate-400 italic">No new business detected.</p>
                             )}
                           </div>
                         </div>
-                      );
-                    });
-
-                    // FALLBACK: If nothing was parsed except maybe New Business, show the full raw report
-                    const hasInsights = renderedSections.some((s, i) => s !== null && i < 3);
-                    if (!hasInsights && text) {
-                       return (
-                          <>
-                             <div className="p-10 rounded-[2.5rem] border border-slate-100 bg-white text-slate-600 shadow-sm">
-                                <div className="flex items-center gap-3 mb-6 opacity-50">
-                                   <Lightbulb className="w-4 h-4" />
-                                   <span className="text-[10px] font-black uppercase tracking-[0.3em]">Full Analytical Report</span>
-                                </div>
-                                <p className="text-[14px] font-medium leading-relaxed whitespace-pre-line text-slate-700">
-                                   {text.replace(/[#*]/g, '').trim()}
-                                </p>
-                             </div>
-                             {renderedSections[3]} {/* Still show New Business shelf if it exists */}
-                          </>
-                       );
-                    }
-
-                    return renderedSections;
+                      </>
+                    );
                   })()}
-                </div>
-              </div>
-
-              {/* Meta Stats Shelf */}
-              <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 shadow-inner space-y-6">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                  <LayoutGrid className="w-3 h-3" /> Intensity Dashboard
-                </p>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Growth Concentration</p>
-                    <p className="text-2xl font-black text-[#0C0C0C] italic tracking-tighter">
-                      {(data.payload?.analysis_metadata?.positive_concentration * 100).toFixed(0)}%
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Systemic Trend</p>
-                    <p className={`text-2xl font-black tracking-tighter ${data.payload?.analysis_metadata?.is_systemic_trend ? 'text-blue-600' : 'text-slate-400'}`}>
-                      {data.payload?.analysis_metadata?.is_systemic_trend ? 'TRUE' : 'FALSE'}
-                    </p>
-                  </div>
                 </div>
               </div>
             </>
