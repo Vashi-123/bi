@@ -122,7 +122,10 @@ export function ChartSection({
                                             data={data} 
                                             barCategoryGap={barCategoryGap} 
                                             margin={{ top: 30, right: 30, left: 0, bottom: 40 }}
-                                            onClick={handleChartClick}
+                                            onClick={(state) => {
+                                                // Fallback for clicking outside bars
+                                                if (!state || !state.activePayload) setPinnedPoint(null);
+                                            }}
                                         >
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <XAxis 
@@ -140,13 +143,11 @@ export function ChartSection({
                                                 wrapperStyle={{ pointerEvents: 'auto', zIndex: 1000 }}
                                                 cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12 }}
                                                 content={(props) => {
-                                                    // Use pinned props if available, otherwise use live props
                                                     const finalProps = pinnedPoint ? { ...props, active: true, payload: pinnedPoint.payload, label: pinnedPoint.label } : props;
                                                     const { active, payload, label } = finalProps;
 
                                                     if (!active || !payload || payload.length === 0) return null;
 
-                                                    // If we have a custom tooltip (with AI button), use it!
                                                     if (customTooltip) {
                                                         const React = require('react');
                                                         return (
@@ -164,7 +165,6 @@ export function ChartSection({
                                                         );
                                                     }
                                                     
-                                                    // Fallback to standard tooltip logic
                                                     const growth = payload[0].payload.growth;
                                                     const total = payload[0].payload.total;
                                                     return (
@@ -223,6 +223,12 @@ export function ChartSection({
                                                     isAnimationActive={true}
                                                     stroke="#fff"
                                                     strokeWidth={2}
+                                                    style={{ cursor: 'pointer' }}
+                                                    onClick={(data, index, e) => {
+                                                        // Prevent propagation to chart onClick
+                                                        if (e) e.stopPropagation();
+                                                        handleChartClick(data);
+                                                    }}
                                                 />
                                             ))}
                                             <Line 
@@ -286,7 +292,9 @@ export function ChartSection({
                                                     data={data} 
                                                     barCategoryGap={barCategoryGap} 
                                                     margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
-                                                    onClick={handleChartClick}
+                                                    onClick={(state) => {
+                                                        if (!state || !state.activePayload) setPinnedPoint(null);
+                                                    }}
                                                 >
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                                     <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 700 }} />
@@ -349,6 +357,11 @@ export function ChartSection({
                                                         fill={category === 'Other' ? '#0C0C0C' : getColor(i, categories.length)} 
                                                         radius={[4, 4, 0, 0]} 
                                                         isAnimationActive={true}
+                                                        style={{ cursor: 'pointer' }}
+                                                        onClick={(data, index, e) => {
+                                                            if (e) e.stopPropagation();
+                                                            handleChartClick(data);
+                                                        }}
                                                     />
                                                     <Line 
                                                         type="monotone" 
