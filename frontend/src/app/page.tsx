@@ -255,7 +255,7 @@ export default function Dashboard() {
           <Flex justifyContent="between" className="mb-12">
              <div className="flex items-center gap-5">
                 <div className="w-14 h-14 bg-[#0C0C0C] rounded-[1.25rem] shadow-2xl flex items-center justify-center">
-                   <div className="w-5 h-5 bg-[#DDFF55] rounded-full animate-pulse" />
+                   <Zap className="w-6 h-6 text-[#DDFF55]" />
                 </div>
                 <div>
                    <h2 className="text-3xl font-black text-[#0C0C0C] italic uppercase tracking-tighter leading-none">AI <span className="text-slate-300">Analyst</span></h2>
@@ -342,7 +342,7 @@ export default function Dashboard() {
 
                                       {sec.key === 'Drivers' ? (
                                          <div className="space-y-4">
-                                            {content.split('\n').filter(l => l.trim()).map((item, idx) => {
+                                            {content.split('\n').filter((l: string) => l.trim()).map((item: string, idx: number) => {
                                                const isBullet = item.trim().startsWith('-');
                                                const text = item.trim().replace(/^-/, '').trim();
                                                
