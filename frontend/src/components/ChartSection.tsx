@@ -161,7 +161,7 @@ export function ChartSection({
                                             <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} style={{ pointerEvents: 'none' }} />
                                             <ReTooltip 
                                                 active={pinnedPoint ? true : undefined}
-                                                position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 120 } : undefined}
+                                                position={pinnedPoint ? { x: pinnedPoint.x, y: Math.max(20, Math.min(pinnedPoint.y - 120, 180)) } : undefined}
                                                 wrapperStyle={{ 
                                                     pointerEvents: pinnedPoint ? 'auto' : 'none', 
                                                     zIndex: 1000 
@@ -189,7 +189,7 @@ export function ChartSection({
                                                     const growth = displayPayload[0].payload.growth;
                                                     const total = displayPayload[0].payload.total;
                                                     return (
-                                                        <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[320px] z-[100] relative">
+                                                        <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[320px] max-h-[400px] overflow-y-auto z-[100] relative scrollbar-hide">
                                                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{displayLabel}</p>
                                                             <div className="space-y-4 mb-5">
                                                                 {displayPayload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
@@ -314,7 +314,7 @@ export function ChartSection({
                                                     <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} style={{ pointerEvents: 'none' }} />
                                                     <ReTooltip 
                                                         active={pinnedPoint ? true : undefined}
-                                                        position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 120 } : undefined}
+                                                        position={pinnedPoint ? { x: pinnedPoint.x, y: Math.max(10, Math.min(pinnedPoint.y - 100, 100)) } : undefined}
                                                         wrapperStyle={{ 
                                                             pointerEvents: pinnedPoint ? 'auto' : 'none', 
                                                             zIndex: 1000 
@@ -341,7 +341,7 @@ export function ChartSection({
                                                             const catGrowth = entry.payload.categoryGrowth?.[category];
                                                             const color = category === 'Other' ? '#0C0C0C' : getColor(i, categories.length);
                                                             return (
-                                                                <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[280px] z-[100] relative">
+                                                                <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[280px] max-h-[300px] overflow-y-auto z-[100] relative scrollbar-hide">
                                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{displayLabel}</p>
                                                                     <div className="flex justify-between items-center gap-6">
                                                                         <div className="flex items-center gap-3">

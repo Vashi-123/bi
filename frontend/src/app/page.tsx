@@ -198,8 +198,8 @@ export default function Dashboard() {
     if (e) {
       const clickX = e.clientX;
       const screenWidth = window.innerWidth;
-      // If click is on the right half, open sidebar on the left, and vice versa
-      setAiSidebarSide(clickX > screenWidth / 2 ? 'left' : 'right');
+      // Use ratio for more robust detection on different zooms/screens
+      setAiSidebarSide((clickX / screenWidth) > 0.5 ? 'left' : 'right');
     } else {
       setAiSidebarSide('right');
     }
