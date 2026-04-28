@@ -1,0 +1,94 @@
+{
+  "monitored_skus": [
+    {
+      "id": "6552",
+      "name": "ARC Raiders",
+      "group": "PBD Global"
+    },
+    {
+      "id": "6681",
+      "name": "ARC Raiders Deluxe Edition",
+      "group": "PBD Global"
+    },
+    {
+      "id": "7641",
+      "name": "Resident Evil Requiem - Deluxe Kit",
+      "group": "PBD Global"
+    },
+    {
+      "id": "7384",
+      "name": "Resident Evil Requiem",
+      "group": "PBD Global"
+    },
+    {
+      "id": "7385",
+      "name": "Resident Evil Requiem Deluxe Edition",
+      "group": "PBD Global"
+    },
+    {
+      "id": "7475",
+      "name": "Marathon",
+      "group": "PBD Global"
+    },
+    {
+      "id": "7476",
+      "name": "Marathon Deluxe Edition",
+      "group": "PBD Global"
+    },
+    {
+      "id": "7574",
+      "name": "PRAGMATA",
+      "group": "PBD Global"
+    },
+    {
+      "id": "7575",
+      "name": "PRAGMATA Deluxe Edition",
+      "group": "PBD Global"
+    },
+    {
+      "id": "7624",
+      "name": "Crimson Desert Deluxe Edition",
+      "group": "PBD Global"
+    }
+  ],
+  "authorized_users": [
+    {
+      "id": "198799905",
+      "name": "Usman"
+    },
+    {
+      "id": "6150658676",
+      "name": "Aslambek",
+      "access": "all"
+    },
+    {
+      "id": "2137263208",
+      "name": "Timur",
+      "access": "view"
+    },
+    {
+      "id": "8513763454",
+      "name": "Usman Giftery",
+      "access": "all"
+    },
+    {
+      "id": "6658018367",
+      "name": "Manager Giftery",
+      "access": "all"
+    }
+  ],
+  "notification_recipients": [
+    {
+      "id": "198799905",
+      "name": "Usman"
+    },
+    {
+      "id": "6150658676",
+      "name": "Aslambek"
+    },
+    {
+      "id": "6658018367",
+      "name": "Manager Giftery"
+    }
+  ]
+}

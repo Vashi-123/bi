@@ -10,6 +10,17 @@ import os
 import sys
 from dotenv import load_dotenv
 
+# Путь к модулю синхронизации
+SYNC_PATH = "/home/usman/miniapps/backend"
+if SYNC_PATH not in sys.path:
+    sys.path.append(SYNC_PATH)
+
+try:
+    import sync_settings
+except ImportError:
+    sync_settings = None
+    logger.error("⚠️ Предупреждение: Модуль sync_settings не найден в /home/usman/miniapps/backend")
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -266,6 +277,9 @@ async def save_stock_setting(request: Request, category: str = Query(default='mo
             data[category].append(item)
             
         if database.save_stock_settings(data):
+            if sync_settings:
+                try: sync_settings.sync()
+                except: pass
             return {"status": "ok"}
         else:
             return JSONResponse(status_code=500, content={"error": "Failed to save settings"})
@@ -279,6 +293,9 @@ def delete_stock_setting(item_id: str, category: str = Query(default='monitored_
     if category in data:
         data[category] = [i for i in data[category] if str(i.get("id")) != item_id]
         if database.save_stock_settings(data):
+            if sync_settings:
+                try: sync_settings.sync()
+                except: pass
             return {"status": "ok"}
     return JSONResponse(status_code=404, content={"error": "Item not found"})
 
@@ -309,6 +326,12 @@ async def save_stock_settings_bulk(request: Request, category: str = Query(defau
                 existing_map[item_id] = len(data[category]) - 1
             
         if database.save_stock_settings(data):
+            # Принудительная синхронизация с Supabase
+            if sync_settings:
+                try:
+                    sync_settings.sync()
+                except Exception as sync_err:
+                    logger.error(f"Sync error: {sync_err}")
             return {"status": "ok", "count": len(items)}
         else:
             return JSONResponse(status_code=500, content={"error": "Failed to save settings"})
@@ -357,35 +380,36 @@ async def analyze_period(
         try:
             from openai import OpenAI
             client = OpenAI(api_key=api_key)
-
             prompt = f"""
-            You are a Senior Business Intelligence Analyst. Analyze the following JSON data representing sales performance between two periods (Period B is target, Period A is baseline).
+            Ты — финансовый аналитик. Твоя задача: превратить JSON в краткий отчет для CEO.
             
-            SCENARIO RULES:
-            - HIDDEN_ROTATION: Net delta is small, but there are large shifts between clients.
-            - SIGNIFICANT_DROP/GROWTH: Clear trend in one direction.
-            - FLAT_SYSTEMIC: Nothing is happening, stagnation.
-            
-            CONCENTRATION RULES:
-            - is_systemic_trend = true: The trend is spread across many clients. Don't blame specific ones.
-            - is_systemic_trend = false: The trend is driven by the Top 5 clients listed.
-            
-            DATA:
+            СТРОГИЕ ПРАВИЛА:
+            1. ПИШИ ТОЛЬКО ДВА РАЗДЕЛА: **Суть** и **Drivers**.
+            2. НЕ ИСПОЛЬЗУЙ СИМВОЛ '#' (никаких решеток!).
+            3. НЕ ИСПОЛЬЗУЙ СЛОВА: "Исполнительное резюме", "Основные драйверы", "выигравшие/проигравшие клиенты", "SIGNIFICANT_GROWTH".
+            4. В разделе **Drivers** пиши список: "- Имя клиента: что именно произошло (продукты)".
+            5. Будь максимально кратким. Сухие факты.
+
+            ДАННЫЕ ДЛЯ АНАЛИЗА:
             {json.dumps(payload, indent=2)}
-            
-            TASK:
-            1. Write a 2-sentence Executive Summary (What happened?).
-            2. Explain the Scenario ({payload['scenario']}).
-            3. Highlight the primary drivers (Top Gainers/Decliners and their products).
-            4. Suggest 2-3 specific business actions.
-            
-            Format: Use clean Markdown. Keep it professional, concise, and direct. Language: Russian.
+
+            ПРИМЕР ОЖИДАЕМОГО ОТВЕТА (ПИШИ ТОЧНО ТАК):
+            **Суть:** Рост выручки обеспечен активностью трех топ-клиентов, остальная база стабильна.
+            **Drivers:**
+            - Client A: рост за счет продукта X.
+            - Client B: падение из-за отказа от продукта Y.
+            - Остальной рынок: средний рост 2%.
+
+            НАЧНИ ОТВЕТ С **Суть:**
             """
             
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "You are a professional BI assistant specialized in gift card and voucher sales analytics."},
+                    {
+                        "role": "system", 
+                        "content": "Ты — финансовый аналитик. Твой стиль: сухой, жесткий, краткий. НИКАКИХ СИМВОЛОВ '#' ИЛИ '##'. Только два раздела: **Суть** и **Drivers**. Никогда не пиши 'Исполнительное резюме' или 'Основные драйверы'."
+                    },
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3
@@ -400,7 +424,7 @@ async def analyze_period(
                 "debug": {
                     "prompt": prompt,
                     "tokens": token_estimate,
-                    "model": "gpt-4o-mini"
+                    "model": "gpt-4o"
                 },
                 "status": "complete"
             }
