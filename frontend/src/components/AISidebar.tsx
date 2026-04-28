@@ -20,23 +20,26 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
 
   return (
     <div className={`fixed inset-y-0 right-0 z-[1001] w-full md:w-[500px] bg-white border-l border-slate-200 shadow-[-20px_0_60px_rgba(0,0,0,0.05)] transform transition-transform duration-500 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-      <div className="h-full flex flex-col p-12">
-        <Flex justifyContent="between" className="mb-12">
-          <div className="flex items-center gap-5">
-            <div className="w-14 h-14 bg-[#0C0C0C] rounded-[1.25rem] shadow-2xl flex items-center justify-center">
+    <div className={`fixed top-0 right-0 h-full w-[480px] bg-white shadow-2xl z-[150] transition-transform duration-500 ease-in-out border-l border-slate-200 flex flex-col rounded-l-3xl overflow-hidden ${
+        isOpen ? "translate-x-0" : "translate-x-full"
+      }`}>
+        {/* Header */}
+        <Flex className="p-8 border-b border-slate-100 bg-white shrink-0" justifyContent="between" alignItems="center">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-[#0C0C0C] rounded-2xl flex items-center justify-center">
               <Zap className="w-6 h-6 text-[#DDFF55]" />
             </div>
             <div>
-              <h2 className="text-3xl font-black text-[#0C0C0C] italic uppercase tracking-tighter leading-none">AI <span className="text-slate-300">Analyst</span></h2>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Business Intelligence v2.0</p>
+              <Title className="text-xl font-black text-[#0C0C0C] tracking-tight uppercase">Analytical Window</Title>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Data-Driven Market Intelligence</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-slate-50 rounded-2xl text-slate-300 hover:text-rose-500 transition-all">
-            <XCircle className="w-10 h-10" />
+          <button onClick={onClose} className="p-3 hover:bg-slate-50 rounded-2xl transition-all text-slate-400 hover:text-[#0C0C0C] border border-slate-100 shadow-sm">
+            <X className="w-5 h-5" />
           </button>
         </Flex>
-
-        <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-hide">
+ 
+        <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide bg-slate-50/30">
           {isLoading ? (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
               <div className="w-20 h-20 border-4 border-slate-100 border-t-[#0C0C0C] rounded-full animate-spin shadow-inner" />
@@ -47,41 +50,41 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
             </div>
           ) : data ? (
             <>
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {(() => {
                     return (
                       <>
-                        {/* SHELF 1: KEY CLIENTS (SIGNIFICANCE > 15%) */}
-                        <div className="p-6 rounded-2xl border bg-white border-slate-100 text-slate-600 shadow-sm transition-all hover:shadow-lg duration-500">
-                          <div className="flex items-center gap-4 mb-6 opacity-90">
-                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                              <UserPlus className="w-4 h-4 text-emerald-500" />
+                        {/* SHELF 1: KEY CLIENTS */}
+                        <div className="space-y-6">
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="p-2.5 rounded-2xl bg-[#0C0C0C] text-white shadow-lg">
+                              <UserPlus className="w-5 h-5" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Key Market Drivers (Significance {'>'} 15%)</span>
+                            <span className="text-xs font-black uppercase tracking-[0.2em] text-[#0C0C0C]">Key Market Drivers</span>
                           </div>
                           
-                          <div className="space-y-8">
+                          <div className="space-y-6">
                              {/* Gainers */}
                              {data.payload?.drivers?.top_gainers?.length > 0 && (
-                                <div>
-                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                      <TrendingUp className="w-3 h-3 text-emerald-500" /> Key Growth Drivers
+                                <div className="space-y-4">
+                                   <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 px-1">
+                                      <TrendingUp className="w-4 h-4" /> Growth Engine
                                    </p>
                                    <div className="space-y-4">
                                       {data.payload.drivers.top_gainers.map((c: any, idx: number) => (
-                                         <div key={idx} className="bg-emerald-50/20 p-5 rounded-2xl border border-emerald-100/30">
-                                            <div className="flex justify-between items-start mb-3">
-                                               <div className="flex flex-col">
-                                                  <span className="text-[12px] font-black text-slate-800 uppercase leading-none mb-1">{c.client}</span>
-                                                  <span className="text-[9px] font-bold text-slate-400">WAS: {formatCompact(c.rev_a)} → NOW: {formatCompact(c.rev_b)}</span>
+                                         <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                                            <div className="flex justify-between items-start mb-4">
+                                               <div className="flex flex-col gap-1">
+                                                  <span className="text-[13px] font-black text-slate-900 uppercase leading-tight tracking-tight">{c.client}</span>
+                                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">WAS: {formatCompact(c.rev_a)} → NOW: {formatCompact(c.rev_b)}</span>
                                                </div>
-                                               <span className="text-[12px] font-black text-emerald-600">+{formatCompact(c.delta)}</span>
+                                               <span className="text-base font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl">+{formatCompact(c.delta)}</span>
                                             </div>
-                                            <div className="space-y-2 border-t border-emerald-100/30 pt-3">
+                                            <div className="space-y-2.5 border-t border-slate-100 pt-4">
                                                {c.products?.map((p: any, pi: number) => (
-                                                  <div key={pi} className={`flex justify-between items-center text-[10px] ${p.is_summary ? 'italic text-slate-400 mt-1' : ''}`}>
-                                                     <span className="font-bold truncate max-w-[200px]">{p.name}</span>
-                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-slate-400' : 'text-emerald-600/80'}`}>
+                                                  <div key={pi} className={`flex justify-between items-center text-[11px] ${p.is_summary ? 'italic text-slate-400 mt-2' : 'text-slate-600'}`}>
+                                                     <span className="font-bold truncate max-w-[240px]">{p.name}</span>
+                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-slate-400' : 'text-slate-900'}`}>
                                                         {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
                                                      </span>
                                                   </div>
@@ -95,25 +98,25 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
 
                              {/* Decliners */}
                              {data.payload?.drivers?.top_decliners?.length > 0 && (
-                                <div>
-                                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                      <TrendingDown className="w-3 h-3 text-rose-500" /> Key Decline Drivers
+                                <div className="space-y-4">
+                                   <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-2 px-1">
+                                      <TrendingDown className="w-4 h-4" /> Performance Declines
                                    </p>
                                    <div className="space-y-4">
                                       {data.payload.drivers.top_decliners.map((c: any, idx: number) => (
-                                         <div key={idx} className="bg-rose-50/20 p-5 rounded-2xl border border-rose-100/30">
-                                            <div className="flex justify-between items-start mb-3">
-                                               <div className="flex flex-col">
-                                                  <span className="text-[12px] font-black text-slate-800 uppercase leading-none mb-1">{c.client}</span>
-                                                  <span className="text-[9px] font-bold text-slate-400">WAS: {formatCompact(c.rev_a)} → NOW: {formatCompact(c.rev_b)}</span>
+                                         <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                                            <div className="flex justify-between items-start mb-4">
+                                               <div className="flex flex-col gap-1">
+                                                  <span className="text-[13px] font-black text-slate-900 uppercase leading-tight tracking-tight">{c.client}</span>
+                                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">WAS: {formatCompact(c.rev_a)} → NOW: {formatCompact(c.rev_b)}</span>
                                                </div>
-                                               <span className="text-[12px] font-black text-rose-600">{formatCompact(c.delta)}</span>
+                                               <span className="text-base font-black text-rose-600 bg-rose-50 px-3 py-1 rounded-xl">{formatCompact(c.delta)}</span>
                                             </div>
-                                            <div className="space-y-2 border-t border-rose-100/30 pt-3">
+                                            <div className="space-y-2.5 border-t border-slate-100 pt-4">
                                                {c.products?.map((p: any, pi: number) => (
-                                                  <div key={pi} className={`flex justify-between items-center text-[10px] ${p.is_summary ? 'italic text-slate-400 mt-1' : ''}`}>
-                                                     <span className="font-bold truncate max-w-[200px]">{p.name}</span>
-                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-slate-400' : 'text-rose-600/80'}`}>
+                                                  <div key={pi} className={`flex justify-between items-center text-[11px] ${p.is_summary ? 'italic text-slate-400 mt-2' : 'text-slate-600'}`}>
+                                                     <span className="font-bold truncate max-w-[240px]">{p.name}</span>
+                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-slate-400' : 'text-slate-900'}`}>
                                                         {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
                                                      </span>
                                                   </div>
@@ -127,62 +130,62 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                           </div>
                         </div>
 
-                        {/* SHELF 2: PRODUCT HEALTH (SIGNIFICANCE > 15%) */}
-                        <div className="p-6 rounded-2xl border bg-white border-slate-100 text-slate-600 shadow-sm transition-all hover:shadow-lg duration-500">
-                          <div className="flex items-center gap-4 mb-6 opacity-90">
-                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                              <Package className="w-4 h-4 text-blue-500" />
+                        {/* SHELF 2: PRODUCT HEALTH */}
+                        <div className="space-y-6 pt-4">
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="p-2.5 rounded-2xl bg-[#0C0C0C] text-white shadow-lg">
+                              <Package className="w-5 h-5" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Global Product Trends</span>
+                            <span className="text-xs font-black uppercase tracking-[0.2em] text-[#0C0C0C]">Market-Wide Trends</span>
                           </div>
                           
-                          <div className="space-y-4">
+                          <div className="grid grid-cols-1 gap-4">
                              {data.payload?.global_product_health?.top_gainers?.map((p: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-center bg-blue-50/30 p-4 rounded-2xl border border-blue-100/20">
-                                   <div className="flex flex-col">
-                                      <span className="text-[11px] font-bold text-slate-700 truncate max-w-[200px]">{p.product}</span>
-                                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">WAS: {formatCompact(p.rev_a)}</span>
+                                <div key={idx} className="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                   <div className="flex flex-col gap-1">
+                                      <span className="text-[12px] font-black text-slate-900 truncate max-w-[260px] uppercase tracking-tight">{p.product}</span>
+                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">WAS: {formatCompact(p.rev_a)}</span>
                                    </div>
                                    <div className="text-right">
-                                      <span className="text-[11px] font-black text-emerald-600 block">{formatCompact(p.rev_b)}</span>
-                                      <span className="text-[9px] font-bold text-emerald-600/60">+{((p.delta / (p.rev_a || 1)) * 100).toFixed(1)}%</span>
+                                      <span className="text-[13px] font-black text-emerald-600 block">{formatCompact(p.rev_b)}</span>
+                                      <span className="text-[10px] font-black text-emerald-600/60 uppercase">+{((p.delta / (p.rev_a || 1)) * 100).toFixed(1)}%</span>
                                    </div>
                                 </div>
                              ))}
                              {data.payload?.global_product_health?.top_decliners?.map((p: any, idx: number) => (
-                                <div key={idx} className="flex justify-between items-center bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50">
-                                   <div className="flex flex-col">
-                                      <span className="text-[11px] font-bold text-slate-500 truncate max-w-[200px]">{p.product}</span>
-                                      <span className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">WAS: {formatCompact(p.rev_a)}</span>
+                                <div key={idx} className="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                   <div className="flex flex-col gap-1">
+                                      <span className="text-[12px] font-black text-slate-500 truncate max-w-[260px] uppercase tracking-tight">{p.product}</span>
+                                      <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">WAS: {formatCompact(p.rev_a)}</span>
                                    </div>
                                    <div className="text-right">
-                                      <span className="text-[11px] font-black text-rose-600 block">{formatCompact(p.rev_b)}</span>
-                                      <span className="text-[9px] font-bold text-rose-600/60">{((p.delta / (p.rev_a || 1)) * 100).toFixed(1)}%</span>
+                                      <span className="text-[13px] font-black text-rose-600 block">{formatCompact(p.rev_b)}</span>
+                                      <span className="text-[10px] font-black text-rose-600/60 uppercase">{((p.delta / (p.rev_a || 1)) * 100).toFixed(1)}%</span>
                                    </div>
                                 </div>
                              ))}
                           </div>
                         </div>
 
-                        {/* SHELF 3: NEW BUSINESS (DATA DRIVEN) */}
-                        <div className="p-6 rounded-2xl border bg-white border-slate-100 text-slate-600 shadow-sm transition-all hover:shadow-lg duration-500">
-                          <div className="flex items-center gap-4 mb-6 opacity-90">
-                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                              <Target className="w-4 h-4 text-[#FF843B]" />
+                        {/* SHELF 3: NEW BUSINESS */}
+                        <div className="space-y-6 pt-4">
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="p-2.5 rounded-2xl bg-[#0C0C0C] text-white shadow-lg">
+                              <Target className="w-5 h-5" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em]">New Business</span>
+                            <span className="text-xs font-black uppercase tracking-[0.2em] text-[#0C0C0C]">New Business Entries</span>
                           </div>
                           
                           <div className="space-y-6">
                             {data.payload?.new_business?.new_clients?.length > 0 && (
-                              <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">First-Time Clients</p>
-                                <div className="space-y-2">
+                              <div className="space-y-3">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">First-Time Partnerships</p>
+                                <div className="grid grid-cols-1 gap-3">
                                   {data.payload.new_business.new_clients.map((c: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center bg-emerald-50/50 p-4 rounded-xl border border-emerald-100/30">
-                                      <span className="text-[11px] font-black text-slate-700 uppercase">{c.name}</span>
-                                      <span className="text-[11px] font-black text-emerald-600 tracking-tighter">
-                                        $0 → {formatCompact(c.rev_b)}
+                                    <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                      <span className="text-[12px] font-black text-slate-900 uppercase tracking-tight">{c.name}</span>
+                                      <span className="text-[12px] font-black text-emerald-600 tracking-tighter bg-emerald-50 px-2 py-1 rounded-lg">
+                                        NEW → {formatCompact(c.rev_b)}
                                       </span>
                                     </div>
                                   ))}
@@ -190,14 +193,14 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                               </div>
                             )}
                             {data.payload?.new_business?.new_products_sold?.length > 0 && (
-                              <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">New Products Sold</p>
-                                <div className="space-y-2">
+                              <div className="space-y-3">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Newly Added Inventory</p>
+                                <div className="grid grid-cols-1 gap-3">
                                   {data.payload.new_business.new_products_sold.map((p: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center bg-blue-50/50 p-4 rounded-xl border border-blue-100/30">
-                                      <span className="text-[11px] font-black text-slate-700 truncate max-w-[200px] uppercase">{p.name}</span>
-                                      <span className="text-[11px] font-black text-blue-600 tracking-tighter">
-                                        $0 → {formatCompact(p.rev_b)}
+                                    <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                      <span className="text-[12px] font-black text-slate-900 truncate max-w-[260px] uppercase tracking-tight">{p.name}</span>
+                                      <span className="text-[12px] font-black text-blue-600 tracking-tighter bg-blue-50 px-2 py-1 rounded-lg">
+                                        NEW → {formatCompact(p.rev_b)}
                                       </span>
                                     </div>
                                   ))}
@@ -207,25 +210,25 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                           </div>
                         </div>
 
-                        {/* SHELF 4: CHURN & OUT OF STOCK */}
-                        <div className="p-6 rounded-2xl border bg-white border-slate-100 text-slate-600 shadow-sm transition-all hover:shadow-lg duration-500">
-                          <div className="flex items-center gap-4 mb-6 opacity-90">
-                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
-                              <TrendingDown className="w-4 h-4 text-rose-500" />
+                        {/* SHELF 4: CHURN */}
+                        <div className="space-y-6 pt-4">
+                          <div className="flex items-center gap-4 mb-4">
+                            <div className="p-2.5 rounded-2xl bg-rose-600 text-white shadow-lg">
+                              <TrendingDown className="w-5 h-5" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.3em]">Churn & Out of Stock</span>
+                            <span className="text-xs font-black uppercase tracking-[0.2em] text-rose-600">Churn & Inactivity</span>
                           </div>
                           
                           <div className="space-y-6">
                             {data.payload?.churn?.churned_clients?.length > 0 && (
-                              <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Stopped Buying</p>
-                                <div className="space-y-2">
+                              <div className="space-y-3">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lost Counterparties</p>
+                                <div className="grid grid-cols-1 gap-3">
                                   {data.payload.churn.churned_clients.map((c: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center bg-rose-50/50 p-4 rounded-xl border border-rose-100/30">
-                                      <span className="text-[11px] font-black text-slate-700 uppercase">{c.name}</span>
-                                      <span className="text-[11px] font-black text-rose-600 tracking-tighter">
-                                        {formatCompact(c.rev_a)} → $0
+                                    <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                      <span className="text-[12px] font-black text-slate-900 uppercase tracking-tight">{c.name}</span>
+                                      <span className="text-[12px] font-black text-rose-600 tracking-tighter bg-rose-50 px-2 py-1 rounded-lg">
+                                        {formatCompact(c.rev_a)} → LOST
                                       </span>
                                     </div>
                                   ))}
@@ -233,13 +236,13 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                               </div>
                             )}
                             {data.payload?.churn?.churned_products?.length > 0 && (
-                              <div>
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Dropped SKU</p>
-                                <div className="space-y-2">
+                              <div className="space-y-3">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Discontinued SKUs</p>
+                                <div className="grid grid-cols-1 gap-3">
                                   {data.payload.churn.churned_products.map((p: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between items-center bg-slate-50/50 p-4 rounded-xl border border-slate-100/50">
-                                      <span className="text-[11px] font-black text-slate-500 truncate max-w-[200px] uppercase">{p.name}</span>
-                                      <span className="text-[11px] font-black text-rose-400 tracking-tighter">
+                                    <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                      <span className="text-[12px] font-black text-slate-400 truncate max-w-[260px] uppercase tracking-tight">{p.name}</span>
+                                      <span className="text-[12px] font-black text-rose-400 tracking-tighter border border-rose-100 px-2 py-1 rounded-lg">
                                         {formatCompact(p.rev_a)} → $0
                                       </span>
                                     </div>
@@ -253,12 +256,12 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                     );
                   })()}
                 </div>
+         </div>
             </>
           ) : (
             <div className="text-center py-20 text-slate-600 font-bold uppercase text-xs">No analysis data</div>
           )}
         </div>
-      </div>
     </div>
   );
 };
