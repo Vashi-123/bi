@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Flex } from '@tremor/react';
 import { 
     ComposedChart, Bar, Line, XAxis, YAxis, Tooltip as ReTooltip, 
@@ -25,17 +25,37 @@ export function ChartSection({
     activeFilters = {},
     customTooltip = null
 }: any) {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const [pinnedPoint, setPinnedPoint] = useState<any>(null);
     
     const isStatusFiltered = activeFilters.status && activeFilters.status.length > 0 && activeFilters.status[0] !== '';
     const canFilterByStatus = ['Product name', 'Item name', 'counterparty'].includes(legendDimension);
     const showStatusWarning = isStatusFiltered && !canFilterByStatus;
+
+    // Reset pinned point when data changes
+    useEffect(() => {
+        setPinnedPoint(null);
+    }, [data, categories, legendDimension]);
 
     useEffect(() => {
         if (containerRef.current) {
             containerRef.current.scrollLeft = containerRef.current.scrollWidth;
         }
     }, [data]);
+
+    const handleChartClick = (state: any) => {
+        if (state && state.activePayload) {
+            // Pin the current hovered point
+            setPinnedPoint({
+                payload: state.activePayload,
+                label: state.activeLabel,
+                x: state.chartX,
+                y: state.chartY
+            });
+        } else {
+            // Unpin if clicked on empty area
+            setPinnedPoint(null);
+        }
+    };
 
     return (
         <div className="space-y-6 relative">
@@ -97,7 +117,12 @@ export function ChartSection({
                                 {/* Scrollable Chart Content */}
                                 <div style={{ minWidth: `${Math.max(800, data.length * minColWidth)}px` }} className="flex-1 h-[450px]">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <ComposedChart data={data} barCategoryGap={barCategoryGap} margin={{ top: 30, right: 30, left: 0, bottom: 40 }}>
+                                        <ComposedChart 
+                                            data={data} 
+                                            barCategoryGap={barCategoryGap} 
+                                            margin={{ top: 30, right: 30, left: 0, bottom: 40 }}
+                                            onClick={handleChartClick}
+                                        >
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <XAxis 
                                                 dataKey="time" 
@@ -109,16 +134,35 @@ export function ChartSection({
                                             <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
                                             <ReTooltip 
                                                 offset={0}
-                                                wrapperStyle={{ pointerEvents: 'auto' }}
-                                                cursor={{ fill: '#f8fafc', radius: 12 }}
+                                                active={pinnedPoint ? true : undefined}
+                                                payload={pinnedPoint ? pinnedPoint.payload : undefined}
+                                                label={pinnedPoint ? pinnedPoint.label : undefined}
+                                                position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 100 } : undefined}
+                                                wrapperStyle={{ pointerEvents: 'auto', zIndex: 1000 }}
+                                                cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12 }}
                                                 content={(props) => {
+                                                    // Use pinned props if available, otherwise use live props
+                                                    const finalProps = pinnedPoint ? { ...props, active: true, payload: pinnedPoint.payload, label: pinnedPoint.label } : props;
+                                                    const { active, payload, label } = finalProps;
+
+                                                    if (!active || !payload || payload.length === 0) return null;
+
                                                     // If we have a custom tooltip (with AI button), use it!
                                                     if (customTooltip) {
-                                                        const { active, payload, label } = props;
-                                                        if (active && payload && payload.length) {
-                                                            const React = require('react');
-                                                            return React.cloneElement(customTooltip, { active, payload, label });
-                                                        }
+                                                        const React = require('react');
+                                                        return (
+                                                            <div className="relative">
+                                                                {pinnedPoint && (
+                                                                    <button 
+                                                                        onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
+                                                                        className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
+                                                                    >
+                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                    </button>
+                                                                )}
+                                                                {React.cloneElement(customTooltip, { active, payload, label })}
+                                                            </div>
+                                                        );
                                                     }
                                                     
                                                     // Fallback to standard tooltip logic
@@ -233,32 +277,52 @@ export function ChartSection({
                                         {/* Scrollable Chart Content */}
                                         <div style={{ minWidth: `${Math.max(800, data.length * minColWidth)}px` }} className="flex-1 h-full">
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <ComposedChart data={data} barCategoryGap={barCategoryGap} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                                <ComposedChart 
+                                                    data={data} 
+                                                    barCategoryGap={barCategoryGap} 
+                                                    margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+                                                    onClick={handleChartClick}
+                                                >
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                                     <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 700 }} />
                                                     <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
                                                     <ReTooltip 
                                                         offset={0}
-                                                        wrapperStyle={{ pointerEvents: 'auto' }}
-                                                        cursor={{ fill: '#f8fafc', radius: 12 }}
+                                                        active={pinnedPoint ? true : undefined}
+                                                        payload={pinnedPoint ? pinnedPoint.payload : undefined}
+                                                        label={pinnedPoint ? pinnedPoint.label : undefined}
+                                                        position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 100 } : undefined}
+                                                        wrapperStyle={{ pointerEvents: 'auto', zIndex: 1000 }}
+                                                        cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12 }}
                                                         content={(props) => {
-                                                            if (customTooltip) {
-                                                                const { active, payload, label } = props;
-                                                                if (active && payload && payload.length) {
-                                                                    const React = require('react');
-                                                                    return React.cloneElement(customTooltip, { active, payload, label });
-                                                                }
-                                                                return null;
-                                                            }
-                                                            const { payload, active, label: timeLabel } = props;
+                                                            const finalProps = pinnedPoint ? { ...props, active: true, payload: pinnedPoint.payload, label: pinnedPoint.label } : props;
+                                                            const { active, payload, label } = finalProps;
+
                                                             if (!active || !payload || payload.length === 0) return null;
+
+                                                            if (customTooltip) {
+                                                                const React = require('react');
+                                                                return (
+                                                                    <div className="relative">
+                                                                        {pinnedPoint && (
+                                                                            <button 
+                                                                                onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
+                                                                                className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
+                                                                            >
+                                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                            </button>
+                                                                        )}
+                                                                        {React.cloneElement(customTooltip, { active, payload, label })}
+                                                                    </div>
+                                                                );
+                                                            }
                                                             const entry = payload.find(p => p.dataKey === category);
                                                             if (!entry) return null;
                                                             const catGrowth = entry.payload.categoryGrowth?.[category];
                                                             const color = category === 'Other' ? '#0C0C0C' : getColor(i, categories.length);
                                                             return (
                                                                 <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[280px] z-[100] relative">
-                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{timeLabel}</p>
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{label}</p>
                                                                     <div className="flex justify-between items-center gap-6">
                                                                         <div className="flex items-center gap-3">
                                                                             <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
