@@ -122,7 +122,7 @@ export function ChartSection({
                                             data={data} 
                                             barCategoryGap={barCategoryGap} 
                                             margin={{ top: 30, right: 30, left: 0, bottom: 40 }}
-                                            onClick={(state) => {
+                                            onClick={(state: any) => {
                                                 // Fallback for clicking outside bars
                                                 if (!state || !state.activePayload) setPinnedPoint(null);
                                             }}
@@ -292,7 +292,7 @@ export function ChartSection({
                                                     data={data} 
                                                     barCategoryGap={barCategoryGap} 
                                                     margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
-                                                    onClick={(state) => {
+                                                    onClick={(state: any) => {
                                                         if (!state || !state.activePayload) setPinnedPoint(null);
                                                     }}
                                                 >
