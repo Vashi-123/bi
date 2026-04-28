@@ -66,6 +66,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    logger.info("🚀 Starting up: Initializing database tables...")
+    try:
+        database.initialize_tables()
+        database.refresh_in_memory_data()
+        logger.info("✅ Database tables initialized successfully.")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize database on startup: {e}", exc_info=True)
+
 # Enable GZip compression
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
