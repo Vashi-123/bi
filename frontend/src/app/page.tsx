@@ -191,19 +191,8 @@ export default function Dashboard() {
   const [aiData, setAiData] = useState<any>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showAiSidebar, setShowAiSidebar] = useState(false);
-  const [aiSidebarSide, setAiSidebarSide] = useState<'left' | 'right'>('right');
   
-  const handleAIAnalysis = async (currentPoint: any, interval: 'day' | 'week' | 'month', e?: React.MouseEvent) => {
-    // Smart Side Detection
-    if (e) {
-      const clickX = e.clientX;
-      const screenWidth = window.innerWidth;
-      // Use ratio for more robust detection on different zooms/screens
-      setAiSidebarSide((clickX / screenWidth) > 0.5 ? 'left' : 'right');
-    } else {
-      setAiSidebarSide('right');
-    }
-
+  const handleAIAnalysis = async (currentPoint: any, interval: 'day' | 'week' | 'month') => {
     setIsAiLoading(true);
     setShowAiSidebar(true);
     setAiData(null);
@@ -262,16 +251,24 @@ export default function Dashboard() {
 
 
   // --- Custom Tooltip Content ---
-  const CustomTooltip = ({ active, payload, label, interval }: any) => {
+  const CustomTooltip = ({ active, payload, label, interval, coordinate, viewBox }: any) => {
     if (active && payload && payload.length) {
       const isCurrency = activeMetric !== 'qty' && activeMetric !== 'margin';
       const data = payload[0].payload;
       const growth = data.growth;
       const total = data.total;
 
+      // Smart alignment: if cursor is in the right 60% of the chart, flip tooltip to the left
+      const isRightSide = coordinate && viewBox && coordinate.x > (viewBox.width * 0.6);
+
       return (
         <div 
-          className="relative p-10 -m-10 pointer-events-auto group/tooltip"
+          className="relative p-10 -m-10 pointer-events-auto group/tooltip transition-all duration-300"
+          style={{ 
+            transform: isRightSide 
+              ? 'translateX(-100%) translateX(-40px)' 
+              : 'translateX(40px)' 
+          }}
           onMouseEnter={(e) => e.stopPropagation()}
         >
           <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[340px] z-[100] relative">
@@ -281,7 +278,7 @@ export default function Dashboard() {
                   onMouseDown={(e) => {
                      e.preventDefault();
                      e.stopPropagation();
-                     handleAIAnalysis(data, interval, e as any);
+                     handleAIAnalysis(data, interval);
                   }}
                   className="px-3 py-1 bg-[#0C0C0C] hover:bg-[#DDFF55] text-white hover:text-black rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-2 group shadow-sm shrink-0"
                >
@@ -405,7 +402,6 @@ export default function Dashboard() {
         onClose={() => setShowAiSidebar(false)} 
         isLoading={isAiLoading} 
         data={aiData} 
-        side={aiSidebarSide}
       />
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-[#E8ECEF] via-[#F8FAFC] to-[#FDF1D6] opacity-100" />
