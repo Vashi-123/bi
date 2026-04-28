@@ -25,6 +25,7 @@ export function ChartSection({
     activeFilters = {},
     customTooltip = null
 }: any) {
+    const containerRef = useRef<HTMLDivElement>(null);
     const [pinnedPoint, setPinnedPoint] = useState<any>(null);
     
     const isStatusFiltered = activeFilters.status && activeFilters.status.length > 0 && activeFilters.status[0] !== '';
