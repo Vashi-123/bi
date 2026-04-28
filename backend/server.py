@@ -375,35 +375,22 @@ async def analyze_period(
     Returns mathematical payload for data-driven analysis.
     """
     try:
-        # Get raw math data
+        # Get raw math data from database
         payload = database.get_period_ai_payload(start_a, end_a, start_b, end_b)
         if "error" in payload:
             return JSONResponse(status_code=400, content=payload)
 
-            
-            # Approximate token count (1 token ≈ 4 chars for English, ~2 for Russian/Complex)
-            token_estimate = len(prompt) // 3 
-
-            return {
-                "payload": payload,
-                "ai_summary": response.choices[0].message.content,
-                "debug": {
-                    "prompt": prompt,
-                    "tokens": token_estimate,
-                    "model": "gpt-4o"
-                },
-                "status": "complete"
-            }
-        except Exception as ai_err:
-            logger.error(f"OpenAI Generation failed: {ai_err}")
-            return {
-                "payload": payload,
-                "ai_summary": f"⚠️ OpenAI Error: {str(ai_err)}",
-                "status": "partial"
-            }
-
+        return {
+            "payload": payload,
+            "ai_summary": None,
+            "status": "complete"
+        }
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        logger.error(f"Analysis failed: {str(e)}")
+        return JSONResponse(
+            status_code=500, 
+            content={"error": str(e)}
+        )
 
 if __name__ == "__main__":
     import uvicorn
