@@ -131,20 +131,21 @@ export function ChartSection({
                                             barCategoryGap={barCategoryGap} 
                                             margin={{ top: 30, right: 30, left: 0, bottom: 40 }}
                                             onClick={(state: any) => {
-                                                console.log("[Chart] Container Clicked", { hasState: !!state });
+                                                console.log("[Chart] Container Clicked. Full State:", state);
                                                 // Fallback for clicking outside bars
                                                 if (!state || !state.activePayload) setPinnedPoint(null);
                                             }}
                                         >
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" style={{ pointerEvents: 'none' }} />
                                             <XAxis 
                                                 dataKey="time" 
                                                 axisLine={false} 
                                                 tickLine={false} 
                                                 tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} 
                                                 dy={15} 
+                                                style={{ pointerEvents: 'none' }}
                                             />
-                                            <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
+                                            <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} style={{ pointerEvents: 'none' }} />
                                             <ReTooltip 
                                                 active={pinnedPoint ? true : undefined}
                                                 position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 120 } : undefined}
@@ -152,7 +153,7 @@ export function ChartSection({
                                                     pointerEvents: pinnedPoint ? 'auto' : 'none', 
                                                     zIndex: 1000 
                                                 }}
-                                                cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12 }}
+                                                cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12, pointerEvents: 'none' }}
                                                 content={(props: any) => {
                                                     // Determine which data to display
                                                     const isPinned = !!pinnedPoint;
@@ -239,6 +240,7 @@ export function ChartSection({
                                                     stroke="#fff"
                                                     strokeWidth={2}
                                                     style={{ cursor: 'pointer' }}
+                                                    onMouseEnter={() => console.log("[Bar] Mouse Enter", category)}
                                                     onClick={(data, index, e) => {
                                                         console.log("[Bar] Clicked", { category, index, data });
                                                         if (e) e.stopPropagation();
@@ -308,13 +310,13 @@ export function ChartSection({
                                                     barCategoryGap={barCategoryGap} 
                                                     margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
                                                     onClick={(state: any) => {
-                                                        console.log("[Chart Multiples] Container Clicked", { hasState: !!state });
+                                                        console.log("[Chart Multiples] Container Clicked. Full State:", state);
                                                         if (!state || !state.activePayload) setPinnedPoint(null);
                                                     }}
                                                 >
-                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 700 }} />
-                                                    <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
+                                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" style={{ pointerEvents: 'none' }} />
+                                                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 700 }} style={{ pointerEvents: 'none' }} />
+                                                    <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} style={{ pointerEvents: 'none' }} />
                                                     <ReTooltip 
                                                         active={pinnedPoint ? true : undefined}
                                                         position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 120 } : undefined}
@@ -322,7 +324,7 @@ export function ChartSection({
                                                             pointerEvents: pinnedPoint ? 'auto' : 'none', 
                                                             zIndex: 1000 
                                                         }}
-                                                        cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12 }}
+                                                        cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12, pointerEvents: 'none' }}
                                                         content={(props: any) => {
                                                             const isPinned = !!pinnedPoint;
                                                             const displayPayload = isPinned ? pinnedPoint.payload : props.payload;
@@ -386,6 +388,7 @@ export function ChartSection({
                                                         radius={[4, 4, 0, 0]} 
                                                         isAnimationActive={true}
                                                         style={{ cursor: 'pointer' }}
+                                                        onMouseEnter={() => console.log("[Bar Multiples] Mouse Enter", category)}
                                                         onClick={(data, index, e) => {
                                                             console.log("[Bar Multiples] Clicked", { category, index, data });
                                                             if (e) e.stopPropagation();
