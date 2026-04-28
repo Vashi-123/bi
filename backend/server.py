@@ -70,8 +70,10 @@ app.add_middleware(
 async def startup_event():
     logger.info("🚀 Starting up: Initializing database tables...")
     try:
-        database.initialize_tables()
+        # 1. Load raw data first so tables like sales_raw exist
         database.refresh_in_memory_data()
+        # 2. Then initialize views and groups that depend on those tables
+        database.initialize_tables()
         logger.info("✅ Database tables initialized successfully.")
     except Exception as e:
         logger.error(f"❌ Failed to initialize database on startup: {e}", exc_info=True)
