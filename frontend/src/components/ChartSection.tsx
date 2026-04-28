@@ -152,8 +152,7 @@ export function ChartSection({
                                             margin={{ top: 30, right: 30, left: 0, bottom: 40 }}
                                             onClick={(state: any) => {
                                                 console.log("[Chart] Container Clicked. Full State:", state);
-                                                // Fallback for clicking outside bars
-                                                if (!state || !state.activePayload) setPinnedPoint(null);
+                                                handleChartClick(state);
                                             }}
                                         >
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" style={{ pointerEvents: 'none' }} />
@@ -332,7 +331,7 @@ export function ChartSection({
                                                     margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
                                                     onClick={(state: any) => {
                                                         console.log("[Chart Multiples] Container Clicked. Full State:", state);
-                                                        if (!state || !state.activePayload) setPinnedPoint(null);
+                                                        handleChartClick(state);
                                                     }}
                                                 >
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" style={{ pointerEvents: 'none' }} />
