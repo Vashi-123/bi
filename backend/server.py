@@ -10,6 +10,17 @@ import os
 import sys
 from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
+
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger("giftery-api")
+
 # Путь к модулю синхронизации
 SYNC_PATH = "/home/usman/miniapps/backend"
 if SYNC_PATH not in sys.path:
@@ -21,16 +32,6 @@ except ImportError:
     sync_settings = None
     logger.error("⚠️ Предупреждение: Модуль sync_settings не найден в /home/usman/miniapps/backend")
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Configure structured logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
-logger = logging.getLogger("giftery-api")
 
 # Ensure local imports work regardless of how script is run
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
