@@ -76,8 +76,10 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                   {(() => {
                     const text = data.ai_summary || "";
                     
+                    // More robust extraction that handles variations in emojis and formatting
                     const extract = (key: string) => {
-                      const regex = new RegExp(`(?:📊|🏢|📦|🌱|\\*\\*|#|^)\\s*(?:\\d\\.\\s*)?${key}[^\\n]*\\n?([\\s\\S]*?)(?=(?:📊|🏢|📦|🌱|\\*\\*|#|^)\\s*(?:\\d\\.\\s*)?(?:Общая|Поведение|Глобальное|Новые|Суть|Drivers|Аномалии):?|$)`, 'im');
+                      // Try to find the section starting with the key word, regardless of emoji/numbers
+                      const regex = new RegExp(`(?:[^\\w\\n]|^)\\s*(?:\\d\\.\\s*)?${key}[^\\n]*\\n?([\\s\\S]*?)(?=(?:📊|🏢|📦|🌱|\\*\\*|#|^)\\s*(?:\\d\\.\\s*)?(?:Общая|Поведение|Глобальное|Новые|Суть|Drivers|Аномалии|Summary):?|$)`, 'im');
                       const match = text.match(regex);
                       if (!match) return null;
                       return match[1].replace(/[#*]/g, '').trim();
@@ -90,7 +92,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                       { id: 4, key: 'Новые', title: 'New Business', icon: <Target className="w-4 h-4 text-[#FF843B]" />, color: 'bg-white border-slate-100 text-slate-600 shadow-sm' }
                     ];
 
-                    return sections.map((sec) => {
+                    const renderedSections = sections.map((sec) => {
                       const content = extract(sec.key);
                       if (!content && sec.id !== 4) return null;
 
@@ -149,6 +151,27 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                         </div>
                       );
                     });
+
+                    // FALLBACK: If nothing was parsed except maybe New Business, show the full raw report
+                    const hasInsights = renderedSections.some((s, i) => s !== null && i < 3);
+                    if (!hasInsights && text) {
+                       return (
+                          <>
+                             <div className="p-10 rounded-[2.5rem] border border-slate-100 bg-white text-slate-600 shadow-sm">
+                                <div className="flex items-center gap-3 mb-6 opacity-50">
+                                   <Lightbulb className="w-4 h-4" />
+                                   <span className="text-[10px] font-black uppercase tracking-[0.3em]">Full Analytical Report</span>
+                                </div>
+                                <p className="text-[14px] font-medium leading-relaxed whitespace-pre-line text-slate-700">
+                                   {text.replace(/[#*]/g, '').trim()}
+                                </p>
+                             </div>
+                             {renderedSections[3]} {/* Still show New Business shelf if it exists */}
+                          </>
+                       );
+                    }
+
+                    return renderedSections;
                   })()}
                 </div>
               </div>
