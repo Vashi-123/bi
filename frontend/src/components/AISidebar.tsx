@@ -7,9 +7,10 @@ interface AISidebarProps {
   onClose: () => void;
   isLoading: boolean;
   data: any;
+  side?: 'left' | 'right';
 }
 
-export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading, data }) => {
+export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading, data, side = 'right' }) => {
   const formatCompact = (val: number) => {
     const abs = Math.abs(val);
     const sign = val < 0 ? '-' : '';
@@ -18,9 +19,13 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
     return `${sign}$${abs.toLocaleString()}`;
   };
 
+  const isLeft = side === 'left';
+
   return (
-    <div className={`fixed top-0 right-0 h-full w-[480px] bg-white shadow-2xl z-[150] transition-transform duration-500 ease-in-out border-l border-slate-200 flex flex-col rounded-l-3xl overflow-hidden ${
-        isOpen ? "translate-x-0" : "translate-x-full"
+    <div className={`fixed top-0 ${isLeft ? 'left-0 rounded-r-3xl border-r' : 'right-0 rounded-l-3xl border-l'} h-full w-[480px] bg-white shadow-2xl z-[150] transition-transform duration-500 ease-in-out border-slate-200 flex flex-col overflow-hidden ${
+        isOpen 
+          ? "translate-x-0" 
+          : (isLeft ? "-translate-x-full" : "translate-x-full")
       }`}>
         {/* Header */}
         <Flex className="p-8 border-b border-slate-100 bg-white shrink-0" justifyContent="between" alignItems="center">

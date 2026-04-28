@@ -191,8 +191,19 @@ export default function Dashboard() {
   const [aiData, setAiData] = useState<any>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showAiSidebar, setShowAiSidebar] = useState(false);
+  const [aiSidebarSide, setAiSidebarSide] = useState<'left' | 'right'>('right');
   
-  const handleAIAnalysis = async (currentPoint: any, interval: 'day' | 'week' | 'month') => {
+  const handleAIAnalysis = async (currentPoint: any, interval: 'day' | 'week' | 'month', e?: React.MouseEvent) => {
+    // Smart Side Detection
+    if (e) {
+      const clickX = e.clientX;
+      const screenWidth = window.innerWidth;
+      // If click is on the right half, open sidebar on the left, and vice versa
+      setAiSidebarSide(clickX > screenWidth / 2 ? 'left' : 'right');
+    } else {
+      setAiSidebarSide('right');
+    }
+
     setIsAiLoading(true);
     setShowAiSidebar(true);
     setAiData(null);
@@ -270,7 +281,7 @@ export default function Dashboard() {
                   onMouseDown={(e) => {
                      e.preventDefault();
                      e.stopPropagation();
-                     handleAIAnalysis(data, interval);
+                     handleAIAnalysis(data, interval, e as any);
                   }}
                   className="px-3 py-1 bg-[#0C0C0C] hover:bg-[#DDFF55] text-white hover:text-black rounded-lg text-[9px] font-black uppercase transition-all flex items-center gap-2 group shadow-sm shrink-0"
                >
@@ -394,6 +405,7 @@ export default function Dashboard() {
         onClose={() => setShowAiSidebar(false)} 
         isLoading={isAiLoading} 
         data={aiData} 
+        side={aiSidebarSide}
       />
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-[#E8ECEF] via-[#F8FAFC] to-[#FDF1D6] opacity-100" />
