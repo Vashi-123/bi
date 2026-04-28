@@ -166,13 +166,19 @@ export function ChartSection({
                                                     }
                                                     
                                                     // Fallback to standard tooltip logic
-                                                    const { payload, active, label: timeLabel } = props;
-                                                    if (!active || !payload || payload.length === 0) return null;
                                                     const growth = payload[0].payload.growth;
                                                     const total = payload[0].payload.total;
                                                     return (
                                                         <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[320px] z-[100] relative">
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{timeLabel}</p>
+                                                            {pinnedPoint && (
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
+                                                                    className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
+                                                                >
+                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                </button>
+                                                            )}
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{label}</p>
                                                             <div className="space-y-4 mb-5">
                                                                 {payload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
                                                                     const catGrowth = entry.payload.categoryGrowth?.[entry.name];
