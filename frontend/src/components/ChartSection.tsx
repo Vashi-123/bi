@@ -44,16 +44,19 @@ export function ChartSection({
     }, [data]);
 
     const handleChartClick = (state: any) => {
-        console.log("[Chart] Click Logic Start", { 
-            index: state?.activeTooltipIndex,
-            label: state?.activeLabel,
-            hasPayload: !!state?.activePayload 
+        const coords = state?.activeCoordinate;
+        const chartX = state?.chartX;
+        const chartY = state?.chartY;
+        
+        console.log("[Chart] Click Coordinates:", { 
+            active: coords, 
+            chartX, 
+            chartY,
+            index: state?.activeTooltipIndex
         });
         
         let payload = state?.activePayload;
         let label = state?.activeLabel;
-        let chartX = state?.chartX;
-        let chartY = state?.chartY;
 
         // Recovery logic: if Recharts didn't provide payload, get it from source data
         if (!payload && state && state.activeTooltipIndex !== undefined) {
@@ -62,7 +65,6 @@ export function ChartSection({
             if (item) {
                 console.log("[Chart] Recovering data from source at index", index);
                 label = item.time;
-                // Reconstruct payload structure for the tooltip
                 payload = categories.map((cat: string) => ({
                     name: cat,
                     dataKey: cat,
@@ -73,12 +75,17 @@ export function ChartSection({
         }
 
         if (payload && payload.length > 0) {
-            console.log("[Chart] Pinning Tooltip to:", label);
+            // Use activeCoordinate if available as it's centered on the bar, 
+            // otherwise fallback to raw chartX
+            const finalX = coords?.x || chartX || 0;
+            const finalY = coords?.y || chartY || 0;
+
+            console.log("[Chart] Pinning Tooltip at:", { x: finalX, y: finalY });
             setPinnedPoint({
                 payload,
                 label: label || "",
-                x: (chartX || 0) + 20,
-                y: chartY || 0
+                x: finalX,
+                y: finalY
             });
         } else {
             console.log("[Chart] Clearing Pinned Tooltip (No Payload)");
