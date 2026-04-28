@@ -969,7 +969,34 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
         # is_systemic if top 5 don't explain at least 60% of the movement
         is_systemic_trend = neg_concentration < 0.6 if net_delta < 0 else pos_concentration < 0.6
         
-        # 5. Rest of Market Metrics (those NOT in top 5 gainers/decliners)
+        # 5. New Business (Clients and Products that started in Period B)
+        new_clients = df_clients[(df_clients['client_rev_a'] == 0) & (df_clients['client_rev_b'] > 0)]
+        new_clients_list = [
+            {"name": row['counterparty'], "revenue": round(row['client_rev_b'], 2)} 
+            for _, row in new_clients.sort_values('client_rev_b', ascending=False).head(5).iterrows()
+        ]
+
+        # Query for new products (rev_a == 0, rev_b > 0)
+        new_products_query = f"""
+            SELECT 
+                "Item name" as product,
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
+                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b
+            FROM sales
+            WHERE CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}'
+               OR CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}'
+            GROUP BY 1
+            HAVING p_rev_a = 0 AND p_rev_b > 0
+            ORDER BY p_rev_b DESC
+            LIMIT 5
+        """
+        new_products_res = conn.execute(new_products_query).fetchall()
+        new_products_list = [
+            {"name": r[0], "revenue": round(r[1], 2)} 
+            for r in new_products_res
+        ]
+
+        # 6. Rest of Market Metrics (those NOT in top 5 gainers/decliners)
         top_driver_ids = set(top_gainers_list['counterparty']).union(set(top_decliners_list['counterparty']))
         df_rest = df_clients[~df_clients['counterparty'].isin(top_driver_ids)]
         
@@ -996,6 +1023,10 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
             "drivers": {
                 "top_gainers": top_gainers,
                 "top_decliners": top_decliners
+            },
+            "new_business": {
+                "new_clients": new_clients_list,
+                "new_products_sold": new_products_list
             },
             "rest_of_market": {
                 "client_count": len(df_rest),

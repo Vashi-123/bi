@@ -15,6 +15,7 @@ import { KPICard } from '@/components/KPICard';
 import { ChartSection } from '@/components/ChartSection';
 import { FilterSidebar } from '@/components/FilterSidebar';
 import { KPICardSkeleton, ChartSkeleton, DistributionSkeleton, TableSkeleton } from '@/components/Skeletons';
+import { AISidebar } from '@/components/AISidebar';
 
 export default function Dashboard() {
   const { 
@@ -248,176 +249,6 @@ export default function Dashboard() {
       return `${sign}$${abs.toLocaleString()}`;
    };
 
-  // --- AI Sidebar Component ---
-  const AISidebar = () => (
-    <div className={`fixed inset-y-0 right-0 z-[1001] w-full md:w-[500px] bg-white border-l border-slate-200 shadow-[-20px_0_60px_rgba(0,0,0,0.05)] transform transition-transform duration-500 ease-out ${showAiSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
-       <div className="h-full flex flex-col p-12">
-          <Flex justifyContent="between" className="mb-12">
-             <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-[#0C0C0C] rounded-[1.25rem] shadow-2xl flex items-center justify-center">
-                   <Zap className="w-6 h-6 text-[#DDFF55]" />
-                </div>
-                <div>
-                   <h2 className="text-3xl font-black text-[#0C0C0C] italic uppercase tracking-tighter leading-none">AI <span className="text-slate-300">Analyst</span></h2>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Business Intelligence v2.0</p>
-                </div>
-             </div>
-             <button onClick={() => setShowAiSidebar(false)} className="p-3 hover:bg-slate-50 rounded-2xl text-slate-300 hover:text-rose-500 transition-all">
-                <XCircle className="w-10 h-10" />
-             </button>
-          </Flex>
-
-          <div className="flex-1 overflow-y-auto pr-2 space-y-10 scrollbar-hide">
-             {isAiLoading ? (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
-                   <div className="w-20 h-20 border-4 border-slate-100 border-t-[#0C0C0C] rounded-full animate-spin shadow-inner" />
-                   <div>
-                      <p className="text-xs font-black text-[#0C0C0C] uppercase tracking-[0.3em] animate-pulse mb-2">Analyzing Performance</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Crunching market data...</p>
-                   </div>
-                </div>
-             ) : aiData ? (
-                <>
-                   {/* Scenario Badge */}
-                   <div className="p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/20 relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#DDFF55]/5 blur-3xl rounded-full -mr-16 -mt-16 group-hover:bg-[#DDFF55]/10 transition-colors" />
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                        <Zap className="w-3 h-3 text-[#DDFF55]" /> Market Scenario
-                      </p>
-                      <div className="flex items-center gap-4 relative z-10">
-                         <div className="text-2xl font-black italic uppercase tracking-tighter text-[#0C0C0C]">
-                            {aiData.payload?.scenario?.replace('_', ' ')}
-                         </div>
-                         {aiData.payload?.analysis_metadata?.is_systemic_trend && (
-                            <Badge className="bg-blue-50 text-blue-600 border-none text-[10px] font-black px-3 py-1 rounded-full">SYSTEMIC</Badge>
-                         )}
-                      </div>
-                   </div>
-
-                    {/* AI Interpretation Blocks */}
-                    <div className="space-y-6">
-                       <div className="flex items-center justify-between">
-                         <p className="text-[10px] font-black text-[#0C0C0C] uppercase tracking-[0.2em] flex items-center gap-2">
-                           <Target className="w-3 h-3" /> Financial Analysis
-                         </p>
-                         <div className="h-px flex-1 bg-slate-100 mx-6" />
-                       </div>
-                       
-                       <div className="space-y-4">
-                          {(() => {
-                             const text = aiData.ai_summary || "";
-                             
-                             // Helper to extract section content
-                             const extract = (key: string) => {
-                                const regex = new RegExp(`(?:\\*\\*|#|^)\\s*${key}:?\\s*(?:\\*\\*|#)?([\\s\\S]*?)(?=(?:\\*\\*|#|^)\\s*(?:Суть|Drivers|Аномалии|Действие):?|$)`, 'im');
-                                const match = text.match(regex);
-                                if (!match) return null;
-                                
-                                return match[1]
-                                  .replace(/[#*]/g, '')
-                                  .replace(/\([A-Z_]+\)/g, '')
-                                  .trim();
-                             };
-
-                             const sections = [
-                                { key: 'Суть', title: 'Executive Essence', icon: <Zap className="w-4 h-4 text-[#DDFF55]" />, color: 'bg-[#0C0C0C] border-[#1a1a1a] text-white' },
-                                { key: 'Drivers', title: 'Market Drivers', icon: <TrendingDown className="w-4 h-4 text-rose-500" />, color: 'bg-white border-slate-100 text-slate-600 shadow-sm' }
-                             ];
-
-                             const renderedSections = sections.map((sec, i) => {
-                                let content = extract(sec.key);
-                                if (!content && sec.key === 'Суть') content = extract('Исполнительное резюме');
-                                if (!content && sec.key === 'Drivers') content = extract('Основные драйверы');
-
-                                if (!content) return null;
-
-                                return (
-                                   <div key={i} className={`p-10 rounded-[2.5rem] border ${sec.color} transition-all hover:scale-[1.01] duration-500 relative overflow-hidden group`}>
-                                      <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors" />
-                                      
-                                      <div className="flex items-center gap-4 mb-6 opacity-90">
-                                         <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 shadow-sm">
-                                            {sec.icon}
-                                         </div>
-                                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">{sec.title}</span>
-                                      </div>
-
-                                      {sec.key === 'Drivers' ? (
-                                         <div className="space-y-4">
-                                            {content.split('\n').filter((l: string) => l.trim()).map((item: string, idx: number) => {
-                                               const isBullet = item.trim().startsWith('-') || item.trim().match(/^\d\./);
-                                               const text = item.trim().replace(/^[-•\d.]+\s*/, '').trim();
-                                               if (!text) return null;
-
-                                               return (
-                                                  <div key={idx} className={`flex gap-4 ${isBullet ? 'bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50' : 'pl-2'}`}>
-                                                     {isBullet && (
-                                                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
-                                                     )}
-                                                     <p className={`text-[13px] leading-relaxed ${isBullet ? 'font-bold text-slate-700' : 'font-medium text-slate-500'}`}>
-                                                        {text}
-                                                     </p>
-                                                  </div>
-                                               );
-                                            })}
-                                         </div>
-                                      ) : (
-                                         <p className="text-sm font-bold leading-relaxed whitespace-pre-line">
-                                            {content}
-                                         </p>
-                                      )}
-                                   </div>
-                                );
-                             });
-
-                             if (renderedSections.every(s => s === null)) {
-                                return (
-                                   <div className="p-10 rounded-[2.5rem] border border-slate-100 bg-white text-slate-600">
-                                      <div className="flex items-center gap-3 mb-4 opacity-50">
-                                         <Lightbulb className="w-4 h-4" />
-                                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">Analysis Output</span>
-                                      </div>
-                                      <p className="text-sm font-medium leading-relaxed whitespace-pre-line">
-                                         {text.replace(/[#*]/g, '').replace(/Основные драйверы|Исполнительное резюме/gi, '').trim()}
-                                      </p>
-                                   </div>
-                                );
-                             }
-
-                             return renderedSections;
-                          })()}
-                       </div>
-                    </div>
-
-                   {/* Math Stats */}
-                   <div className="grid grid-cols-2 gap-6">
-                      <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-[#DDFF55] transition-colors">
-                         <p className="text-[10px] font-black text-slate-400 uppercase mb-3 flex items-center gap-2">
-                            {aiData.payload?.global_metrics?.net_delta >= 0 ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-rose-500" />}
-                            Net Delta
-                         </p>
-                         <p className={`text-2xl font-black tracking-tighter ${aiData.payload?.global_metrics?.net_delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {formatCompact(aiData.payload?.global_metrics?.net_delta || 0)}
-                         </p>
-                      </div>
-                      <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-blue-200 transition-colors">
-                         <p className="text-[10px] font-black text-slate-400 uppercase mb-3 flex items-center gap-2">
-                            <Target className="w-3 h-3 text-blue-500" /> Trend Intensity
-                         </p>
-                         <p className="text-2xl font-black text-[#0C0C0C] tracking-tighter">
-                            {aiData.payload ? (Math.max(aiData.payload.analysis_metadata.negative_concentration, aiData.payload.analysis_metadata.positive_concentration) * 100).toFixed(0) : '0'}%
-                         </p>
-                      </div>
-                   </div>
-
-                </>
-             ) : (
-                <div className="text-center py-20 text-slate-600 font-bold uppercase text-xs">No analysis data</div>
-             )}
-          </div>
-       </div>
-    </div>
-  );
 
   // --- Custom Tooltip Content ---
   const CustomTooltip = ({ active, payload, label, interval }: any) => {
@@ -558,7 +389,12 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen text-[#0C0C0C] font-sans selection:bg-blue-100 selection:text-blue-900 bg-[#F8FAFC]">
-      <AISidebar />
+      <AISidebar 
+        isOpen={showAiSidebar} 
+        onClose={() => setShowAiSidebar(false)} 
+        isLoading={isAiLoading} 
+        data={aiData} 
+      />
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-[#E8ECEF] via-[#F8FAFC] to-[#FDF1D6] opacity-100" />
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#638994]/10 blur-[120px] rounded-full" />
