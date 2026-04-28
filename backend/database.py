@@ -583,17 +583,24 @@ def get_filter_options(dimension, search=None):
     if dimension == 'Groupclient':
         query = "SELECT DISTINCT group_name FROM custom_groups"
         if search:
-            query += f" WHERE group_name ILIKE '%{str(search).replace(\"'\", \"''\")}%'"
+            s_val = str(search).replace("'", "''")
+            query += f" WHERE group_name ILIKE '%{s_val}%'"
+        
         query += " UNION SELECT DISTINCT Groupclient FROM sales WHERE Groupclient IS NOT NULL"
         if search:
-            query += f" AND Groupclient ILIKE '%{str(search).replace(\"'\", \"''\")}%'"
+            s_val = str(search).replace("'", "''")
+            query += f" AND Groupclient ILIKE '%{s_val}%'"
+
     elif dimension == 'CountryGroup':
         query = "SELECT DISTINCT group_name FROM custom_country_groups"
         if search:
-            query += f" WHERE group_name ILIKE '%{str(search).replace(\"'\", \"''\")}%'"
+            s_val = str(search).replace("'", "''")
+            query += f" WHERE group_name ILIKE '%{s_val}%'"
+        
         query += " UNION SELECT DISTINCT CountryGroup FROM sales WHERE CountryGroup IS NOT NULL"
         if search:
-            query += f" AND CountryGroup ILIKE '%{str(search).replace(\"'\", \"''\")}%'"
+            s_val = str(search).replace("'", "''")
+            query += f" AND CountryGroup ILIKE '%{s_val}%'"
     else:
         where_clause = f"WHERE \"{dimension}\" IS NOT NULL"
         if search:
