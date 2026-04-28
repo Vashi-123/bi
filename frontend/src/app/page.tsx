@@ -309,13 +309,15 @@ export default function Dashboard() {
                              
                              // Helper to extract section content
                              const extract = (key: string) => {
-                                const regex = new RegExp(`\\*\\*${key}:?\\*\\*([\\s\\S]*?)(?=\\*\\*|$)`, 'i');
+                                // More flexible regex to find keywords like "Суть", "Drivers", etc. 
+                                // regardless of ** or # markers
+                                const regex = new RegExp(`(?:\\*\\*|#|^)\\s*${key}:?\\s*(?:\\*\\*|#)?([\\s\\S]*?)(?=(?:\\*\\*|#|^)\\s*(?:Суть|Drivers|Аномалии|Действие):?|$)`, 'im');
                                 const match = text.match(regex);
                                 if (!match) return null;
-                                // Clean up Markdown artifacts and technical names
+                                
                                 return match[1]
                                   .replace(/[#*]/g, '')
-                                  .replace(/\([A-Z_]+\)/g, '') // Remove (SIGNIFICANT_GROWTH) etc.
+                                  .replace(/\([A-Z_]+\)/g, '')
                                   .trim();
                              };
 
@@ -324,7 +326,7 @@ export default function Dashboard() {
                                 { key: 'Drivers', title: 'Market Drivers', icon: <TrendingDown className="w-4 h-4 text-rose-500" />, color: 'bg-white border-slate-100 text-slate-600 shadow-sm' }
                              ];
 
-                             return sections.map((sec, i) => {
+                             const renderedSections = sections.map((sec, i) => {
                                 const content = extract(sec.key);
                                 if (!content) return null;
 
@@ -366,6 +368,21 @@ export default function Dashboard() {
                                    </div>
                                 );
                              });
+
+                             // If nothing was rendered, show the raw text as a fallback
+                             if (renderedSections.every(s => s === null)) {
+                                return (
+                                   <div className="p-10 rounded-[2.5rem] border border-slate-100 bg-white text-slate-600">
+                                      <div className="flex items-center gap-3 mb-4 opacity-50">
+                                         <Lightbulb className="w-4 h-4" />
+                                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">Raw Analysis</span>
+                                      </div>
+                                      <p className="text-sm font-medium leading-relaxed whitespace-pre-line">{text}</p>
+                                   </div>
+                                );
+                             }
+
+                             return renderedSections;
                           })()}
                        </div>
                     </div>
