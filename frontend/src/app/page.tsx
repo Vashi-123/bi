@@ -239,6 +239,15 @@ export default function Dashboard() {
     }
   };
 
+   // --- Formatting Helpers ---
+   const formatCompact = (val: number) => {
+      const abs = Math.abs(val);
+      const sign = val < 0 ? '-' : '';
+      if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}M`;
+      if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(2)}K`;
+      return `${sign}$${abs.toLocaleString()}`;
+   };
+
   // --- AI Sidebar Component ---
   const AISidebar = () => (
     <div className={`fixed inset-y-0 right-0 z-[1001] w-full md:w-[500px] bg-white border-l border-slate-200 shadow-[-20px_0_60px_rgba(0,0,0,0.05)] transform transition-transform duration-500 ease-out ${showAiSidebar ? 'translate-x-0' : 'translate-x-full'}`}>
@@ -296,28 +305,27 @@ export default function Dashboard() {
                        
                        <div className="space-y-4">
                           {aiData.ai_summary.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
-                             const isHeader = line.startsWith('**');
-                             const cleanLine = line.replace(/\*\*/g, '');
-                             
+                             const cleanLine = line.replace(/\*\*/g, '').trim();
+                             if (!cleanLine) return null;
+
                              let icon = <Lightbulb className="w-4 h-4" />;
                              let colorClass = "bg-slate-50 border-slate-100 text-slate-600";
                              let title = "Insight";
 
-                             if (line.includes('Суть:')) {
+                             const lowerLine = cleanLine.toLowerCase();
+                             if (lowerLine.includes('суть')) {
                                 icon = <Zap className="w-4 h-4 text-[#DDFF55]" />;
                                 colorClass = "bg-[#0C0C0C] border-[#1a1a1a] text-white";
                                 title = "Executive Essence";
-                             } else if (line.includes('Аномалии:')) {
+                             } else if (lowerLine.includes('аномалии')) {
                                 icon = <TrendingDown className="w-4 h-4 text-rose-500" />;
                                 colorClass = "bg-white border-slate-100 text-slate-600 shadow-sm";
                                 title = "Market Anomalies";
-                             } else if (line.includes('Действие:')) {
+                             } else if (lowerLine.includes('действие')) {
                                 icon = <Target className="w-4 h-4 text-blue-500" />;
                                 colorClass = "bg-blue-50/30 border-blue-100 text-slate-700";
                                 title = "Strategic Action";
                              }
-
-                             if (!isHeader) return null; // We only want the main blocks now
 
                              return (
                                 <div key={i} className={`p-8 rounded-[2rem] border ${colorClass} transition-all hover:scale-[1.02] duration-300`}>
@@ -326,7 +334,7 @@ export default function Dashboard() {
                                       <span className="text-[9px] font-black uppercase tracking-[0.2em]">{title}</span>
                                    </div>
                                    <p className="text-sm font-bold leading-relaxed">
-                                      {cleanLine.split(':').slice(1).join(':').trim()}
+                                      {cleanLine.includes(':') ? cleanLine.split(':').slice(1).join(':').trim() : cleanLine}
                                    </p>
                                 </div>
                              );
@@ -342,7 +350,7 @@ export default function Dashboard() {
                             Net Delta
                          </p>
                          <p className={`text-2xl font-black tracking-tighter ${aiData.payload?.global_metrics?.net_delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {aiData.payload?.global_metrics?.net_delta >= 0 ? '+' : ''}{aiData.payload?.global_metrics?.net_delta?.toLocaleString()}$
+                            {formatCompact(aiData.payload?.global_metrics?.net_delta || 0)}
                          </p>
                       </div>
                       <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-blue-200 transition-colors">
@@ -355,21 +363,6 @@ export default function Dashboard() {
                       </div>
                    </div>
 
-                   {/* Debug Information */}
-                   {aiData.debug && (
-                      <div className="pt-8 border-t border-slate-100">
-                         <details className="group">
-                            <summary className="flex items-center justify-between cursor-pointer list-none">
-                               <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] group-hover:text-slate-500 transition-colors">Debug Logs</p>
-                               <Badge className="bg-slate-50 text-slate-400 border-none text-[8px] font-bold uppercase">{aiData.debug.tokens} Tokens</Badge>
-                            </summary>
-                            <div className="mt-6 p-8 bg-slate-50 rounded-[2rem] border border-slate-100 text-[10px] font-mono text-slate-500 leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                               <p className="text-[#0C0C0C] mb-4 uppercase font-black tracking-widest">[PROMPT SENT]</p>
-                               {aiData.debug.prompt}
-                            </div>
-                         </details>
-                      </div>
-                   )}
                 </>
              ) : (
                 <div className="text-center py-20 text-slate-600 font-bold uppercase text-xs">No analysis data</div>
