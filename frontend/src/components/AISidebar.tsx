@@ -1,6 +1,6 @@
 import React from 'react';
-import { Flex, Badge } from '@tremor/react';
-import { XCircle, Zap, Target, TrendingUp, TrendingDown, LayoutGrid, UserPlus, Package, Lightbulb } from 'lucide-react';
+import { Flex, Badge, Title } from '@tremor/react';
+import { X, Zap, Target, TrendingUp, TrendingDown, LayoutGrid, UserPlus, Package, Lightbulb } from 'lucide-react';
 
 interface AISidebarProps {
   isOpen: boolean;
@@ -19,7 +19,6 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
   };
 
   return (
-    <div className={`fixed inset-y-0 right-0 z-[1001] w-full md:w-[500px] bg-white border-l border-slate-200 shadow-[-20px_0_60px_rgba(0,0,0,0.05)] transform transition-transform duration-500 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
     <div className={`fixed top-0 right-0 h-full w-[480px] bg-white shadow-2xl z-[150] transition-transform duration-500 ease-in-out border-l border-slate-200 flex flex-col rounded-l-3xl overflow-hidden ${
         isOpen ? "translate-x-0" : "translate-x-full"
       }`}>
@@ -256,7 +255,6 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                     );
                   })()}
                 </div>
-         </div>
             </>
           ) : (
             <div className="text-center py-20 text-slate-600 font-bold uppercase text-xs">No analysis data</div>
