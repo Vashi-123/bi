@@ -44,8 +44,16 @@ export function ChartSection({
     }, [data]);
 
     const handleChartClick = (state: any) => {
+        console.log("[Chart] Click Event:", { 
+            hasState: !!state, 
+            hasPayload: !!state?.activePayload,
+            label: state?.activeLabel,
+            x: state?.chartX,
+            y: state?.chartY 
+        });
+
         if (state && state.activePayload) {
-            // Pin the current hovered point
+            console.log("[Chart] Pinning Tooltip to:", state.activeLabel);
             setPinnedPoint({
                 payload: state.activePayload,
                 label: state.activeLabel,
@@ -53,7 +61,7 @@ export function ChartSection({
                 y: state.chartY
             });
         } else {
-            // Unpin if clicked on empty area
+            console.log("[Chart] Clearing Pinned Tooltip");
             setPinnedPoint(null);
         }
     };
@@ -123,6 +131,7 @@ export function ChartSection({
                                             barCategoryGap={barCategoryGap} 
                                             margin={{ top: 30, right: 30, left: 0, bottom: 40 }}
                                             onClick={(state: any) => {
+                                                console.log("[Chart] Container Clicked", { hasState: !!state });
                                                 // Fallback for clicking outside bars
                                                 if (!state || !state.activePayload) setPinnedPoint(null);
                                             }}
@@ -231,7 +240,7 @@ export function ChartSection({
                                                     strokeWidth={2}
                                                     style={{ cursor: 'pointer' }}
                                                     onClick={(data, index, e) => {
-                                                        // Prevent propagation to chart onClick
+                                                        console.log("[Bar] Clicked", { category, index, data });
                                                         if (e) e.stopPropagation();
                                                         handleChartClick(data);
                                                     }}
@@ -299,6 +308,7 @@ export function ChartSection({
                                                     barCategoryGap={barCategoryGap} 
                                                     margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
                                                     onClick={(state: any) => {
+                                                        console.log("[Chart Multiples] Container Clicked", { hasState: !!state });
                                                         if (!state || !state.activePayload) setPinnedPoint(null);
                                                     }}
                                                 >
@@ -377,6 +387,7 @@ export function ChartSection({
                                                         isAnimationActive={true}
                                                         style={{ cursor: 'pointer' }}
                                                         onClick={(data, index, e) => {
+                                                            console.log("[Bar Multiples] Clicked", { category, index, data });
                                                             if (e) e.stopPropagation();
                                                             handleChartClick(data);
                                                         }}
