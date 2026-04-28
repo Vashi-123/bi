@@ -418,13 +418,6 @@ export default function Dashboard() {
        </div>
     </div>
   );
-            ) : (
-                <div className="text-center py-20 text-slate-600 font-bold uppercase text-xs">No analysis data</div>
-             )}
-          </div>
-       </div>
-    </div>
-  );
 
   // --- Custom Tooltip Content ---
   const CustomTooltip = ({ active, payload, label, interval }: any) => {
@@ -808,7 +801,7 @@ export default function Dashboard() {
             {/* Market Share Rating */}
             <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[580px] flex flex-col">
                 <div className="flex justify-between items-center mb-8 shrink-0">
-                    <Title className="text-xl font-bold text-[#0C0C0C]">Market Share Rating</Title>
+                    <Title className="text-xl font-bold text-[#0C0C0C]">Leaderboard</Title>
                     <Badge className="bg-slate-50 text-slate-600 rounded-md border-slate-100 px-3 py-1 font-bold text-[10px] uppercase tracking-wider">{legendDimension}</Badge>
                 </div>
                 <div className="flex-1 overflow-y-auto pr-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
