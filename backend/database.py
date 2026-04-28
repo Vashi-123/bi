@@ -75,9 +75,10 @@ def get_connection():
 
         except Exception as e:
             logger.error(f"Critical error during DB initialization: {e}")
-            _CONN.execute(f"CREATE OR REPLACE VIEW sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}')")
+            # Fallback: create tables as views if memory load failed
+            _CONN.execute(f"CREATE TABLE IF NOT EXISTS sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}') LIMIT 0")
             _CONN.execute("CREATE TABLE IF NOT EXISTS custom_groups (counterparty VARCHAR, group_name VARCHAR)")
-            _CONN.execute("CREATE OR REPLACE VIEW sales AS SELECT * FROM sales_raw")
+            _CONN.execute("CREATE TABLE IF NOT EXISTS custom_country_groups (country_code VARCHAR, group_name VARCHAR)")
     return _CONN
 
 def refresh_groups_table():
@@ -111,11 +112,22 @@ def refresh_groups_table():
         df_c = pandas.DataFrame(country_flattened)
         conn.execute("INSERT INTO custom_country_groups SELECT * FROM df_c")
     
-    # 3. Create Enriched View dynamically (pointing to the in-memory sales_raw table)
-    # We remove the JOIN here to avoid row duplication when a client belongs to multiple groups.
-    # This ensures SUM(revenue) matches the original data even if a client has many groups.
+    # 3. Create Enriched View dynamically
+    # Get columns from sales_raw to handle fallbacks
+    try:
+        col_res = conn.execute("DESCRIBE sales_raw").fetchall()
+        existing_cols = [row[0] for row in col_res]
+    except:
+        existing_cols = []
+
+    exclude_cols = []
+    if "Groupclient" in existing_cols: exclude_cols.append("Groupclient")
+    if "CountryGroup" in existing_cols: exclude_cols.append("CountryGroup")
+    exclude_clause = f"EXCLUDE ({', '.join(exclude_cols)})" if exclude_cols else ""
+
     gc_fallback = "s.Groupclient" if "Groupclient" in existing_cols else "NULL"
     cg_fallback = "s.CountryGroup" if "CountryGroup" in existing_cols else "NULL"
+    
     conn.execute(f"""
         CREATE OR REPLACE VIEW sales AS 
         SELECT 
