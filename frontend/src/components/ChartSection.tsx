@@ -49,7 +49,7 @@ export function ChartSection({
             setPinnedPoint({
                 payload: state.activePayload,
                 label: state.activeLabel,
-                x: state.chartX,
+                x: state.chartX + 20,
                 y: state.chartY
             });
         } else {
@@ -137,22 +137,28 @@ export function ChartSection({
                                             />
                                             <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
                                             <ReTooltip 
-                                                offset={0}
                                                 active={pinnedPoint ? true : undefined}
-                                                position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 100 } : undefined}
-                                                wrapperStyle={{ pointerEvents: 'auto', zIndex: 1000 }}
+                                                position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 120 } : undefined}
+                                                wrapperStyle={{ 
+                                                    pointerEvents: pinnedPoint ? 'auto' : 'none', 
+                                                    zIndex: 1000 
+                                                }}
                                                 cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12 }}
-                                                content={(props) => {
-                                                    const finalProps = pinnedPoint ? { ...props, active: true, payload: pinnedPoint.payload, label: pinnedPoint.label } : props;
-                                                    const { active, payload, label } = finalProps;
+                                                content={(props: any) => {
+                                                    // Determine which data to display
+                                                    const isPinned = !!pinnedPoint;
+                                                    const displayPayload = isPinned ? pinnedPoint.payload : props.payload;
+                                                    const displayLabel = isPinned ? pinnedPoint.label : props.label;
+                                                    const isActive = isPinned || props.active;
 
-                                                    if (!active || !payload || payload.length === 0) return null;
+                                                    if (!isActive || !displayPayload || displayPayload.length === 0) return null;
 
+                                                    // Use the customTooltip if provided (for AI analysis button)
                                                     if (customTooltip) {
                                                         const React = require('react');
                                                         return (
                                                             <div className="relative">
-                                                                {pinnedPoint && (
+                                                                {isPinned && (
                                                                     <button 
                                                                         onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
                                                                         className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
@@ -160,16 +166,16 @@ export function ChartSection({
                                                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
                                                                     </button>
                                                                 )}
-                                                                {React.cloneElement(customTooltip, { active, payload, label })}
+                                                                {React.cloneElement(customTooltip, { active: true, payload: displayPayload, label: displayLabel })}
                                                             </div>
                                                         );
                                                     }
                                                     
-                                                    const growth = payload[0].payload.growth;
-                                                    const total = payload[0].payload.total;
+                                                    const growth = displayPayload[0].payload.growth;
+                                                    const total = displayPayload[0].payload.total;
                                                     return (
                                                         <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[320px] z-[100] relative">
-                                                            {pinnedPoint && (
+                                                            {isPinned && (
                                                                 <button 
                                                                     onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
                                                                     className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
@@ -177,9 +183,9 @@ export function ChartSection({
                                                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
                                                                 </button>
                                                             )}
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{label}</p>
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{displayLabel}</p>
                                                             <div className="space-y-4 mb-5">
-                                                                {payload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
+                                                                {displayPayload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
                                                                     const catGrowth = entry.payload.categoryGrowth?.[entry.name];
                                                                     const actualIndex = categories.indexOf(entry.name);
                                                                     const color = entry.name === 'Other' ? '#0C0C0C' : getColor(actualIndex, categories.length);
@@ -300,22 +306,26 @@ export function ChartSection({
                                                     <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 700 }} />
                                                     <YAxis axisLine={false} tickLine={false} tick={false} width={0} domain={['auto', 'auto']} />
                                                     <ReTooltip 
-                                                        offset={0}
                                                         active={pinnedPoint ? true : undefined}
-                                                        position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 100 } : undefined}
-                                                        wrapperStyle={{ pointerEvents: 'auto', zIndex: 1000 }}
+                                                        position={pinnedPoint ? { x: pinnedPoint.x, y: pinnedPoint.y - 120 } : undefined}
+                                                        wrapperStyle={{ 
+                                                            pointerEvents: pinnedPoint ? 'auto' : 'none', 
+                                                            zIndex: 1000 
+                                                        }}
                                                         cursor={pinnedPoint ? false : { fill: '#f8fafc', radius: 12 }}
-                                                        content={(props) => {
-                                                            const finalProps = pinnedPoint ? { ...props, active: true, payload: pinnedPoint.payload, label: pinnedPoint.label } : props;
-                                                            const { active, payload, label } = finalProps;
+                                                        content={(props: any) => {
+                                                            const isPinned = !!pinnedPoint;
+                                                            const displayPayload = isPinned ? pinnedPoint.payload : props.payload;
+                                                            const displayLabel = isPinned ? pinnedPoint.label : props.label;
+                                                            const isActive = isPinned || props.active;
 
-                                                            if (!active || !payload || payload.length === 0) return null;
+                                                            if (!isActive || !displayPayload || displayPayload.length === 0) return null;
 
                                                             if (customTooltip) {
                                                                 const React = require('react');
                                                                 return (
                                                                     <div className="relative">
-                                                                        {pinnedPoint && (
+                                                                        {isPinned && (
                                                                             <button 
                                                                                 onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
                                                                                 className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
@@ -323,17 +333,25 @@ export function ChartSection({
                                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
                                                                             </button>
                                                                         )}
-                                                                        {React.cloneElement(customTooltip, { active, payload, label })}
+                                                                        {React.cloneElement(customTooltip, { active: true, payload: displayPayload, label: displayLabel })}
                                                                     </div>
                                                                 );
                                                             }
-                                                            const entry = payload.find((p: any) => p.dataKey === category);
+                                                            const entry = displayPayload.find((p: any) => p.dataKey === category);
                                                             if (!entry) return null;
                                                             const catGrowth = entry.payload.categoryGrowth?.[category];
                                                             const color = category === 'Other' ? '#0C0C0C' : getColor(i, categories.length);
                                                             return (
                                                                 <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[280px] z-[100] relative">
-                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{label}</p>
+                                                                    {isPinned && (
+                                                                        <button 
+                                                                            onClick={(e) => { e.stopPropagation(); setPinnedPoint(null); }}
+                                                                            className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-lg hover:bg-rose-600 transition-colors z-[101]"
+                                                                        >
+                                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                                        </button>
+                                                                    )}
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{displayLabel}</p>
                                                                     <div className="flex justify-between items-center gap-6">
                                                                         <div className="flex items-center gap-3">
                                                                             <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
