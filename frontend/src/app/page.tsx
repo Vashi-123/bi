@@ -309,8 +309,6 @@ export default function Dashboard() {
                              
                              // Helper to extract section content
                              const extract = (key: string) => {
-                                // More flexible regex to find keywords like "Суть", "Drivers", etc. 
-                                // regardless of ** or # markers
                                 const regex = new RegExp(`(?:\\*\\*|#|^)\\s*${key}:?\\s*(?:\\*\\*|#)?([\\s\\S]*?)(?=(?:\\*\\*|#|^)\\s*(?:Суть|Drivers|Аномалии|Действие):?|$)`, 'im');
                                 const match = text.match(regex);
                                 if (!match) return null;
@@ -327,12 +325,14 @@ export default function Dashboard() {
                              ];
 
                              const renderedSections = sections.map((sec, i) => {
-                                const content = extract(sec.key);
+                                let content = extract(sec.key);
+                                if (!content && sec.key === 'Суть') content = extract('Исполнительное резюме');
+                                if (!content && sec.key === 'Drivers') content = extract('Основные драйверы');
+
                                 if (!content) return null;
 
                                 return (
                                    <div key={i} className={`p-10 rounded-[2.5rem] border ${sec.color} transition-all hover:scale-[1.01] duration-500 relative overflow-hidden group`}>
-                                      {/* Decorative gradient flare for premium feel */}
                                       <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/5 rounded-full blur-3xl group-hover:bg-white/10 transition-colors" />
                                       
                                       <div className="flex items-center gap-4 mb-6 opacity-90">
@@ -345,11 +345,12 @@ export default function Dashboard() {
                                       {sec.key === 'Drivers' ? (
                                          <div className="space-y-4">
                                             {content.split('\n').filter((l: string) => l.trim()).map((item: string, idx: number) => {
-                                               const isBullet = item.trim().startsWith('-');
-                                               const text = item.trim().replace(/^-/, '').trim();
-                                               
+                                               const isBullet = item.trim().startsWith('-') || item.trim().match(/^\d\./);
+                                               const text = item.trim().replace(/^[-•\d.]+\s*/, '').trim();
+                                               if (!text) return null;
+
                                                return (
-                                                  <div key={idx} className={`flex gap-4 ${isBullet ? 'bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50' : ''}`}>
+                                                  <div key={idx} className={`flex gap-4 ${isBullet ? 'bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50' : 'pl-2'}`}>
                                                      {isBullet && (
                                                         <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
                                                      )}
@@ -369,15 +370,16 @@ export default function Dashboard() {
                                 );
                              });
 
-                             // If nothing was rendered, show the raw text as a fallback
                              if (renderedSections.every(s => s === null)) {
                                 return (
                                    <div className="p-10 rounded-[2.5rem] border border-slate-100 bg-white text-slate-600">
                                       <div className="flex items-center gap-3 mb-4 opacity-50">
                                          <Lightbulb className="w-4 h-4" />
-                                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">Raw Analysis</span>
+                                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">Analysis Output</span>
                                       </div>
-                                      <p className="text-sm font-medium leading-relaxed whitespace-pre-line">{text}</p>
+                                      <p className="text-sm font-medium leading-relaxed whitespace-pre-line">
+                                         {text.replace(/[#*]/g, '').replace(/Основные драйверы|Исполнительное резюме/gi, '').trim()}
+                                      </p>
                                    </div>
                                 );
                              }
@@ -410,6 +412,13 @@ export default function Dashboard() {
 
                 </>
              ) : (
+                <div className="text-center py-20 text-slate-600 font-bold uppercase text-xs">No analysis data</div>
+             )}
+          </div>
+       </div>
+    </div>
+  );
+            ) : (
                 <div className="text-center py-20 text-slate-600 font-bold uppercase text-xs">No analysis data</div>
              )}
           </div>
