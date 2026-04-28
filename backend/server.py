@@ -384,7 +384,10 @@ async def analyze_period(
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "You are a professional BI assistant specialized in gift card and voucher sales analytics."},
+                    {
+                        "role": "system", 
+                        "content": "Ты — строгий финансовый аналитик B2B сектора. Твой стиль: сухой, жесткий, рубленый. НИКАКОЙ ВОДЫ. Исключи использование символов '#' и заголовков. Никогда не используй технические названия сценариев вроде SIGNIFICANT_GROWTH в тексте."
+                    },
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3

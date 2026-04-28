@@ -304,41 +304,44 @@ export default function Dashboard() {
                        </div>
                        
                        <div className="space-y-4">
-                          {aiData.ai_summary.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
-                             const cleanLine = line.replace(/\*\*/g, '').trim();
-                             if (!cleanLine) return null;
+                          {(() => {
+                             const text = aiData.ai_summary || "";
+                             
+                             // Helper to extract section content
+                             const extract = (key: string) => {
+                                const regex = new RegExp(`\\*\\*${key}:?\\*\\*([\\s\\S]*?)(?=\\*\\*|$)`, 'i');
+                                const match = text.match(regex);
+                                if (!match) return null;
+                                // Clean up Markdown artifacts and technical names
+                                return match[1]
+                                  .replace(/[#*]/g, '')
+                                  .replace(/\([A-Z_]+\)/g, '') // Remove (SIGNIFICANT_GROWTH) etc.
+                                  .trim();
+                             };
 
-                             let icon = <Lightbulb className="w-4 h-4" />;
-                             let colorClass = "bg-slate-50 border-slate-100 text-slate-600";
-                             let title = "Insight";
+                             const sections = [
+                                { key: 'Суть', title: 'Executive Essence', icon: <Zap className="w-4 h-4 text-[#DDFF55]" />, color: 'bg-[#0C0C0C] border-[#1a1a1a] text-white' },
+                                { key: 'Аномалии', title: 'Market Anomalies', icon: <TrendingDown className="w-4 h-4 text-rose-500" />, color: 'bg-white border-slate-100 text-slate-600 shadow-sm' },
+                                { key: 'Действие', title: 'Strategic Action', icon: <Target className="w-4 h-4 text-blue-500" />, color: 'bg-blue-50/30 border-blue-100 text-slate-700' }
+                             ];
 
-                             const lowerLine = cleanLine.toLowerCase();
-                             if (lowerLine.includes('суть')) {
-                                icon = <Zap className="w-4 h-4 text-[#DDFF55]" />;
-                                colorClass = "bg-[#0C0C0C] border-[#1a1a1a] text-white";
-                                title = "Executive Essence";
-                             } else if (lowerLine.includes('аномалии')) {
-                                icon = <TrendingDown className="w-4 h-4 text-rose-500" />;
-                                colorClass = "bg-white border-slate-100 text-slate-600 shadow-sm";
-                                title = "Market Anomalies";
-                             } else if (lowerLine.includes('действие')) {
-                                icon = <Target className="w-4 h-4 text-blue-500" />;
-                                colorClass = "bg-blue-50/30 border-blue-100 text-slate-700";
-                                title = "Strategic Action";
-                             }
+                             return sections.map((sec, i) => {
+                                const content = extract(sec.key);
+                                if (!content) return null;
 
-                             return (
-                                <div key={i} className={`p-8 rounded-[2rem] border ${colorClass} transition-all hover:scale-[1.02] duration-300`}>
-                                   <div className="flex items-center gap-3 mb-3 opacity-80">
-                                      {icon}
-                                      <span className="text-[9px] font-black uppercase tracking-[0.2em]">{title}</span>
+                                return (
+                                   <div key={i} className={`p-8 rounded-[2rem] border ${sec.color} transition-all hover:scale-[1.02] duration-300`}>
+                                      <div className="flex items-center gap-3 mb-3 opacity-80">
+                                         {sec.icon}
+                                         <span className="text-[9px] font-black uppercase tracking-[0.2em]">{sec.title}</span>
+                                      </div>
+                                      <p className="text-sm font-bold leading-relaxed whitespace-pre-line">
+                                         {content}
+                                      </p>
                                    </div>
-                                   <p className="text-sm font-bold leading-relaxed">
-                                      {cleanLine.includes(':') ? cleanLine.split(':').slice(1).join(':').trim() : cleanLine}
-                                   </p>
-                                </div>
-                             );
-                          })}
+                                );
+                             });
+                          })()}
                        </div>
                     </div>
 
