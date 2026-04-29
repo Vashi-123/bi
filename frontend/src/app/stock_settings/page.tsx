@@ -193,6 +193,7 @@ export default function StockSettingsPage() {
                             <BellRing className="w-4 h-4" /> Notify
                         </button>
                     </div>
+                    </div>
                 </Flex>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
