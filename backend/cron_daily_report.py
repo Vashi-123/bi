@@ -68,5 +68,35 @@ def generate_daily_report():
     except Exception as e:
         logger.error(f"Cron execution failed: {str(e)}")
 
+import time
+
+def run_scheduler(target_time="07:00"):
+    logger.info(f"📅 Scheduler started. Target time: {target_time}")
+    report_done_today = False
+    
+    while True:
+        now = datetime.datetime.now()
+        current_time = now.strftime("%H:%M")
+        current_date = now.date()
+
+        # Reset flag at midnight
+        if current_time == "00:00":
+            report_done_today = False
+
+        if current_time == target_time and not report_done_today:
+            logger.info("⏰ Target time reached. Starting daily report generation...")
+            generate_daily_report()
+            report_done_today = True
+            logger.info(f"✅ Report for {current_date} completed. Waiting for tomorrow...")
+            # Sleep for 61 seconds to avoid double trigger in the same minute
+            time.sleep(61)
+        else:
+            # Check every 30 seconds
+            time.sleep(30)
+
 if __name__ == "__main__":
-    generate_daily_report()
+    # If run with --now, run once and exit. Otherwise, start scheduler.
+    if len(sys.argv) > 1 and sys.argv[1] == "--now":
+        generate_daily_report()
+    else:
+        run_scheduler("06:00")

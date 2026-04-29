@@ -83,5 +83,37 @@ def main():
     # 5. Send message
     send_telegram_message(message, chat_ids)
 
+import time
+from datetime import datetime
+
+def run_scheduler(target_time="10:00"):
+    logger.info(f"🚀 Stock Notifier Scheduler started. Targets: Mon/Thu at {target_time}")
+    notification_done_today = False
+    
+    while True:
+        now = datetime.now()
+        current_time = now.strftime("%H:%M")
+        weekday = now.weekday() # 0 = Monday, 3 = Thursday
+
+        # Reset flag at midnight
+        if current_time == "00:00":
+            notification_done_today = False
+
+        # Check if it's Mon(0) or Thu(3) and the right time
+        if weekday in [0, 3] and current_time == target_time and not notification_done_today:
+            logger.info("🔔 Scheduled notification time reached!")
+            main()
+            notification_done_today = True
+            logger.info("✅ Notification sent. Waiting for the next scheduled day...")
+            time.sleep(61)
+        else:
+            # Check every 30 seconds
+            time.sleep(30)
+
 if __name__ == "__main__":
-    main()
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "--now":
+        main()
+    else:
+        run_scheduler("10:00")

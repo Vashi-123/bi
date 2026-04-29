@@ -80,5 +80,32 @@ def broadcast_report():
 
     logger.info("✅ Broadcast complete.")
 
+import time
+
+def run_scheduler(target_time="09:00"):
+    logger.info(f"📡 Broadcast Scheduler started. Target time: {target_time}")
+    broadcast_done_today = False
+    
+    while True:
+        now = datetime.now()
+        current_time = now.strftime("%H:%M")
+        
+        # Reset flag at midnight
+        if current_time == "00:00":
+            broadcast_done_today = False
+
+        if current_time == target_time and not broadcast_done_today:
+            logger.info("🔔 It's time! Starting report broadcast...")
+            broadcast_report()
+            broadcast_done_today = True
+            logger.info("✅ Broadcast for today is done. Sleeping until tomorrow...")
+            time.sleep(61)
+        else:
+            # Check every 30 seconds
+            time.sleep(30)
+
 if __name__ == "__main__":
-    broadcast_report()
+    if len(sys.argv) > 1 and sys.argv[1] == "--now":
+        broadcast_report()
+    else:
+        run_scheduler("08:00")
