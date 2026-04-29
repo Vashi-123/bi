@@ -181,13 +181,7 @@ export function ChartSection({
                                                         const React = require('react');
                                                         return (
                                                             <div className="relative">
-                                                                {React.cloneElement(customTooltip, { 
-                                                                    active: true, 
-                                                                    payload: displayPayload, 
-                                                                    label: displayLabel,
-                                                                    coordinate: isPinned ? { x: pinnedPoint.x, y: pinnedPoint.y } : props.coordinate,
-                                                                    viewBox: props.viewBox 
-                                                                })}
+                                                                {React.cloneElement(customTooltip, { active: true, payload: displayPayload, label: displayLabel })}
                                                             </div>
                                                         );
                                                     }
@@ -338,13 +332,7 @@ export function ChartSection({
                                                                 const React = require('react');
                                                                 return (
                                                                     <div className="relative">
-                                                                        {React.cloneElement(customTooltip, { 
-                                                                            active: true, 
-                                                                            payload: displayPayload, 
-                                                                            label: displayLabel,
-                                                                            coordinate: isPinned ? { x: pinnedPoint.x, y: pinnedPoint.y } : props.coordinate,
-                                                                            viewBox: props.viewBox
-                                                                        })}
+                                                                        {React.cloneElement(customTooltip, { active: true, payload: displayPayload, label: displayLabel })}
                                                                     </div>
                                                                 );
                                                             }

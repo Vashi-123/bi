@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import useSWR, { mutate } from 'swr';
 import { API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
-import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 type SettingCategory = 'monitored_skus' | 'authorized_users' | 'notification_recipients';
@@ -164,8 +164,13 @@ export default function StockSettingsPage() {
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Manage SKUs, Access, and Notifications</p>
                     </div>
                     
-                    {/* Tab Switcher */}
-                    <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
+                    <div className="flex flex-col items-end gap-3">
+                        <Link href="/daily_report" className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-[#0C0C0C] rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm group">
+                            <Zap className="w-3 h-3 text-slate-400 group-hover:text-[#0C0C0C]" />
+                            Switch to Report Settings
+                        </Link>
+                        {/* Tab Switcher */}
+                        <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
                         <button 
                             onClick={() => { setActiveCategory('monitored_skus'); setSelectedItems(new Map()); cancelEditing(); }}
                             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all

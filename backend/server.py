@@ -367,18 +367,39 @@ def refresh_data():
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/api/ai/analyze")
+# --- Supabase Integration ---
+
+SUPABASE_URL = "https://mmsjmkvkytiehqdvsclt.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tc2pta3ZreXRpZWhxZHZzY2x0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg0ODM3MSwiZXhwIjoyMDkyNDI0MzcxfQ.R93Uw0jHyirg3JRC3lcVOCDqg-NEDpEMAfcRrlXv-sI"
+
+try:
+    from supabase_client import SupabaseManager
+    sb_manager = SupabaseManager(SUPABASE_URL, SUPABASE_KEY)
+except ImportError:
+    # Try alternate path if needed
+    sys.path.append(os.path.join(os.getcwd(), 'miniapps', 'backend'))
+    from supabase_client import SupabaseManager
+    sb_manager = SupabaseManager(SUPABASE_URL, SUPABASE_KEY)
+
+@app.get("/analyze_period")
 async def analyze_period(
     start_a: str, end_a: str, 
     start_b: str, end_b: str
 ):
     """
-    Returns mathematical payload for data-driven analysis.
+    Returns mathematical payload for data-driven analysis and syncs it to Supabase.
     """
     try:
         # Get raw math data from database
         payload = database.get_period_ai_payload(start_a, end_a, start_b, end_b)
         if "error" in payload:
             return JSONResponse(status_code=400, content=payload)
+
+        # Sync to Supabase for Daily Report access
+        try:
+            sb_manager.upsert_analytical_report("daily_analytics", payload)
+        except Exception as sb_err:
+            logger.error(f"Failed to sync report to Supabase: {sb_err}")
 
         return {
             "payload": payload,

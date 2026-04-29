@@ -251,24 +251,16 @@ export default function Dashboard() {
 
 
   // --- Custom Tooltip Content ---
-  const CustomTooltip = ({ active, payload, label, interval, coordinate, viewBox }: any) => {
+  const CustomTooltip = ({ active, payload, label, interval }: any) => {
     if (active && payload && payload.length) {
       const isCurrency = activeMetric !== 'qty' && activeMetric !== 'margin';
       const data = payload[0].payload;
       const growth = data.growth;
       const total = data.total;
 
-      // Smart alignment: if cursor is in the right 60% of the chart, flip tooltip to the left
-      const isRightSide = coordinate && viewBox && coordinate.x > (viewBox.width * 0.6);
-
       return (
         <div 
-          className="relative p-10 -m-10 pointer-events-auto group/tooltip transition-all duration-300"
-          style={{ 
-            transform: isRightSide 
-              ? 'translateX(-100%) translateX(-40px)' 
-              : 'translateX(40px)' 
-          }}
+          className="relative p-10 -m-10 pointer-events-auto group/tooltip"
           onMouseEnter={(e) => e.stopPropagation()}
         >
           <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[340px] z-[100] relative">
