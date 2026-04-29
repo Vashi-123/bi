@@ -131,6 +131,14 @@ export default function StockSettingsPage() {
         setCatalogSearch('');
     };
 
+    const startEditing = (item: any) => {
+        const id = (item.sku_id || item.telegram_id || item.id).toString();
+        setEditingId(id);
+        setNewItemId(id);
+        setNewItemName(item.name);
+        if (item.group) setNewItemGroup(item.group);
+    };
+
     const cancelEditing = () => {
         setEditingId(null);
         setNewItemId('');
