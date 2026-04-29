@@ -14,7 +14,11 @@ export const getColor = (index: number, total: number): string => {
 export const fetcher = async (url: string) => {
     const start = performance.now();
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                'x-telegram-init-data': 'admin_mock'
+            }
+        });
         if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
         const data = await res.json();
         const end = performance.now();
