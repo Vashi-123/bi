@@ -385,12 +385,7 @@ def refresh_data():
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/api/ai/analyze")
-async def analyze_data():
-    # Placeholder or existing logic
-    pass
-
-@app.get("/analyze_period")
-async def analyze_period(
+async def analyze_data(
     start_a: str, end_a: str, 
     start_b: str, end_b: str
 ):
@@ -405,7 +400,8 @@ async def analyze_period(
 
         # Sync to Supabase for Daily Report access
         try:
-            sb_manager.upsert_analytical_report("daily_analytics", payload)
+            if sb_manager:
+                sb_manager.upsert_analytical_report("daily_analytics", payload)
         except Exception as sb_err:
             logger.error(f"Failed to sync report to Supabase: {sb_err}")
 
