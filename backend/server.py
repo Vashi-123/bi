@@ -13,6 +13,24 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# --- Supabase Integration ---
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+try:
+    from supabase_client import SupabaseManager
+    sb_manager = SupabaseManager(SUPABASE_URL, SUPABASE_KEY)
+except ImportError:
+    import sys
+    # Try alternate path if needed
+    sys.path.append(os.path.join(os.getcwd(), 'miniapps', 'backend'))
+    try:
+        from supabase_client import SupabaseManager
+        sb_manager = SupabaseManager(SUPABASE_URL, SUPABASE_KEY)
+    except:
+        sb_manager = None
+        logging.getLogger("giftery-api").error("⚠️ SupabaseManager not found")
+
 # Configure structured logging
 logging.basicConfig(
     level=logging.INFO,
@@ -367,18 +385,9 @@ def refresh_data():
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/api/ai/analyze")
-# --- Supabase Integration ---
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-try:
-    from supabase_client import SupabaseManager
-    sb_manager = SupabaseManager(SUPABASE_URL, SUPABASE_KEY)
-except ImportError:
-    # Try alternate path if needed
-    sys.path.append(os.path.join(os.getcwd(), 'miniapps', 'backend'))
-    from supabase_client import SupabaseManager
-    sb_manager = SupabaseManager(SUPABASE_URL, SUPABASE_KEY)
+async def analyze_data():
+    # Placeholder or existing logic
+    pass
 
 @app.get("/analyze_period")
 async def analyze_period(
