@@ -93,7 +93,7 @@ export default function PurchaseDashboard() {
   const { data: masterData, isLoading: masterLoading } = useSWR(masterUrl, fetcher, swrConfig);
   const { data: detailData, isLoading: detailLoading } = useSWR(detailUrl, fetcher, swrConfig);
 
-  // Check if server is potentially restarting
+  // Check if server is potentially restarting (connection refused or 5xx)
   const isServerInitializing = kpiError && !kpiData;
 
   // --- Initializing Overlay ---
@@ -117,7 +117,9 @@ export default function PurchaseDashboard() {
              </p>
           </div>
           <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden mb-12">
-             <div className="h-full bg-[#DDFF55] w-full animate-[loading_1.5s_infinite_ease-in-out]" />
+             <div className="h-full bg-[#DDFF55] w-full animate-[loading_1.5s_infinite_ease-in-out]" style={{
+               animation: 'loading 1.5s infinite ease-in-out'
+             }} />
           </div>
           <style jsx>{`
             @keyframes loading {
@@ -133,7 +135,6 @@ export default function PurchaseDashboard() {
     );
   }
 
-  // Derive donut data (top N + Other) from full distribution
   const ratingData = fullDistData;
   const distData = useMemo(() => {
     if (!Array.isArray(fullDistData)) return [];
@@ -148,24 +149,10 @@ export default function PurchaseDashboard() {
     return [...mainItems, { dimension_value: 'Other', value: aggregatedOtherValue }].filter(item => item.value > 0);
   }, [fullDistData, topN]);
 
-  const weeklyData = useMemo(() => formatTrend(weeklyRaw?.data), [weeklyRaw]);
-  const monthlyData = useMemo(() => formatTrend(monthlyRaw?.data), [monthlyRaw]);
-  const dailyData = useMemo(() => formatTrend(dailyRaw?.data), [dailyRaw]);
-
-  const allStatuses = useMemo(() => ({
-      ...(weeklyRaw?.statuses || {}),
-      ...(monthlyRaw?.statuses || {}),
-      ...(dailyRaw?.statuses || {})
-  }), [weeklyRaw, monthlyRaw, dailyRaw]);
-
-  const sharedCategories = useMemo(() => {
-      if (!distData || !Array.isArray(distData)) return [];
-      const cats = distData.map((d: any) => d.dimension_value).filter((v: string) => v !== 'Other').slice(0, topN);
-      return [...cats, 'Other'];
-  }, [distData, topN]);
-
-  const isCurrencyMetric = activeMetric !== 'qty' && activeMetric !== 'margin';
-
+  const [aiData, setAiData] = useState<any>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [showAiSidebar, setShowAiSidebar] = useState(false);
+  
   const handleAIAnalysis = async (currentPoint: any, interval: 'day' | 'week' | 'month') => {
     setIsAiLoading(true);
     setShowAiSidebar(true);
@@ -204,9 +191,16 @@ export default function PurchaseDashboard() {
     }
   };
 
-  const [aiData, setAiData] = useState<any>(null);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [showAiSidebar, setShowAiSidebar] = useState(false);
+  const weeklyData = useMemo(() => formatTrend(weeklyRaw?.data), [weeklyRaw]);
+  const monthlyData = useMemo(() => formatTrend(monthlyRaw?.data), [monthlyRaw]);
+  const dailyData = useMemo(() => formatTrend(dailyRaw?.data), [dailyRaw]);
+  const allStatuses = useMemo(() => ({ ...(weeklyRaw?.statuses || {}), ...(monthlyRaw?.statuses || {}), ...(dailyRaw?.statuses || {}) }), [weeklyRaw, monthlyRaw, dailyRaw]);
+  const sharedCategories = useMemo(() => {
+      if (!distData || !Array.isArray(distData)) return [];
+      const cats = distData.map((d: any) => d.dimension_value).filter((v: string) => v !== 'Other').slice(0, topN);
+      return [...cats, 'Other'];
+  }, [distData, topN]);
+  const isCurrencyMetric = activeMetric !== 'qty' && activeMetric !== 'margin';
 
   const CustomTooltip = ({ active, payload, label, interval }: any) => {
     if (active && payload && payload.length) {
@@ -252,20 +246,47 @@ export default function PurchaseDashboard() {
     return null;
   };
 
+  const handleExport = () => {
+      const data = fullscreenTable === 'master' ? masterData : detailData;
+      if (!data || !Array.isArray(data) || data.length === 0) return;
+      const headers = fullscreenTable === 'master' ? ['Group Name', 'Cost', 'Profit', 'Margin (%)', 'Qty'] : ['SKU Name', 'Cost', 'Profit', 'Margin (%)', 'Qty'];
+      const rows = data.map((item: any) => [`"${item.name.replace(/"/g, '""')}"`, item.revenue, item.profit, item.margin?.toFixed(2), item.qty]);
+      const csvContent = "\uFEFF" + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `purchase_${fullscreenTable}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
+  const renderGrowthCell = (growthVal: number | null | undefined) => {
+      if (growthVal == null) return <TableCell className="text-right text-sm !text-slate-400 py-4">-</TableCell>;
+      const isPos = growthVal >= 0;
+      return (
+          <TableCell className="text-right py-4 w-[80px]">
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${isPos ? 'text-emerald-700 bg-emerald-100' : 'text-rose-700 bg-rose-100'}`}>
+                  {isPos ? '+' : ''}{growthVal.toFixed(2)}%
+              </span>
+          </TableCell>
+      );
+  };
+
   return (
     <div className="min-h-screen text-[#0C0C0C] font-sans selection:bg-blue-100 selection:text-blue-900 bg-[#F8FAFC]">
       <AISidebar isOpen={showAiSidebar} onClose={() => setShowAiSidebar(false)} isLoading={isAiLoading} data={aiData} />
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-[#E8ECEF] via-[#F8FAFC] to-[#FDF1D6] opacity-100" />
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#638994]/10 blur-[120px] rounded-full" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#79783F]/5 blur-[150px] rounded-full" />
       </div>
 
       <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 py-4 flex justify-between items-center shadow-sm">
         <Flex className="gap-6 w-auto cursor-pointer" justifyContent="start">
-          <Link href="/purchase" className="text-xl font-black text-[#0C0C0C] tracking-tighter uppercase italic">Purchase <span className="text-[#DDFF55]">Hub</span></Link>
-          <div className="h-6 w-[1px] bg-slate-200" />
-          <Link href="/sales" className="text-sm font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest">Sales</Link>
+          <h1 className="text-2xl font-black text-[#0C0C0C] tracking-tighter uppercase italic">Purchase <span className="text-[#DDFF55]">Dashboard</span></h1>
         </Flex>
-
         <Flex className="w-auto gap-4" justifyContent="end">
           <button onClick={() => setSidebarOpen(true)} className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 rounded-xl hover:shadow-md transition-all relative group text-[13px] font-bold">
             <FilterIcon className="w-4 h-4 text-[#FF843B]" /> Filters
@@ -274,12 +295,8 @@ export default function PurchaseDashboard() {
       </nav>
 
       <main className="relative z-10 max-w-[1600px] mx-auto p-10 space-y-12 pb-24">
-        <div className="flex justify-between items-end">
-            <div>
-                <h1 className="text-4xl font-black text-[#0C0C0C] tracking-tight uppercase italic">Purchase <span className="text-[#DDFF55]">Analytics</span></h1>
-                <p className="text-slate-400 text-sm font-medium">Detailed spending and vendor distribution overview</p>
-            </div>
-            <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex justify-end mb-6">
+            <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/10">
                 {[{ label: 'All', mode: 'all', val: null }, { label: '3M', mode: 'relative', val: 3, unit: 'month' }, { label: '30D', mode: 'relative', val: 30, unit: 'day' }].map((btn) => (
                     <button key={btn.label} onClick={() => setDateFilter({ mode: btn.mode as any, value: btn.val as any, unit: (btn as any).unit })} className={`px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${dateFilter.mode === btn.mode && dateFilter.value === btn.val ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>{btn.label}</button>
                 ))}
@@ -293,7 +310,7 @@ export default function PurchaseDashboard() {
             <KPICard title="Quantity" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.qty.value} baseline={kpiData?.qty.prev} growth={kpiData?.qty.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} hasComparison={canCompare} />
         </div>
 
-        <Flex className="gap-6 bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm">
+        <Flex className="gap-6 bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/20">
             <div className="flex items-center gap-3 ml-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dimension:</span>
                 <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={legendDimension} onChange={e => setLegendDimension(e.target.value as any)}>
@@ -303,11 +320,9 @@ export default function PurchaseDashboard() {
                 </select>
             </div>
             <div className="w-px h-5 bg-slate-100" />
-            <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Top:</span>
-                <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={topN} onChange={e => setTopN(parseInt(e.target.value))}>
-                    {[3, 5, 10, 25].map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
+            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
+                <button onClick={() => setChartView('combined')} className={`p-1.5 rounded-lg transition-all ${chartView === 'combined' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400'}`}><LayoutGrid className="w-4 h-4" /></button>
+                <button onClick={() => setChartView('multiples')} className={`p-1.5 rounded-lg transition-all ${chartView === 'multiples' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400'}`}><Layout className="w-4 h-4" /></button>
             </div>
         </Flex>
 
@@ -317,26 +332,26 @@ export default function PurchaseDashboard() {
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="rounded-3xl p-8 bg-white h-[500px] flex flex-col shadow-xl shadow-slate-200/50">
-                <Title className="text-xl font-bold mb-6">Vendor Performance</Title>
-                <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+            <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
+                <Title className="text-xl font-bold mb-8">Vendor Leaderboard</Title>
+                <div className="flex-1 overflow-y-auto space-y-6 pr-4 scrollbar-thin">
                     {ratingData?.filter((d: any) => d.dimension_value !== 'Other').map((d: any, i: number) => (
                         <div key={d.dimension_value} className="space-y-2">
                             <div className="flex justify-between text-[11px] font-bold text-slate-500 uppercase">
                                 <span>{d.dimension_value}</span>
                                 <span>{formatValue(d.value)}</span>
                             </div>
-                            <div className="h-1.5 bg-slate-50 rounded-full overflow-hidden">
-                                <div className="h-full bg-[#0C0C0C] transition-all duration-1000" style={{ width: `${(d.value / ratingData[0].value) * 100}%`, backgroundColor: getColor(i, 10) }} />
+                            <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
+                                <div className="h-full transition-all duration-1000" style={{ width: `${(d.value / ratingData[0].value) * 100}%`, backgroundColor: getColor(i, 10) }} />
                             </div>
                         </div>
                     ))}
                 </div>
             </Card>
-            <Card className="rounded-3xl p-8 bg-white h-[500px] flex flex-col shadow-xl shadow-slate-200/50">
-                <Title className="text-xl font-bold mb-6">Supply Structure</Title>
-                <div className="flex-1">
-                    <ResponsiveContainer width="100%" height="100%">
+            <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
+                <Title className="text-xl font-bold mb-8">Supply Structure</Title>
+                <div className="flex-1 flex flex-col items-center justify-center">
+                    <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                             <Pie data={distData} innerRadius={80} outerRadius={120} paddingAngle={5} dataKey="value" nameKey="dimension_value">
                                 {distData.map((item: any, index: number) => <Cell key={index} fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)} />)}
@@ -351,12 +366,11 @@ export default function PurchaseDashboard() {
         <Card className="rounded-3xl p-8 bg-white shadow-xl shadow-slate-200/50 overflow-hidden">
             <div className="flex justify-between items-center mb-6">
                 <Title className="text-xl font-bold">Deep Dive Analysis</Title>
-                <button onClick={() => setSelectedGroup(null)} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-[#0C0C0C]">Reset Group</button>
             </div>
             <Table>
                 <TableHead>
                     <TableRow>
-                        <TableHeaderCell className="text-[10px] font-bold uppercase tracking-widest">Dimension Value</TableHeaderCell>
+                        <TableHeaderCell className="text-[10px] font-bold uppercase tracking-widest">Group Name</TableHeaderCell>
                         <TableHeaderCell className="text-right text-[10px] font-bold uppercase tracking-widest">Spending</TableHeaderCell>
                         <TableHeaderCell className="text-right text-[10px] font-bold uppercase tracking-widest">Growth</TableHeaderCell>
                     </TableRow>
@@ -366,11 +380,7 @@ export default function PurchaseDashboard() {
                         <TableRow key={item.name} className={`cursor-pointer ${selectedGroup === item.name ? 'bg-slate-50' : ''}`} onClick={() => setSelectedGroup(item.name)}>
                             <TableCell className="text-sm font-bold">{item.name}</TableCell>
                             <TableCell className="text-right text-sm">{formatValue(item.revenue)}</TableCell>
-                            <TableCell className="text-right">
-                                <span className={`text-[10px] font-bold px-2 py-1 rounded ${item.revenue_growth >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                                    {item.revenue_growth >= 0 ? '+' : ''}{item.revenue_growth.toFixed(1)}%
-                                </span>
-                            </TableCell>
+                            <TableCell className="text-right">{renderGrowthCell(item.revenue_growth)}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
@@ -378,7 +388,7 @@ export default function PurchaseDashboard() {
         </Card>
       </main>
 
-      <FilterSidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} source={source} />
+      {isSidebarOpen && <FilterSidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} source={source} />}
     </div>
   );
 }
