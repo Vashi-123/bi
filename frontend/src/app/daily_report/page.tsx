@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
-import { ArrowLeft, Plus, Trash2, Send, ShieldCheck, UserCircle, Edit3, XCircle, Package, Zap } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Send, ShieldCheck, UserCircle, Edit3, XCircle, Package, Zap, BellRing } from 'lucide-react';
 import Link from 'next/link';
 
 type SettingCategory = 'report_recipients';
@@ -110,6 +110,14 @@ export default function DailyReportPage() {
                                 <Package className="w-3 h-3 text-slate-400 group-hover:text-[#0C0C0C]" />
                                 Stock Settings
                             </Link>
+                        </div>
+                        {/* Tab Switcher (Consistent with Stock Settings) */}
+                        <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
+                            <button 
+                                className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-black transition-all"
+                            >
+                                <BellRing className="w-4 h-4" /> Notify
+                            </button>
                         </div>
                     </div>
                 </Flex>
