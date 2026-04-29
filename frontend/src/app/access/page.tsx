@@ -84,15 +84,21 @@ export default function AccessManagementPage() {
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Centralized User Permissions Control</p>
                     </div>
                     
-                    <div className="flex gap-3">
-                        <Link href="/stock_settings" className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 hover:border-[#0C0C0C] rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm group">
-                            <Package className="w-4 h-4 text-slate-400 group-hover:text-[#0C0C0C]" />
-                            Stock Settings
-                        </Link>
-                        <Link href="/daily_report" className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 hover:border-[#0C0C0C] rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm group">
-                            <Zap className="w-4 h-4 text-slate-400 group-hover:text-[#0C0C0C]" />
-                            Report Settings
-                        </Link>
+                    <div className="flex flex-col items-end gap-3">
+                        <div className="flex gap-2 bg-white/50 p-1.5 rounded-2xl border border-slate-100 shadow-sm">
+                            <Link href="/access" className="flex items-center gap-2 px-4 py-2 bg-[#0C0C0C] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg group">
+                                <ShieldCheck className="w-3.5 h-3.5 text-[#DDFF55]" />
+                                Access
+                            </Link>
+                            <Link href="/stock_settings" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                <Package className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                Stock
+                            </Link>
+                            <Link href="/daily_report" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                <Zap className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                Reports
+                            </Link>
+                        </div>
                     </div>
                 </Flex>
 

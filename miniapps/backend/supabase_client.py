@@ -123,10 +123,10 @@ class SupabaseManager:
             logger.error(f"Error fetching monitored SKUs: {str(e)}")
             return []
 
-    def add_monitored_sku(self, sku_id: str, name: str) -> bool:
+    def add_monitored_sku(self, sku_id: str, name: str, group: str = "General") -> bool:
         try:
             self.supabase.table('monitored_skus').upsert(
-                {"sku_id": sku_id, "name": name},
+                {"sku_id": sku_id, "name": name, "group": group},
                 on_conflict="sku_id"
             ).execute()
             return True

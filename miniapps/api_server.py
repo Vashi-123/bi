@@ -162,6 +162,7 @@ async def verify_admin(x_telegram_init_data: str):
 class SkuSetting(BaseModel):
     sku_id: str
     name: str
+    group: str = "General"
 
 class RecipientSetting(BaseModel):
     telegram_id: int
@@ -181,8 +182,8 @@ async def get_skus(x_telegram_init_data: str = Header(None)):
 @app.post("/api/settings/skus")
 async def add_sku(sku: SkuSetting, x_telegram_init_data: str = Header(None)):
     await verify_admin(x_telegram_init_data)
-    if db.add_monitored_sku(sku.sku_id, sku.name):
-        update_local_settings("monitored_skus", "add", {"id": sku.sku_id, "name": sku.name})
+    if db.add_monitored_sku(sku.sku_id, sku.name, sku.group):
+        update_local_settings("monitored_skus", "add", {"id": sku.sku_id, "name": sku.name, "group": sku.group})
         return {"status": "success"}
     raise HTTPException(status_code=500, detail="Failed to add SKU")
 
