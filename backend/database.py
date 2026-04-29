@@ -26,8 +26,8 @@ def extract_column_filters(filters: dict) -> dict:
 
 # Path to the partitioned parquet dataset
 # Use environment variable DATA_PATH if available, else default to absolute path on server
-DATA_PATH = os.getenv("DATA_PATH", "/home/usman/project_data/processed/final_df/**/*.parquet")
-PURCHASE_DATA_PATH = os.getenv("PURCHASE_DATA_PATH", "/home/usman/project_data/processed/final_df_purchase/**/*.parquet")
+DATA_PATH = os.getenv("DATA_PATH", "/home/usman/project_data/processed/final_df")
+PURCHASE_DATA_PATH = os.getenv("PURCHASE_DATA_PATH", "/home/usman/project_data/processed/final_df_purch")
 STATUS_PATH = os.getenv("STATUS_PATH", "/home/usman/project_data/result/unified_status.parquet")
 
 # Global connection and cache
