@@ -5,6 +5,10 @@ import uvicorn
 import os
 import sys
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # --- Path Configuration ---
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
@@ -25,10 +29,11 @@ from supabase_client import SupabaseManager
 
 # --- Configuration ---
 # In a real app, use .env files. For now, using hardcoded values provided by you.
-BOT_TOKEN = "8719774319:AAF32nPaw10bPMrfTfEKDyGcTO13U54Mo4c"
-SUPABASE_URL = "https://mmsjmkvkytiehqdvsclt.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tc2pta3ZreXRpZWhxZHZzY2x0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg0ODM3MSwiZXhwIjoyMDkyNDI0MzcxfQ.R93Uw0jHyirg3JRC3lcVOCDqg-NEDpEMAfcRrlXv-sI"
-SETTINGS_PATH = "/home/usman/powerbi/backend/stock_settings.json"
+# --- Configuration from Environment ---
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SETTINGS_PATH = os.getenv("SETTINGS_PATH", "/home/usman/powerbi/backend/stock_settings.json")
 
 import json
 import sync_settings

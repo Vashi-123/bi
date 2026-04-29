@@ -6,14 +6,18 @@ import io
 import os
 import sys
 import pyarrow.dataset as ds
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 # --- ТЕЛЕГРАМ & SETTINGS ---
-TG_BOT_TOKEN = "8719774319:AAF32nPaw10bPMrfTfEKDyGcTO13U54Mo4c"
-# Supabase for sync
-SUPABASE_URL = "https://mmsjmkvkytiehqdvsclt.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tc2pta3ZreXRpZWhxZHZzY2x0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg0ODM3MSwiZXhwIjoyMDkyNDI0MzcxfQ.R93Uw0jHyirg3JRC3lcVOCDqg-NEDpEMAfcRrlXv-sI"
+# --- CONFIGURATION FROM ENVIRONMENT ---
+TG_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SETTINGS_PATH = os.getenv("SETTINGS_PATH", "/home/usman/powerbi/backend/stock_settings.json")
 
 # Пути на сервере
-SETTINGS_PATH = "/home/usman/powerbi/backend/stock_settings.json"
 backend_path = "/home/usman/miniapps/backend"
 
 if backend_path not in sys.path:

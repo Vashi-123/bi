@@ -1,12 +1,17 @@
-import json
 import os
 import sys
+from dotenv import load_dotenv
 
-# --- Configuration ---
-SUPABASE_URL = "https://mmsjmkvkytiehqdvsclt.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tc2pta3ZreXRpZWhxZHZzY2x0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Njg0ODM3MSwiZXhwIjoyMDkyNDI0MzcxfQ.R93Uw0jHyirg3JRC3lcVOCDqg-NEDpEMAfcRrlXv-sI"
-SETTINGS_PATH = "/home/usman/powerbi/backend/stock_settings.json"
-BACKEND_PATH = "/home/usman/miniapps/backend"
+# Load environment variables
+load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
+
+import json
+
+# --- Configuration from Environment ---
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SETTINGS_PATH = os.getenv("SETTINGS_PATH", "/home/usman/powerbi/backend/stock_settings.json")
+BACKEND_PATH = os.getenv("BACKEND_PATH", "/home/usman/miniapps/backend")
 
 if BACKEND_PATH not in sys.path:
     sys.path.insert(0, BACKEND_PATH)
@@ -51,7 +56,12 @@ def sync():
             
     # Добавляем/Обновляем
     for user in auth_users:
-        db.add_authorized_user(int(user['id']), user['name'], user.get('access', 'view'))
+        db.add_authorized_user(
+            int(user['id']), 
+            user['name'], 
+            user.get('stock_access', 'none'),
+            user.get('report_access', 'none')
+        )
 
     # 2. СИНХРОНИЗАЦИЯ SKU
     monitored_skus = settings.get('monitored_skus', [])
