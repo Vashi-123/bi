@@ -329,6 +329,7 @@ export default function PurchaseDashboard() {
         <section className="space-y-12">
             <ChartSection title="Weekly Trend" data={weeklyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="week" />} />
             <ChartSection title="Monthly Trend" data={monthlyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="month" />} />
+            <ChartSection title="Daily Trend" data={dailyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="day" />} />
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -363,29 +364,57 @@ export default function PurchaseDashboard() {
             </Card>
         </div>
 
-        <Card className="rounded-3xl p-8 bg-white shadow-xl shadow-slate-200/50 overflow-hidden">
-            <div className="flex justify-between items-center mb-6">
-                <Title className="text-xl font-bold">Deep Dive Analysis</Title>
-            </div>
-            <Table>
-                <TableHead>
-                    <TableRow>
-                        <TableHeaderCell className="text-[10px] font-bold uppercase tracking-widest">Group Name</TableHeaderCell>
-                        <TableHeaderCell className="text-right text-[10px] font-bold uppercase tracking-widest">Spending</TableHeaderCell>
-                        <TableHeaderCell className="text-right text-[10px] font-bold uppercase tracking-widest">Growth</TableHeaderCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {masterData?.map((item: any) => (
-                        <TableRow key={item.name} className={`cursor-pointer ${selectedGroup === item.name ? 'bg-slate-50' : ''}`} onClick={() => setSelectedGroup(item.name)}>
-                            <TableCell className="text-sm font-bold">{item.name}</TableCell>
-                            <TableCell className="text-right text-sm">{formatValue(item.revenue)}</TableCell>
-                            <TableCell className="text-right">{renderGrowthCell(item.revenue_growth)}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </Card>
+        {/* Master Table and Detail Table exactly like Sales */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500 ${expandedTable === 'master' ? 'lg:col-span-2' : expandedTable === 'detail' ? 'hidden' : ''}`}>
+                <div className="absolute top-1 right-6 flex items-center gap-1 z-20">
+                    <button onClick={() => setFullscreenTable('master')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"><Expand className="w-4 h-4" /></button>
+                </div>
+                <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
+                    <Table className="min-w-[600px]">
+                        <TableHead className="bg-slate-50/80 sticky top-0 z-10">
+                            <TableRow className="border-b border-slate-100">
+                                <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Group Name</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Spending</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {masterData?.map((item: any) => (
+                                <TableRow key={item.name} className={`cursor-pointer transition-all border-b border-slate-100/50 border-l-4 ${selectedGroup === item.name ? 'bg-slate-50/50 border-l-slate-400' : 'hover:bg-slate-50/30 border-l-transparent'}`} onClick={() => setSelectedGroup(item.name === selectedGroup ? null : item.name)}>
+                                    <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </Card>
+
+            <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500 ${expandedTable === 'detail' ? 'lg:col-span-2' : expandedTable === 'master' ? 'hidden' : ''}`}>
+                 <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
+                    <Table className="min-w-[600px]">
+                        <TableHead className="bg-slate-50/80 sticky top-0 z-10">
+                            <TableRow className="border-b border-slate-100">
+                                <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Spending</TableHeaderCell>
+                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {detailData?.map((item: any) => (
+                                <TableRow key={item.name} className="border-b border-slate-100/50 hover:bg-slate-50/30 transition-all">
+                                    <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
+                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </Card>
+        </div>
       </main>
 
       {isSidebarOpen && <FilterSidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} source={source} />}

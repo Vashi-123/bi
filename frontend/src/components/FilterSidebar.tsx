@@ -192,15 +192,15 @@ export function FilterSidebar({ isOpen, onClose, source = 'sales' }: { isOpen?: 
                 <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-full transition-all text-slate-400 hover:text-slate-800"><XIcon className="w-5 h-5" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-8 space-y-10 scrollbar-hide">
-                <FilterGroup title="Category" column="Category" current={filters['Category']} onChange={vals => setFilter('Category', vals)} source={source} />
-                <FilterGroup title="Product" column="Product name" current={filters['Product name']} onChange={vals => setFilter('Product name', vals)} source={source} />
-                <FilterGroup title="SKU" column="Item name" current={filters['Item name']} onChange={vals => setFilter('Item name', vals)} source={source} />
-                <FilterGroup title="Country" column="Product country" current={filters['Product country']} onChange={vals => setFilter('Product country', vals)} source={source} />
-                <FilterGroup title={source === 'purchase' ? "Vendor" : "Client"} column="counterparty" current={filters['counterparty']} onChange={vals => setFilter('counterparty', vals)} source={source} />
-                <FilterGroup title="Sales Type" column="type" current={filters['type']} onChange={vals => setFilter('type', vals)} source={source} />
+                <FilterGroup title="Category" column="Category" current={filters['Category']} onChange={vals => setFilter('Category', vals)} source="sales" />
+                <FilterGroup title="Product" column="Product name" current={filters['Product name']} onChange={vals => setFilter('Product name', vals)} source="sales" />
+                <FilterGroup title="SKU" column="Item name" current={filters['Item name']} onChange={vals => setFilter('Item name', vals)} source="sales" />
+                <FilterGroup title="Country" column="Product country" current={filters['Product country']} onChange={vals => setFilter('Product country', vals)} source="sales" />
+                <FilterGroup title={source === 'purchase' ? "Vendor" : "Client"} column="counterparty" current={filters['counterparty']} onChange={vals => setFilter('counterparty', vals)} source="sales" />
+                <FilterGroup title="Sales Type" column="type" current={filters['type']} onChange={vals => setFilter('type', vals)} source="sales" />
                 <div className="h-px bg-slate-50 mx-[-32px]" />
-                <FilterGroup title="Client Group" column="Groupclient" current={filters['Groupclient']} onChange={vals => setFilter('Groupclient', vals)} source={source} />
-                <FilterGroup title="Country Group" column="CountryGroup" current={filters['CountryGroup']} onChange={vals => setFilter('CountryGroup', vals)} source={source} />
+                <FilterGroup title="Client Group" column="Groupclient" current={filters['Groupclient']} onChange={vals => setFilter('Groupclient', vals)} source="sales" />
+                <FilterGroup title="Country Group" column="CountryGroup" current={filters['CountryGroup']} onChange={vals => setFilter('CountryGroup', vals)} source="sales" />
                 
                 <div className="h-px bg-slate-50 mx-[-32px]" />
                 <DateFilterGroup />
