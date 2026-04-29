@@ -328,20 +328,27 @@ export default function PurchaseDashboard() {
 
         <Flex className="gap-6 bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/20">
             <div className="flex items-center gap-3 ml-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dimension:</span>
-                <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={legendDimension} onChange={e => setLegendDimension(e.target.value as any)}>
-                    <option value="Category">Category</option>
-                    <option value="Product name">Product</option>
-                    <option value="Item name">SKU</option>
-                    <option value="Product country">Country</option>
-                    <option value="counterparty">Vendor</option>
-                    <option value="type">Type</option>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Show Top:</span>
+                <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={topN} onChange={e => setTopN(parseInt(e.target.value))}>
+                    {(chartView === 'combined' ? [3, 5] : [5, 10, 25, 50, 100]).map(v => <option key={v} value={v}>Top {v}</option>)}
                 </select>
             </div>
             <div className="w-px h-5 bg-slate-100" />
             <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
                 <button onClick={() => setChartView('combined')} className={`p-1.5 rounded-lg transition-all ${chartView === 'combined' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400'}`}><LayoutGrid className="w-4 h-4" /></button>
                 <button onClick={() => setChartView('multiples')} className={`p-1.5 rounded-lg transition-all ${chartView === 'multiples' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400'}`}><Layout className="w-4 h-4" /></button>
+            </div>
+            <div className="w-px h-5 bg-slate-100" />
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dimension:</span>
+                    <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={legendDimension} onChange={e => setLegendDimension(e.target.value as any)}>
+                        <option value="Category">Category</option>
+                        <option value="Product name">Product</option>
+                        <option value="Item name">SKU</option>
+                        <option value="counterparty">Supplier</option>
+                    </select>
+                </div>
             </div>
         </Flex>
 
@@ -353,7 +360,7 @@ export default function PurchaseDashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
-                <Title className="text-xl font-bold mb-8">Vendor Leaderboard</Title>
+                <Title className="text-xl font-bold mb-8">Supplier Leaderboard</Title>
                 <div className="flex-1 overflow-y-auto space-y-6 pr-4 scrollbar-thin">
                     {ratingData?.filter((d: any) => d.dimension_value !== 'Other').map((d: any, i: number) => (
                         <div key={d.dimension_value} className="space-y-2">
