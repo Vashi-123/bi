@@ -1,149 +1,83 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
 import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle, Zap } from 'lucide-react';
 import Link from 'next/link';
 
-type SettingCategory = 'monitored_skus' | 'authorized_users' | 'notification_recipients';
+type SettingCategory = 'monitored_skus' | 'notification_recipients';
 
 export default function StockSettingsPage() {
     const [activeCategory, setActiveCategory] = useState<SettingCategory>('monitored_skus');
     
-    const { data: itemsData, isLoading: itemsLoading } = useSWR(
-        `${API_BASE}/api/stock/items`, 
-        fetcher
-    );
     const { data: settingsData, isLoading: settingsLoading } = useSWR(
-        `${API_BASE}/api/stock/settings`, 
+        `${API_BASE}/api/settings/${activeCategory === 'monitored_skus' ? 'skus' : 'recipients'}`, 
         fetcher
     );
 
-    const [search, setSearch] = useState('');
     const [newItemId, setNewItemId] = useState('');
     const [newItemName, setNewItemName] = useState('');
-    const [newItemGroup, setNewItemGroup] = useState('');
-    const [newAccess, setNewAccess] = useState<'all' | 'view'>('all');
-    const [selectedItems, setSelectedItems] = useState<Map<string, string>>(new Map());
     const [isSaving, setIsSaving] = useState(false);
     
+    // Multi-select SKUs
+    const [selectedItems, setSelectedItems] = useState<Map<string, string>>(new Map());
+    const { data: allItems } = useSWR(activeCategory === 'monitored_skus' ? `${API_BASE}/api/stock/items` : null, fetcher);
+    const [searchTerm, setSearchTerm] = useState('');
+
     // Editing State
     const [editingId, setEditingId] = useState<string | null>(null);
 
-    const allSourceItems = itemsData?.items || [];
-    const currentSettings = settingsData?.[activeCategory] || [];
-
-    const filteredSourceItems = useMemo(() => {
-        if (!search) return allSourceItems.slice(0, 500);
-        const lowerSearch = search.toLowerCase();
-        return allSourceItems.filter((item: any) => 
-            item.name.toLowerCase().includes(lowerSearch) || 
-            item.id.toLowerCase().includes(lowerSearch)
-        ).slice(0, 500);
-    }, [allSourceItems, search]);
-
-    const handleToggleItem = (id: string, name: string) => {
-        const next = new Map(selectedItems);
-        if (next.has(id)) {
-            next.delete(id);
-        } else {
-            next.set(id, name);
-        }
-        setSelectedItems(next);
-    };
-
-    const handleBulkSave = async () => {
-        if (selectedItems.size === 0) return;
-        setIsSaving(true);
-        try {
-            const itemsToSave = Array.from(selectedItems.entries()).map(([id, name]) => ({
-                id,
-                name,
-                group: newItemGroup || 'General'
-            }));
-
-            const res = await fetch(`${API_BASE}/api/stock/settings/bulk?category=${activeCategory}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: itemsToSave })
-            });
-            if (res.ok) {
-                mutate(`${API_BASE}/api/stock/settings`);
-                setSelectedItems(new Map());
-                setSearch('');
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsSaving(false);
-        }
-    };
+    const currentSettings = settingsData || [];
 
     const handleSaveSingle = async () => {
         if (!newItemId || !newItemName) return;
         setIsSaving(true);
         try {
-            const itemPayload: any = { 
-                id: newItemId, 
-                name: newItemName, 
-            };
+            const endpoint = activeCategory === 'monitored_skus' ? 'skus' : 'recipients';
+            const payload = activeCategory === 'monitored_skus'
+                ? { sku_id: newItemId, name: newItemName }
+                : { telegram_id: parseInt(newItemId), name: newItemName };
             
-            if (activeCategory === 'monitored_skus') {
-                itemPayload.group = newItemGroup || 'General';
-            } else if (activeCategory === 'authorized_users') {
-                itemPayload.access = newAccess;
-            }
-
-            const res = await fetch(`${API_BASE}/api/stock/settings?category=${activeCategory}`, {
+            const res = await fetch(`${API_BASE}/api/settings/${endpoint}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ item: itemPayload })
+                headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': 'admin_mock' },
+                body: JSON.stringify(payload)
             });
+            
             if (res.ok) {
-                mutate(`${API_BASE}/api/stock/settings`);
+                mutate(`${API_BASE}/api/settings/${endpoint}`);
                 setNewItemId('');
                 setNewItemName('');
-                setNewItemGroup('');
-                setNewAccess('all');
                 setEditingId(null);
             }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsSaving(false);
-        }
+        } catch (e) { console.error(e); } finally { setIsSaving(false); }
     };
 
     const handleDeleteSetting = async (id: string) => {
         if (!confirm(`Remove entry?`)) return;
         try {
-            const res = await fetch(`${API_BASE}/api/stock/settings/${encodeURIComponent(id)}?category=${activeCategory}`, {
-                method: 'DELETE'
+            const endpoint = activeCategory === 'monitored_skus' ? 'skus' : 'recipients';
+            const res = await fetch(`${API_BASE}/api/settings/${endpoint}/${id}`, {
+                method: 'DELETE',
+                headers: { 'x-telegram-init-data': 'admin_mock' }
             });
-            if (res.ok) {
-                mutate(`${API_BASE}/api/stock/settings`);
-            }
-        } catch (e) {
-            console.error(e);
-        }
+            if (res.ok) mutate(`${API_BASE}/api/settings/${endpoint}`);
+        } catch (e) { console.error(e); }
     };
 
     const startEditing = (item: any) => {
-        setEditingId(item.id);
-        setNewItemId(item.id);
+        const id = (item.telegram_id || item.sku_id || item.id).toString();
+        setEditingId(id);
+        setNewItemId(id);
         setNewItemName(item.name);
-        if (activeCategory === 'monitored_skus') setNewItemGroup(item.group || 'General');
-        if (activeCategory === 'authorized_users') setNewAccess(item.access || 'view');
     };
 
     const cancelEditing = () => {
         setEditingId(null);
         setNewItemId('');
         setNewItemName('');
-        setNewItemGroup('');
-        setNewAccess('all');
     };
 
     return (
@@ -161,232 +95,61 @@ export default function StockSettingsPage() {
                             <span className="text-xs font-bold uppercase tracking-widest">Back to Dashboard</span>
                         </Link>
                         <h1 className="text-4xl font-black text-[#0C0C0C] tracking-tighter">Stock Controls</h1>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Manage SKUs, Access, and Notifications</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Manage Monitoring and Notifications</p>
                     </div>
                     
                     <div className="flex flex-col items-end gap-3">
-                        <Link href="/daily_report" className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-[#0C0C0C] rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm group">
-                            <Zap className="w-3 h-3 text-slate-400 group-hover:text-[#0C0C0C]" />
-                            Switch to Report Settings
-                        </Link>
+                        <div className="flex gap-2">
+                            <Link href="/access" className="flex items-center gap-2 px-4 py-2 bg-[#0C0C0C] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg hover:bg-slate-800 group">
+                                <ShieldCheck className="w-3.5 h-3.5 text-[#DDFF55]" />
+                                Access Management
+                            </Link>
+                            <Link href="/daily_report" className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-[#0C0C0C] rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm group">
+                                <Zap className="w-3 h-3 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                Report Settings
+                            </Link>
+                        </div>
                         {/* Tab Switcher */}
                         <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
-                        <button 
-                            onClick={() => { setActiveCategory('monitored_skus'); setSelectedItems(new Map()); cancelEditing(); }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
-                                ${activeCategory === 'monitored_skus' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
-                        >
-                            <Package className="w-4 h-4" /> SKUs
-                        </button>
-                        <button 
-                            onClick={() => { setActiveCategory('authorized_users'); setSelectedItems(new Map()); cancelEditing(); }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
-                                ${activeCategory === 'authorized_users' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
-                        >
-                            <ShieldCheck className="w-4 h-4" /> Access
-                        </button>
-                        <button 
-                            onClick={() => { setActiveCategory('notification_recipients'); setSelectedItems(new Map()); cancelEditing(); }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
-                                ${activeCategory === 'notification_recipients' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
-                        >
-                            <BellRing className="w-4 h-4" /> Notify
-                        </button>
-                    </div>
+                            <button onClick={() => { setActiveCategory('monitored_skus'); cancelEditing(); }} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === 'monitored_skus' ? 'bg-slate-100 text-black' : 'text-slate-400 hover:text-[#0C0C0C]'}`}><Package className="w-4 h-4" /> SKUs</button>
+                            <button onClick={() => { setActiveCategory('notification_recipients'); cancelEditing(); }} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === 'notification_recipients' ? 'bg-slate-100 text-black' : 'text-slate-400 hover:text-[#0C0C0C]'}`}><BellRing className="w-4 h-4" /> Notify</button>
+                        </div>
                     </div>
                 </Flex>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Create Form */}
                     <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-fit relative">
-                        {editingId && (
-                            <button onClick={cancelEditing} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors">
-                                <XCircle className="w-5 h-5" />
-                            </button>
-                        )}
-                        <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">
-                            {editingId ? 'Edit Entry' : `Add ${activeCategory === 'monitored_skus' ? 'Items' : 'User'}`}
-                        </Title>
+                        {editingId && <button onClick={cancelEditing} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors"><XCircle className="w-5 h-5" /></button>}
+                        <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">{editingId ? 'Edit Entry' : `Add ${activeCategory === 'monitored_skus' ? 'Items' : 'User'}`}</Title>
                         <div className="space-y-6">
-                            {activeCategory === 'monitored_skus' && !editingId ? (
-                                <>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Group Name (Tag for all selected)</label>
-                                        <input 
-                                            type="text" 
-                                            value={newItemGroup}
-                                            onChange={e => setNewItemGroup(e.target.value)}
-                                            placeholder="e.g. PUBG"
-                                            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
-                                        />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quick Select (Multi-select)</label>
-                                        <div className="relative">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                                            <input 
-                                                type="text" 
-                                                value={search}
-                                                onChange={e => setSearch(e.target.value)}
-                                                placeholder="Search ID or Name..."
-                                                className="w-full bg-slate-50 border-none rounded-xl pl-10 pr-4 py-2.5 text-xs font-bold"
-                                            />
-                                        </div>
-                                        <div className="max-h-60 overflow-y-auto space-y-1 p-1 bg-slate-50/50 rounded-xl border border-slate-100">
-                                            {itemsLoading ? (
-                                                <div className="py-8 text-center text-[10px] font-bold text-slate-400 uppercase animate-pulse">Loading...</div>
-                                            ) : filteredSourceItems.map((item: any) => (
-                                                <div 
-                                                    key={item.id}
-                                                    onClick={() => handleToggleItem(item.id, item.name)}
-                                                    className={`w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-3
-                                                              ${selectedItems.has(item.id) ? 'bg-black text-white' : 'text-slate-500 hover:bg-white hover:text-[#0C0C0C]'}`}
-                                                >
-                                                    <div className={`w-3 h-3 rounded border flex items-center justify-center ${selectedItems.has(item.id) ? 'border-white' : 'border-slate-300'}`}>
-                                                        {selectedItems.has(item.id) && <CheckCircle className="w-2 h-2 text-white" />}
-                                                    </div>
-                                                    <span className="truncate flex-1">{item.name}</span>
-                                                    <span className={`text-[9px] font-mono shrink-0 ${selectedItems.has(item.id) ? 'text-white/50' : 'text-slate-300'}`}>{item.id}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <button 
-                                        onClick={handleBulkSave}
-                                        disabled={isSaving || selectedItems.size === 0}
-                                        className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                                        Add {selectedItems.size} Selected Items
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID (Telegram or SKU)</label>
-                                        <input 
-                                            type="text" 
-                                            value={newItemId}
-                                            disabled={!!editingId}
-                                            onChange={e => setNewItemId(e.target.value)}
-                                            placeholder="e.g. 198799905"
-                                            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5 disabled:opacity-50"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Name</label>
-                                        <input 
-                                            type="text" 
-                                            value={newItemName}
-                                            onChange={e => setNewItemName(e.target.value)}
-                                            placeholder="e.g. Usman G."
-                                            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
-                                        />
-                                    </div>
-                                    {activeCategory === 'monitored_skus' && (
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Group</label>
-                                            <input 
-                                                type="text" 
-                                                value={newItemGroup}
-                                                onChange={e => setNewItemGroup(e.target.value)}
-                                                placeholder="e.g. PUBG"
-                                                className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
-                                            />
-                                        </div>
-                                    )}
-                                    {activeCategory === 'authorized_users' && (
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Access Role</label>
-                                            <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                                                <button 
-                                                    onClick={() => setNewAccess('view')}
-                                                    className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${newAccess === 'view' ? 'bg-white text-[#0C0C0C] shadow-sm' : 'text-slate-400'}`}
-                                                >
-                                                    View Only
-                                                </button>
-                                                <button 
-                                                    onClick={() => setNewAccess('all')}
-                                                    className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase transition-all ${newAccess === 'all' ? 'bg-white text-[#0C0C0C] shadow-sm' : 'text-slate-400'}`}
-                                                >
-                                                    Full Access
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <button 
-                                        onClick={handleSaveSingle}
-                                        disabled={isSaving || !newItemId || !newItemName}
-                                        className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingId ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
-                                        {editingId ? 'Update Entry' : `Add ${activeCategory === 'authorized_users' ? 'User' : (activeCategory === 'monitored_skus' ? 'SKU' : 'Recipient')}`}
-                                    </button>
-                                </>
-                            )}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name / Label</label>
+                                <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="e.g. Warehouse A" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{activeCategory === 'monitored_skus' ? 'SKU ID' : 'Telegram ID'}</label>
+                                <input type="text" value={newItemId} disabled={!!editingId} onChange={e => setNewItemId(e.target.value)} placeholder="e.g. 198799905" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5 disabled:opacity-50" />
+                            </div>
+
+                            <button onClick={handleSaveSingle} disabled={isSaving || !newItemId || !newItemName} className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                                {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingId ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
+                                {editingId ? 'Update Entry' : `Add to ${activeCategory === 'monitored_skus' ? 'Monitoring' : 'Alert List'}`}
+                            </button>
                         </div>
                     </Card>
 
                     {/* Entries List */}
                     <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-hidden">
-                        <Title className="text-xl font-bold mb-8 text-[#0C0C0C]">
-                            Current {activeCategory.replace('_', ' ')}
-                        </Title>
+                        <Title className="text-xl font-bold mb-8 text-[#0C0C0C]">{activeCategory === 'monitored_skus' ? 'Tracked Inventory' : 'Telegram Alerts'}</Title>
                         <div className="max-h-[500px] overflow-y-auto pr-2">
                             <Table>
-                                <TableHead className="bg-white sticky top-0 z-10 shadow-sm">
-                                    <TableRow className="border-b border-slate-100">
-                                        <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">
-                                            {activeCategory === 'monitored_skus' ? 'Group' : 'ID'}
-                                        </TableHeaderCell>
-                                        <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Name</TableHeaderCell>
-                                        {activeCategory === 'authorized_users' && (
-                                            <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4 text-center">Access</TableHeaderCell>
-                                        )}
-                                        <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
-                                    </TableRow>
-                                </TableHead>
+                                <TableHead className="bg-white sticky top-0 z-10 shadow-sm"><TableRow className="border-b border-slate-100"><TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Details</TableHeaderCell><TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell></TableRow></TableHead>
                                 <TableBody>
-                                    {currentSettings.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={activeCategory === 'authorized_users' ? 4 : 3} className="py-20 text-center text-slate-400 font-bold text-xs uppercase tracking-widest italic">No entries yet</TableCell>
-                                        </TableRow>
-                                    ) : currentSettings.map((item: any) => (
-                                        <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
-                                            <TableCell className="text-xs !text-slate-400 font-mono py-5">
-                                                {activeCategory === 'monitored_skus' ? (
-                                                    <Badge className="bg-slate-100 text-slate-500 border-none text-[9px] font-bold uppercase">{item.group || 'General'}</Badge>
-                                                ) : item.id}
-                                            </TableCell>
-                                            <TableCell className="text-sm !text-[#0C0C0C] font-black">
-                                                {item.name}
-                                                {activeCategory === 'monitored_skus' && <div className="text-[10px] text-slate-300 font-mono">{item.id}</div>}
-                                            </TableCell>
-                                            {activeCategory === 'authorized_users' && (
-                                                <TableCell className="text-center">
-                                                    <Badge className={`text-[9px] font-black uppercase px-2 py-1 rounded-md border-none ${item.access === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}`}>
-                                                        {item.access === 'all' ? 'FULL ACCESS' : 'VIEW ONLY'}
-                                                    </Badge>
-                                                </TableCell>
-                                            )}
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <button 
-                                                        onClick={() => startEditing(item)}
-                                                        className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"
-                                                        title="Edit"
-                                                    >
-                                                        <Edit3 className="w-4 h-4" />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleDeleteSetting(item.id)}
-                                                        className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"
-                                                        title="Remove"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </TableCell>
+                                    {settingsLoading ? <TableRow><TableCell colSpan={2} className="py-20 text-center animate-pulse text-slate-300 font-bold text-xs">Loading settings...</TableCell></TableRow> : currentSettings.length === 0 ? <TableRow><TableCell colSpan={2} className="py-20 text-center text-slate-400 font-bold text-xs uppercase tracking-widest italic">No entries yet</TableCell></TableRow> : currentSettings.map((item: any) => (
+                                        <TableRow key={item.telegram_id || item.sku_id || item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
+                                            <TableCell className="py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover/row:bg-black group-hover/row:text-white transition-all"><UserCircle className="w-6 h-6" /></div><div><div className="text-sm font-black text-[#0C0C0C]">{item.name}</div><div className="text-[10px] text-slate-400 font-mono uppercase">ID: {item.telegram_id || item.sku_id || item.id}</div></div></div></TableCell>
+                                            <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => startEditing(item)} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.telegram_id || item.sku_id || item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button></div></TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>

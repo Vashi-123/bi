@@ -171,18 +171,19 @@ class SupabaseManager:
 
     def get_authorized_users(self) -> List[Dict]:
         try:
-            response = self.supabase.table('authorized_users').select("*").execute()
+            response = self.supabase.table('authorized_users').select("telegram_id, name, stock_access, report_access").execute()
             return response.data
         except Exception as e:
             logger.error(f"Error fetching authorized users: {str(e)}")
             return []
 
-    def add_authorized_user(self, telegram_id: int, name: str, access: str = "view") -> bool:
+    def add_authorized_user(self, telegram_id: int, name: str, stock_access: str = "none", report_access: str = "none") -> bool:
         try:
             self.supabase.table('authorized_users').upsert({
                 "telegram_id": telegram_id, 
                 "name": name,
-                "access": access
+                "stock_access": stock_access,
+                "report_access": report_access
             }, on_conflict="telegram_id").execute()
             return True
         except Exception as e:

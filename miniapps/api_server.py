@@ -163,7 +163,8 @@ class RecipientSetting(BaseModel):
 class AdminSetting(BaseModel):
     telegram_id: int
     name: str
-    access: str = "view"
+    stock_access: str = "none"
+    report_access: str = "none"
 
 @app.get("/api/settings/skus")
 async def get_skus(x_telegram_init_data: str = Header(None)):
@@ -215,8 +216,13 @@ async def get_admins(x_telegram_init_data: str = Header(None)):
 @app.post("/api/settings/admins")
 async def add_admin(admin: AdminSetting, x_telegram_init_data: str = Header(None)):
     await verify_admin(x_telegram_init_data)
-    if db.add_authorized_user(admin.telegram_id, admin.name, admin.access):
-        update_local_settings("authorized_users", "add", {"id": admin.telegram_id, "name": admin.name, "access": admin.access})
+    if db.add_authorized_user(admin.telegram_id, admin.name, admin.stock_access, admin.report_access):
+        update_local_settings("authorized_users", "add", {
+            "id": admin.telegram_id, 
+            "name": admin.name, 
+            "stock_access": admin.stock_access,
+            "report_access": admin.report_access
+        })
         return {"status": "success"}
     raise HTTPException(status_code=500, detail="Failed to add admin")
 
