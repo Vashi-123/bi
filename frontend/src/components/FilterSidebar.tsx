@@ -180,10 +180,11 @@ function DateFilterGroup() {
 
 // --- Main Sidebar ---
 
-export function FilterSidebar({ onClose, source = 'sales' }: { onClose: () => void, source?: string }) {
+export function FilterSidebar({ isOpen, onClose, source = 'sales' }: { isOpen: boolean, onClose: () => void, source?: string }) {
     const { filters, setFilter, clearFilters } = useDashboardStore();
+    if (!isOpen) return null;
     return (
-        <div className="relative w-full max-w-md bg-white h-screen shadow-2xl flex flex-col animate-in slide-in-from-right duration-500 border-l border-slate-100">
+        <div className="fixed inset-y-0 right-0 z-[100] w-full max-w-md bg-white h-screen shadow-2xl flex flex-col animate-in slide-in-from-right duration-500 border-l border-slate-100">
             <div className="p-8 border-b border-slate-100 flex justify-between items-center text-[#0C0C0C]">
                 <div className="space-y-1">
                     <h2 className="text-xl font-bold text-[#0C0C0C] tracking-tight">Parametrical Filter</h2>
