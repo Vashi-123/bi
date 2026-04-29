@@ -627,9 +627,9 @@ def build_date_filter_clause(filters):
         logger.debug(f"Date Filter Mode: {mode}, Clause: '{clause}'")
     return clause
 
-def get_filter_options(dimension, search=None):
+def get_filter_options(dimension, search=None, table_name='sales'):
     """Returns a list of unique values for a given dimension column with optional search."""
-    cache_key = f"filter_options_{dimension}_{search}"
+    cache_key = f"filter_options_{table_name}_{dimension}_{search}"
     cached = get_cached_data(cache_key)
     if cached: return cached
 
@@ -642,7 +642,7 @@ def get_filter_options(dimension, search=None):
             s_val = str(search).replace("'", "''")
             query += f" WHERE group_name ILIKE '%{s_val}%'"
         
-        query += " UNION SELECT DISTINCT Groupclient FROM sales WHERE Groupclient IS NOT NULL"
+        query += f" UNION SELECT DISTINCT Groupclient FROM {table_name} WHERE Groupclient IS NOT NULL"
         if search:
             s_val = str(search).replace("'", "''")
             query += f" AND Groupclient ILIKE '%{s_val}%'"
@@ -653,7 +653,7 @@ def get_filter_options(dimension, search=None):
             s_val = str(search).replace("'", "''")
             query += f" WHERE group_name ILIKE '%{s_val}%'"
         
-        query += " UNION SELECT DISTINCT CountryGroup FROM sales WHERE CountryGroup IS NOT NULL"
+        query += f" UNION SELECT DISTINCT CountryGroup FROM {table_name} WHERE CountryGroup IS NOT NULL"
         if search:
             s_val = str(search).replace("'", "''")
             query += f" AND CountryGroup ILIKE '%{s_val}%'"
@@ -662,7 +662,7 @@ def get_filter_options(dimension, search=None):
         if search:
             clean_search = str(search).replace("'", "''")
             where_clause += f" AND \"{dimension}\" ILIKE '%{clean_search}%'"
-        query = f"SELECT DISTINCT \"{dimension}\" FROM sales {where_clause} ORDER BY 1 ASC LIMIT 5000"
+        query = f"SELECT DISTINCT \"{dimension}\" FROM {table_name} {where_clause} ORDER BY 1 ASC LIMIT 5000"
 
     try:
         res = cursor.execute(query).fetchall()

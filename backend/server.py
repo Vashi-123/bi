@@ -151,10 +151,10 @@ def parse_filters(request_params):
 # --- Endpoints ---
 
 @app.get("/api/filters/options")
-def get_options(column: str, search: Optional[str] = None):
+def get_options(column: str, search: Optional[str] = None, source: str = 'sales'):
     if column not in ALLOWED_DIMENSIONS:
         return JSONResponse(status_code=400, content={"error": f"Invalid column: {column}"})
-    return {"options": database.get_filter_options(column, search=search)}
+    return {"options": database.get_filter_options(column, search=search, table_name=source)}
 
 @app.get("/api/filters/date-range")
 def get_date_range(source: str = 'sales'):
