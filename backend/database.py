@@ -62,7 +62,7 @@ def get_connection():
                 _CONN.execute(f"CREATE OR REPLACE TABLE sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}')")
 
             # Load PURCHASE data
-            if glob.glob(PURCHASE_DATA_PATH.replace("**/*.parquet", "")):
+            if os.path.exists(PURCHASE_DATA_PATH):
                 try:
                     max_row_p = _CONN.execute(f"SELECT MAX(date) FROM read_parquet('{PURCHASE_DATA_PATH}')").fetchone()
                     if max_row_p and max_row_p[0]:
@@ -167,12 +167,21 @@ def refresh_in_memory_data():
     max_row = conn.execute(f"SELECT MAX(date) FROM read_parquet('{DATA_PATH}')").fetchone()
     if max_row and max_row[0]:
         max_date = max_row[0]
-        query = f"""
+        conn.execute(f"""
             CREATE OR REPLACE TABLE sales_raw AS 
             SELECT * FROM read_parquet('{DATA_PATH}') 
             WHERE CAST(date AS DATE) >= CAST('{max_date}' AS DATE) - INTERVAL '6 month'
-        """
-        conn.execute(query)
+        """)
+    
+    # 2. Reload Purchase Data
+    max_row_p = conn.execute(f"SELECT MAX(date) FROM read_parquet('{PURCHASE_DATA_PATH}')").fetchone()
+    if max_row_p and max_row_p[0]:
+        max_date_p = max_row_p[0]
+        conn.execute(f"""
+            CREATE OR REPLACE TABLE purchase_raw AS 
+            SELECT * FROM read_parquet('{PURCHASE_DATA_PATH}') 
+            WHERE CAST(date AS DATE) >= CAST('{max_date_p}' AS DATE) - INTERVAL '6 month'
+        """)
     
     # 2. Reload Statuses
     if os.path.exists(STATUS_PATH):
@@ -374,23 +383,35 @@ def get_kpi_data(filters=None, table_name='sales'):
     
     extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
     
+    # Determine columns based on table
+    if table_name == 'purchase':
+        revenue_col = "Amount_USD"
+        profit_col = "0"
+        margin_col = "0"
+        qty_col = "Qty"
+    else:
+        revenue_col = "Amount_USD"
+        profit_col = "Profit_USD"
+        margin_col = "\"Margin_%\""
+        qty_col = "Qty"
+
     # 1. Base query depends on mode
     if mode == 'all':
         # Truly all data, no date filter
-        curr_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM {table_name} WHERE 1=1 {extra_filters}"
+        curr_query = f"SELECT SUM({revenue_col}), SUM({profit_col}), AVG({margin_col}), SUM({qty_col}) FROM {table_name} WHERE 1=1 {extra_filters}"
         curr_label = "All Time"
         p_res = [0, 0, 0, 0]
         prev_label = None
     else:
         # Filtered period
-        curr_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM {table_name} WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}"
+        curr_query = f"SELECT SUM({revenue_col}), SUM({profit_col}), AVG({margin_col}), SUM({qty_col}) FROM {table_name} WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}"
         curr_label = format_period_label(curr_s, curr_e)
         
         # Comparison logic
         p_res = [0, 0, 0, 0]
         prev_label = None
         if prev_s and prev_e:
-            prev_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM {table_name} WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
+            prev_query = f"SELECT SUM({revenue_col}), SUM({profit_col}), AVG({margin_col}), SUM({qty_col}) FROM {table_name} WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
             p_res = cursor.execute(prev_query).fetchone()
             # If query returns None for all (which fetchone might do if no rows match), p_res might be [None, None, None, None]
             if p_res is None: p_res = [0, 0, 0, 0]
@@ -672,6 +693,9 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     if not start_date: return []
 
     metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
+    if table_name == 'purchase':
+        metric_map['profit'] = '0'
+        metric_map['margin'] = '0'
     col = metric_map.get(metric, metric)
     
     date_clause = build_date_filter_clause(filters)
@@ -748,6 +772,9 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
 
     cursor = get_cursor()
     metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
+    if table_name == 'purchase':
+        metric_map['profit'] = '0'
+        metric_map['margin'] = '0'
     col = metric_map.get(metric, metric)
     
     date_clause = build_date_filter_clause(filters)
@@ -793,13 +820,25 @@ def get_master_table(dimension='Category', filters=None, table_name='sales'):
         else:
             prev_filter = "WHERE 1=0"
     
+    # Determine columns based on table
+    if table_name == 'purchase':
+        revenue_col = "Amount_USD"
+        profit_col = "0"
+        margin_col = "0"
+        qty_col = "Qty"
+    else:
+        revenue_col = "Amount_USD"
+        profit_col = "Profit_USD"
+        margin_col = "\"Margin_%\""
+        qty_col = "Qty"
+
     query = f"""
     WITH curr AS (
-        SELECT "{dimension}" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
+        SELECT "{dimension}" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
         FROM {table_name} {curr_filter} GROUP BY 1
     ),
     prev AS (
-        SELECT "{dimension}" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
+        SELECT "{dimension}" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
         FROM {table_name} {prev_filter} GROUP BY 1
     )
     SELECT 
@@ -849,13 +888,25 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
         else:
             prev_filter = "WHERE 1=0"
     
+    # Determine columns based on table
+    if table_name == 'purchase':
+        revenue_col = "Amount_USD"
+        profit_col = "0"
+        margin_col = "0"
+        qty_col = "Qty"
+    else:
+        revenue_col = "Amount_USD"
+        profit_col = "Profit_USD"
+        margin_col = "\"Margin_%\""
+        qty_col = "Qty"
+
     query = f"""
     WITH curr AS (
-        SELECT "Item name" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
+        SELECT "Item name" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
         FROM {table_name} {curr_filter} GROUP BY 1
     ),
     prev AS (
-        SELECT "Item name" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
+        SELECT "Item name" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
         FROM {table_name} {prev_filter} GROUP BY 1
     )
     SELECT 
