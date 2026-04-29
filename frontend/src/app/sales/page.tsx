@@ -424,6 +424,9 @@ export default function Dashboard() {
         </Flex>
 
         <Flex className="w-auto gap-4" justifyContent="end">
+          <Link href="/purchase" className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-all text-[11px] font-bold uppercase tracking-tight text-slate-600">
+            <Package className="w-4 h-4 text-slate-400" /> Purchases
+          </Link>
           <button onClick={() => setSidebarOpen(true)} className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 rounded-xl hover:shadow-md transition-all relative group text-[13px] font-bold">
             <FilterIcon className="w-4 h-4 text-[#FF843B]" /> Filters
             {Object.values(filters).some(v => v?.length > 0) && <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#FF843B] rounded-full border-2 border-white" />}
