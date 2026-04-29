@@ -1,8 +1,8 @@
 import duckdb
 import os
 
-DATA_PATH = "/home/usman/project_data/processed/final_df"
-PURCHASE_DATA_PATH = "/home/usman/project_data/processed/final_df_purch"
+DATA_PATH = "/home/usman/project_data/processed/final_df/**/*.parquet"
+PURCHASE_DATA_PATH = "/home/usman/project_data/processed/final_df_purch/**/*.parquet"
 
 print(f"Checking DATA_PATH: {DATA_PATH}")
 print(f"Exists: {os.path.exists(DATA_PATH)}")
