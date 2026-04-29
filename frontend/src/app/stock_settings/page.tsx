@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
-import { API_BASE, fetcher } from '@/lib/constants';
+import { API_BASE, SETTINGS_API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
 import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle, Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -13,7 +13,7 @@ export default function StockSettingsPage() {
     const [activeCategory, setActiveCategory] = useState<SettingCategory>('monitored_skus');
     
     const { data: settingsData, isLoading: settingsLoading } = useSWR(
-        `${API_BASE}/api/settings/${activeCategory === 'monitored_skus' ? 'skus' : 'recipients'}`, 
+        `${SETTINGS_API_BASE}/api/settings/${activeCategory === 'monitored_skus' ? 'skus' : 'recipients'}`, 
         fetcher
     );
 

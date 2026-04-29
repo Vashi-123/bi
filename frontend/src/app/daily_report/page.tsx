@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
-import { API_BASE, fetcher } from '@/lib/constants';
+import { API_BASE, SETTINGS_API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
 import { ArrowLeft, Plus, Trash2, Send, ShieldCheck, UserCircle, Edit3, XCircle, Package, Zap, BellRing } from 'lucide-react';
 import Link from 'next/link';
@@ -13,7 +13,7 @@ export default function DailyReportPage() {
     const [activeCategory, setActiveCategory] = useState<SettingCategory>('report_recipients');
     
     const { data: settingsData, isLoading: settingsLoading } = useSWR(
-        `${API_BASE}/api/settings/report_recipients`, 
+        `${SETTINGS_API_BASE}/api/settings/report_recipients`, 
         fetcher
     );
 
@@ -32,7 +32,7 @@ export default function DailyReportPage() {
         try {
             const payload = { telegram_id: parseInt(newItemId), name: newItemName };
             
-            const res = await fetch(`${API_BASE}/api/settings/report_recipients`, {
+            const res = await fetch(`${SETTINGS_API_BASE}/api/settings/report_recipients`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -42,7 +42,7 @@ export default function DailyReportPage() {
             });
             
             if (res.ok) {
-                mutate(`${API_BASE}/api/settings/report_recipients`);
+                mutate(`${SETTINGS_API_BASE}/api/settings/report_recipients`);
                 setNewItemId('');
                 setNewItemName('');
                 setEditingId(null);
@@ -57,12 +57,12 @@ export default function DailyReportPage() {
     const handleDeleteSetting = async (id: string) => {
         if (!confirm(`Remove entry?`)) return;
         try {
-            const res = await fetch(`${API_BASE}/api/settings/report_recipients/${id}`, {
+            const res = await fetch(`${SETTINGS_API_BASE}/api/settings/report_recipients/${id}`, {
                 method: 'DELETE',
                 headers: { 'x-telegram-init-data': 'admin_mock' }
             });
             if (res.ok) {
-                mutate(`${API_BASE}/api/settings/report_recipients`);
+                mutate(`${SETTINGS_API_BASE}/api/settings/report_recipients`);
             }
         } catch (e) {
             console.error(e);

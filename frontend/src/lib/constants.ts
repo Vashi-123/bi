@@ -1,5 +1,6 @@
 // --- API Configuration ---
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+export const SETTINGS_API_BASE = process.env.NEXT_PUBLIC_SETTINGS_API_URL || (typeof window !== 'undefined' ? `http://${window.location.hostname}:8081` : 'http://localhost:8081');
 
 // --- Color Palette (Rank-based) ---
 export const RANK_COLORS = ["#8F3F48", "#638994", "#FF843B", "#79783F", "#A68B7A"];

@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
-import { API_BASE, fetcher } from '@/lib/constants';
+import { API_BASE, SETTINGS_API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
 import { ArrowLeft, Plus, Trash2, UserCircle, Edit3, XCircle, ShieldCheck, Package, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AccessManagementPage() {
-    const { data: admins, isLoading } = useSWR(`${API_BASE}/api/settings/admins`, fetcher);
+    const { data: admins, isLoading } = useSWR(`${SETTINGS_API_BASE}/api/settings/admins`, fetcher);
 
     const [newItemId, setNewItemId] = useState('');
     const [newItemName, setNewItemName] = useState('');
@@ -29,14 +29,14 @@ export default function AccessManagementPage() {
                 report_access: reportAccess
             };
             
-            const res = await fetch(`${API_BASE}/api/settings/admins`, {
+            const res = await fetch(`${SETTINGS_API_BASE}/api/settings/admins`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': 'admin_mock' },
                 body: JSON.stringify(payload)
             });
             
             if (res.ok) {
-                mutate(`${API_BASE}/api/settings/admins`);
+                mutate(`${SETTINGS_API_BASE}/api/settings/admins`);
                 setNewItemId('');
                 setNewItemName('');
                 setStockAccess('view');
@@ -49,11 +49,11 @@ export default function AccessManagementPage() {
     const handleDelete = async (id: string) => {
         if (!confirm(`Revoke all access for this user?`)) return;
         try {
-            const res = await fetch(`${API_BASE}/api/settings/admins/${id}`, {
+            const res = await fetch(`${SETTINGS_API_BASE}/api/settings/admins/${id}`, {
                 method: 'DELETE',
                 headers: { 'x-telegram-init-data': 'admin_mock' }
             });
-            if (res.ok) mutate(`${API_BASE}/api/settings/admins`);
+            if (res.ok) mutate(`${SETTINGS_API_BASE}/api/settings/admins`);
         } catch (e) { console.error(e); }
     };
 
