@@ -157,13 +157,13 @@ def get_options(column: str, search: Optional[str] = None):
     return {"options": database.get_filter_options(column, search=search)}
 
 @app.get("/api/filters/date-range")
-def get_date_range():
-    return database.get_overall_date_range()
+def get_date_range(source: str = 'sales'):
+    return database.get_overall_date_range(table_name=source)
 
 @app.get("/api/kpi")
-async def get_kpi(request: Request):
+async def get_kpi(request: Request, source: str = 'sales'):
     filters = parse_filters(dict(request.query_params))
-    return database.get_kpi_data(filters=filters)
+    return database.get_kpi_data(filters=filters, table_name=source)
 
 @app.get("/api/trends")
 async def get_trends(
@@ -171,6 +171,7 @@ async def get_trends(
     dimension: str = 'Category', 
     top_n: int = Query(default=5, ge=1, le=100), 
     interval: str = 'day',
+    source: str = 'sales',
     request: Request = None
 ):
     if metric not in ALLOWED_METRICS:
@@ -181,8 +182,8 @@ async def get_trends(
         return JSONResponse(status_code=400, content={"error": f"Invalid interval: {interval}"})
     
     filters = parse_filters(dict(request.query_params))
-    data = database.get_trends(metric, dimension, top_n, interval, filters=filters)
-    logger.debug(f"Trends [{interval}]: {len(data)} rows returned")
+    data = database.get_trends(metric, dimension, top_n, interval, filters=filters, table_name=source)
+    logger.debug(f"Trends [{interval}] for {source}: {len(data)} rows returned")
     return data
 
 @app.get("/api/distribution")
@@ -190,6 +191,7 @@ async def get_distribution(
     metric: str = 'Amount_USD', 
     dimension: str = 'Category', 
     top_n: int = Query(default=5, ge=1, le=100),
+    source: str = 'sales',
     request: Request = None
 ):
     if metric not in ALLOWED_METRICS:
@@ -198,39 +200,40 @@ async def get_distribution(
         return JSONResponse(status_code=400, content={"error": f"Invalid dimension: {dimension}"})
     
     filters = parse_filters(dict(request.query_params))
-    return database.get_distribution(metric, dimension, top_n, filters=filters)
+    return database.get_distribution(metric, dimension, top_n, filters=filters, table_name=source)
 
 @app.get("/api/master")
-async def get_master(dimension: str = 'Category', request: Request = None):
+async def get_master(dimension: str = 'Category', source: str = 'sales', request: Request = None):
     if dimension not in ALLOWED_DIMENSIONS:
         return JSONResponse(status_code=400, content={"error": f"Invalid dimension: {dimension}"})
     filters = parse_filters(dict(request.query_params))
-    return database.get_master_table(dimension, filters=filters)
+    return database.get_master_table(dimension, filters=filters, table_name=source)
 
 @app.get("/api/detail")
 async def get_detail(
     dimension: str = 'Category', 
     selected_group: Optional[str] = None, 
     top_n: int = Query(default=10, ge=1, le=5000),
+    source: str = 'sales',
     request: Request = None
 ):
     if dimension not in ALLOWED_DIMENSIONS:
         return JSONResponse(status_code=400, content={"error": f"Invalid dimension: {dimension}"})
     filters = parse_filters(dict(request.query_params))
-    return database.get_detail_table(dimension, selected_group, top_n, filters=filters)
+    return database.get_detail_table(dimension, selected_group, top_n, filters=filters, table_name=source)
 
 
 # --- Group Management ---
 
 @app.get("/api/groups/counterparties")
-def get_group_counterparties():
+def get_group_counterparties(source: str = 'sales'):
     """Returns unique counterparties for group creation."""
-    return {"counterparties": database.get_unique_counterparties()}
+    return {"counterparties": database.get_unique_counterparties(table_name=source)}
 
 @app.get("/api/groups/countries")
-def get_group_countries():
+def get_group_countries(source: str = 'sales'):
     """Returns unique countries for group creation."""
-    return {"countries": database.get_unique_countries()}
+    return {"countries": database.get_unique_countries(table_name=source)}
 
 @app.get("/api/groups")
 def get_groups():
@@ -387,14 +390,15 @@ def refresh_data():
 @app.get("/api/ai/analyze")
 async def analyze_data(
     start_a: str, end_a: str, 
-    start_b: str, end_b: str
+    start_b: str, end_b: str,
+    source: str = 'sales'
 ):
     """
     Returns mathematical payload for data-driven analysis and syncs it to Supabase.
     """
     try:
         # Get raw math data from database
-        payload = database.get_period_ai_payload(start_a, end_a, start_b, end_b)
+        payload = database.get_period_ai_payload(start_a, end_a, start_b, end_b, table_name=source)
         if "error" in payload:
             return JSONResponse(status_code=400, content=payload)
 

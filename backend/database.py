@@ -27,6 +27,7 @@ def extract_column_filters(filters: dict) -> dict:
 # Path to the partitioned parquet dataset
 # Use environment variable DATA_PATH if available, else default to absolute path on server
 DATA_PATH = os.getenv("DATA_PATH", "/home/usman/project_data/processed/final_df/**/*.parquet")
+PURCHASE_DATA_PATH = os.getenv("PURCHASE_DATA_PATH", "/home/usman/project_data/processed/final_df_purchase/**/*.parquet")
 STATUS_PATH = os.getenv("STATUS_PATH", "/home/usman/project_data/result/unified_status.parquet")
 
 # Global connection and cache
@@ -47,20 +48,39 @@ def get_connection():
             logger.info("Loading sales data into memory...")
             start_load = time.time()
             
-            # Efficiently find max date to set the window
-            max_row = _CONN.execute(f"SELECT MAX(date) FROM read_parquet('{DATA_PATH}')").fetchone()
-            if max_row and max_row[0]:
-                max_date = max_row[0]
-                # Pre-filter to 6 months and load into TABLE
-                query = f"""
+            # Load SALES data
+            max_row_s = _CONN.execute(f"SELECT MAX(date) FROM read_parquet('{DATA_PATH}')").fetchone()
+            if max_row_s and max_row_s[0]:
+                max_date_s = max_row_s[0]
+                _CONN.execute(f"""
                     CREATE OR REPLACE TABLE sales_raw AS 
                     SELECT * FROM read_parquet('{DATA_PATH}') 
-                    WHERE CAST(date AS DATE) >= CAST('{max_date}' AS DATE) - INTERVAL '6 month'
-                """
-                _CONN.execute(query)
-                logger.info(f"Loaded sales data into RAM in {time.time() - start_load:.2f}s. Window: 6 months from {max_date}")
+                    WHERE CAST(date AS DATE) >= CAST('{max_date_s}' AS DATE) - INTERVAL '6 month'
+                """)
+                logger.info(f"Loaded sales data into RAM. Window: 6 months from {max_date_s}")
             else:
                 _CONN.execute(f"CREATE OR REPLACE TABLE sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}')")
+
+            # Load PURCHASE data
+            if glob.glob(PURCHASE_DATA_PATH.replace("**/*.parquet", "")):
+                try:
+                    max_row_p = _CONN.execute(f"SELECT MAX(date) FROM read_parquet('{PURCHASE_DATA_PATH}')").fetchone()
+                    if max_row_p and max_row_p[0]:
+                        max_date_p = max_row_p[0]
+                        _CONN.execute(f"""
+                            CREATE OR REPLACE TABLE purchase_raw AS 
+                            SELECT * FROM read_parquet('{PURCHASE_DATA_PATH}') 
+                            WHERE CAST(date AS DATE) >= CAST('{max_date_p}' AS DATE) - INTERVAL '6 month'
+                        """)
+                        logger.info(f"Loaded purchase data into RAM. Window: 6 months from {max_date_p}")
+                    else:
+                        _CONN.execute(f"CREATE OR REPLACE TABLE purchase_raw AS SELECT * FROM read_parquet('{PURCHASE_DATA_PATH}')")
+                except Exception as p_err:
+                    logger.warning(f"Could not load purchase data: {p_err}")
+                    _CONN.execute("CREATE TABLE IF NOT EXISTS purchase_raw AS SELECT * FROM sales_raw LIMIT 0")
+            else:
+                # Empty table if path doesn't exist
+                _CONN.execute("CREATE TABLE IF NOT EXISTS purchase_raw AS SELECT * FROM sales_raw LIMIT 0")
             
             # Load custom groups
             refresh_groups_table()
@@ -112,30 +132,31 @@ def refresh_groups_table():
         df_c = pandas.DataFrame(country_flattened)
         conn.execute("INSERT INTO custom_country_groups SELECT * FROM df_c")
     
-    # 3. Create Enriched View dynamically
-    # Get columns from sales_raw to handle fallbacks
-    try:
-        col_res = conn.execute("DESCRIBE sales_raw").fetchall()
-        existing_cols = [row[0] for row in col_res]
-    except:
-        existing_cols = []
+    # 3. Create Enriched Views dynamically
+    for table_type in ['sales', 'purchase']:
+        raw_name = f"{table_type}_raw"
+        try:
+            col_res = conn.execute(f"DESCRIBE {raw_name}").fetchall()
+            existing_cols = [row[0] for row in col_res]
+        except:
+            existing_cols = []
 
-    exclude_cols = []
-    if "Groupclient" in existing_cols: exclude_cols.append("Groupclient")
-    if "CountryGroup" in existing_cols: exclude_cols.append("CountryGroup")
-    exclude_clause = f"EXCLUDE ({', '.join(exclude_cols)})" if exclude_cols else ""
+        exclude_cols = []
+        if "Groupclient" in existing_cols: exclude_cols.append("Groupclient")
+        if "CountryGroup" in existing_cols: exclude_cols.append("CountryGroup")
+        exclude_clause = f"EXCLUDE ({', '.join(exclude_cols)})" if exclude_cols else ""
 
-    gc_fallback = "s.Groupclient" if "Groupclient" in existing_cols else "NULL"
-    cg_fallback = "s.CountryGroup" if "CountryGroup" in existing_cols else "NULL"
-    
-    conn.execute(f"""
-        CREATE OR REPLACE VIEW sales AS 
-        SELECT 
-            s.* {exclude_clause},
-            COALESCE({gc_fallback}, s.counterparty) as Groupclient,
-            COALESCE({cg_fallback}, 'Other') as CountryGroup
-        FROM sales_raw s
-    """)
+        gc_fallback = "s.Groupclient" if "Groupclient" in existing_cols else "NULL"
+        cg_fallback = "s.CountryGroup" if "CountryGroup" in existing_cols else "NULL"
+        
+        conn.execute(f"""
+            CREATE OR REPLACE VIEW {table_type} AS 
+            SELECT 
+                s.* {exclude_clause},
+                COALESCE({gc_fallback}, s.counterparty) as Groupclient,
+                COALESCE({cg_fallback}, 'Other') as CountryGroup
+            FROM {raw_name} s
+        """)
 
 def refresh_in_memory_data():
     """Forces a reload of parquet files into the in-memory tables."""
@@ -252,16 +273,18 @@ def get_unique_items():
         except:
             return []
 
-def get_unique_counterparties():
+def get_unique_counterparties(table_name='sales'):
     """Returns all unique counterparties from the raw dataset."""
     cursor = get_cursor()
-    res = cursor.execute("SELECT DISTINCT counterparty FROM sales_raw WHERE counterparty IS NOT NULL ORDER BY 1").fetchall()
+    raw_table = f"{table_name}_raw"
+    res = cursor.execute(f"SELECT DISTINCT counterparty FROM {raw_table} WHERE counterparty IS NOT NULL ORDER BY 1").fetchall()
     return [r[0] for r in res]
 
-def get_unique_countries():
+def get_unique_countries(table_name='sales'):
     """Returns all unique country codes from the raw dataset."""
     cursor = get_cursor()
-    res = cursor.execute("SELECT DISTINCT \"Product country\" FROM sales_raw WHERE \"Product country\" IS NOT NULL ORDER BY 1").fetchall()
+    raw_table = f"{table_name}_raw"
+    res = cursor.execute(f"SELECT DISTINCT \"Product country\" FROM {raw_table} WHERE \"Product country\" IS NOT NULL ORDER BY 1").fetchall()
     return [r[0] for r in res]
 
 def get_cursor():
@@ -280,15 +303,15 @@ def set_cached_data(key: str, val: any):
     with _CACHE_LOCK:
         _CACHE[key] = (val, time.time())
 
-def get_current_window(filters):
+def get_current_window(filters, table_name='sales'):
     cursor = get_cursor()
-    max_res = cursor.execute("SELECT MAX(date) FROM sales").fetchone()
+    max_res = cursor.execute(f"SELECT MAX(date) FROM {table_name}").fetchone()
     if not max_res or not max_res[0]: return None, None
     max_d = max_res[0]
 
     mode = filters.get('dateMode', 'all')
     if mode == 'all':
-        min_d = cursor.execute("SELECT MIN(date) FROM sales").fetchone()[0]
+        min_d = cursor.execute(f"SELECT MIN(date) FROM {table_name}").fetchone()[0]
         return min_d.strftime('%Y-%m-%d'), max_d.strftime('%Y-%m-%d')
     
     if mode == 'between':
@@ -319,8 +342,8 @@ def get_current_window(filters):
     
     return filters.get('startDate'), filters.get('endDate')
 
-def get_prev_window(filters):
-    s, e = get_current_window(filters)
+def get_prev_window(filters, table_name='sales'):
+    s, e = get_current_window(filters, table_name=table_name)
     if not s or not e: return None, None
     
     start_dt = pandas.to_datetime(s)
@@ -341,33 +364,33 @@ def format_period_label(start, end):
         return f"{s.strftime('%b')} - {e.strftime('%b %Y')}"
     return f"{s.strftime('%b %Y')} - {e.strftime('%b %Y')}"
 
-def get_kpi_data(filters=None):
+def get_kpi_data(filters=None, table_name='sales'):
     if not filters: filters = {}
     cursor = get_cursor()
     
     mode = filters.get('dateMode', 'all')
-    curr_s, curr_e = get_current_window(filters)
-    prev_s, prev_e = get_prev_window(filters)
+    curr_s, curr_e = get_current_window(filters, table_name=table_name)
+    prev_s, prev_e = get_prev_window(filters, table_name=table_name)
     
     extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
     
     # 1. Base query depends on mode
     if mode == 'all':
         # Truly all data, no date filter
-        curr_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM sales WHERE 1=1 {extra_filters}"
+        curr_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM {table_name} WHERE 1=1 {extra_filters}"
         curr_label = "All Time"
         p_res = [0, 0, 0, 0]
         prev_label = None
     else:
         # Filtered period
-        curr_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM sales WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}"
+        curr_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM {table_name} WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}"
         curr_label = format_period_label(curr_s, curr_e)
         
         # Comparison logic
         p_res = [0, 0, 0, 0]
         prev_label = None
         if prev_s and prev_e:
-            prev_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM sales WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
+            prev_query = f"SELECT SUM(Amount_USD), SUM(Profit_USD), AVG(\"Margin_%\"), SUM(Qty) FROM {table_name} WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
             p_res = cursor.execute(prev_query).fetchone()
             # If query returns None for all (which fetchone might do if no rows match), p_res might be [None, None, None, None]
             if p_res is None: p_res = [0, 0, 0, 0]
@@ -631,25 +654,21 @@ def get_filter_options(dimension, search=None):
 
 _OVERALL_DATE_RANGE = None
 
-def get_overall_date_range():
+def get_overall_date_range(table_name='sales'):
     """Returns the absolute min and max dates in the dataset. Cached after first call."""
-    global _OVERALL_DATE_RANGE
-    if _OVERALL_DATE_RANGE is not None:
-        return _OVERALL_DATE_RANGE
     cursor = get_cursor()
-    res = cursor.execute("SELECT MIN(CAST(date AS DATE)), MAX(CAST(date AS DATE)) FROM sales").fetchone()
-    _OVERALL_DATE_RANGE = {"min": str(res[0]) if res[0] else None, "max": str(res[1]) if res[1] else None}
-    return _OVERALL_DATE_RANGE
+    res = cursor.execute(f"SELECT MIN(CAST(date AS DATE)), MAX(CAST(date AS DATE)) FROM {table_name}").fetchone()
+    return {"min": str(res[0]) if res[0] else None, "max": str(res[1]) if res[1] else None}
 
-def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', filters=None):
+def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', filters=None, table_name='sales'):
     if not filters: filters = {}
     logger.debug(f"Trends request filters: {filters}")
-    cache_key = f"trends_{metric}_{dimension}_{top_n}_{interval}_{hash(str(filters))}"
+    cache_key = f"trends_{table_name}_{metric}_{dimension}_{top_n}_{interval}_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached
 
     cursor = get_cursor()
-    start_date, end_date = get_current_window(filters)
+    start_date, end_date = get_current_window(filters, table_name=table_name)
     if not start_date: return []
 
     metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
@@ -665,7 +684,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
         filter_clause = f"WHERE CAST(date AS DATE) >= '{start_date}' AND CAST(date AS DATE) <= '{end_date}' {extra_filters}"
 
     # 1. Find Top N categories
-    top_n_query = f"SELECT \"{dimension}\" FROM sales {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
+    top_n_query = f"SELECT \"{dimension}\" FROM {table_name} {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
     top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
     if not top_dims: return []
 
@@ -688,7 +707,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     full_grid AS (SELECT c.d, d.dim_val FROM calendar c, dims d),
     sales_agg AS (
         SELECT CAST({sales_d} AS DATE) as cal_d, {dim_expr} as dim_val, SUM({col}) as val
-        FROM sales {filter_clause} GROUP BY 1, 2
+        FROM {table_name} {filter_clause} GROUP BY 1, 2
     )
     SELECT f.d as sort_key, f.dim_val as dimension_value, COALESCE(s.val, 0) as value
     FROM full_grid f LEFT JOIN sales_agg s ON f.d = s.cal_d AND f.dim_val = s.dim_val
@@ -722,8 +741,8 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     set_cached_data(cache_key, final_output)
     return final_output
 
-def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=None):
-    cache_key = f"dist_{metric}_{dimension}_{top_n}_{hash(str(filters))}"
+def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=None, table_name='sales'):
+    cache_key = f"dist_{table_name}_{metric}_{dimension}_{top_n}_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached
 
@@ -737,24 +756,24 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
     else:
-        s, e = get_current_window(filters)
+        s, e = get_current_window(filters, table_name=table_name)
         filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
 
-    top_n_query = f"SELECT \"{dimension}\" FROM sales {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
+    top_n_query = f"SELECT \"{dimension}\" FROM {table_name} {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
     top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
     if not top_dims: return []
 
     top_dims_escaped = [d.replace("'", "''") for d in top_dims]
     dim_expr = f"CASE WHEN \"{dimension}\" IN ({', '.join([f"'{d}'" for d in top_dims_escaped])}) THEN \"{dimension}\" ELSE 'Other' END"
-    query = f"SELECT {dim_expr} as dimension_value, SUM({col}) as value FROM sales {filter_clause} GROUP BY 1 ORDER BY value DESC"
+    query = f"SELECT {dim_expr} as dimension_value, SUM({col}) as value FROM {table_name} {filter_clause} GROUP BY 1 ORDER BY value DESC"
     
     df = cursor.execute(query).df()
     out = df.to_dict(orient='records')
     set_cached_data(cache_key, out)
     return out
 
-def get_master_table(dimension='Category', filters=None):
-    cache_key = f"master_{dimension}_{hash(str(filters))}"
+def get_master_table(dimension='Category', filters=None, table_name='sales'):
+    cache_key = f"master_{table_name}_{dimension}_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached
 
@@ -766,8 +785,8 @@ def get_master_table(dimension='Category', filters=None):
         curr_filter = f"WHERE 1=1 {extra_filters}"
         prev_filter = "WHERE 1=0"
     else:
-        curr_s, curr_e = get_current_window(filters)
-        prev_s, prev_e = get_prev_window(filters)
+        curr_s, curr_e = get_current_window(filters, table_name=table_name)
+        prev_s, prev_e = get_prev_window(filters, table_name=table_name)
         curr_filter = f"WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}"
         if prev_s and prev_e:
             prev_filter = f"WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
@@ -777,11 +796,11 @@ def get_master_table(dimension='Category', filters=None):
     query = f"""
     WITH curr AS (
         SELECT "{dimension}" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
-        FROM sales {curr_filter} GROUP BY 1
+        FROM {table_name} {curr_filter} GROUP BY 1
     ),
     prev AS (
         SELECT "{dimension}" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
-        FROM sales {prev_filter} GROUP BY 1
+        FROM {table_name} {prev_filter} GROUP BY 1
     )
     SELECT 
         c.name, 
@@ -803,8 +822,8 @@ def get_master_table(dimension='Category', filters=None):
     set_cached_data(cache_key, result_data)
     return result_data
 
-def get_detail_table(dimension='Category', selected_group=None, top_n=10, filters=None):
-    cache_key = f"detail_{dimension}_{selected_group}_{top_n}_{hash(str(filters))}"
+def get_detail_table(dimension='Category', selected_group=None, top_n=10, filters=None, table_name='sales'):
+    cache_key = f"detail_{table_name}_{dimension}_{selected_group}_{top_n}_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached
 
@@ -822,8 +841,8 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
         curr_filter = f"WHERE 1=1 {extra_filters} {group_filter}"
         prev_filter = "WHERE 1=0"
     else:
-        curr_s, curr_e = get_current_window(filters)
-        prev_s, prev_e = get_prev_window(filters)
+        curr_s, curr_e = get_current_window(filters, table_name=table_name)
+        prev_s, prev_e = get_prev_window(filters, table_name=table_name)
         curr_filter = f"WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters} {group_filter}"
         if prev_s and prev_e:
             prev_filter = f"WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters} {group_filter}"
@@ -833,11 +852,11 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     query = f"""
     WITH curr AS (
         SELECT "Item name" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
-        FROM sales {curr_filter} GROUP BY 1
+        FROM {table_name} {curr_filter} GROUP BY 1
     ),
     prev AS (
         SELECT "Item name" as name, SUM(Amount_USD) as revenue, SUM(Profit_USD) as profit, AVG("Margin_%") as margin, SUM(Qty) as qty 
-        FROM sales {prev_filter} GROUP BY 1
+        FROM {table_name} {prev_filter} GROUP BY 1
     )
     SELECT 
         c.name, 
@@ -858,7 +877,7 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     result_data = query_res.to_dict(orient='records')
     set_cached_data(cache_key, result_data)
     return result_data
-def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
+def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, table_name='sales'):
     """
     Implements the core mathematical logic for AI Summary.
     Compares Period B (target) vs Period A (baseline).
@@ -870,7 +889,6 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
         return {"error": "Invalid date format"}
 
     # 1. Base query for metrics per counterparty and product
-    # We use a single query to get all required data for both periods
     metrics_query = f"""
         WITH period_data AS (
             SELECT 
@@ -878,7 +896,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 "Item name" as product,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as rev_a,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as rev_b
-            FROM sales
+            FROM {table_name}
             WHERE (CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}')
                OR (CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}')
             GROUP BY 1, 2
@@ -923,7 +941,6 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
             scenario = "SIGNIFICANT_GROWTH"
             
         # 3. Top Drivers (Filtered by SIGNIFICANCE)
-        # We only show clients that contribute > 15% to gross movement
         pos_threshold = gross_positive * 0.15
         neg_threshold = abs(gross_negative) * 0.15
         
@@ -939,7 +956,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b,
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) -
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_delta
-                FROM sales
+                FROM {table_name}
                 WHERE counterparty = '{client_name.replace("'", "''")}'
                 GROUP BY 1
                 HAVING p_delta != 0
@@ -995,7 +1012,6 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
             })
             
         # 4. Global Product Health (Significant movers)
-        # Threshold: 15% of gross movement
         gp_threshold = (gross_positive if net_delta > 0 else abs(gross_negative)) * 0.15
         global_products_query = f"""
             SELECT 
@@ -1004,7 +1020,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as rev_b,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) - 
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as delta
-            FROM sales
+            FROM {table_name}
             WHERE CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}'
                OR CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}'
             GROUP BY 1
@@ -1038,7 +1054,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 "Item name" as product,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b
-            FROM sales
+            FROM {table_name}
             GROUP BY 1
             HAVING p_rev_a = 0 AND p_rev_b > 0
             ORDER BY p_rev_b DESC
@@ -1056,7 +1072,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str):
                 "Item name" as product,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b
-            FROM sales
+            FROM {table_name}
             GROUP BY 1
             HAVING p_rev_a > 0 AND p_rev_b = 0
             ORDER BY p_rev_a DESC
