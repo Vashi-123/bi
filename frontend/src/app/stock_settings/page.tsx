@@ -27,6 +27,10 @@ export default function StockSettingsPage() {
     const [selectedItems, setSelectedItems] = useState<SKU[]>([]);
     const [newItemGroup, setNewItemGroup] = useState('General');
     
+    // Manual entry fields for Notify
+    const [manualName, setManualName] = useState('');
+    const [manualId, setManualId] = useState('');
+
     const [catalogSearch, setCatalogSearch] = useState('');
     const [catalogResults, setCatalogResults] = useState<SKU[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -40,7 +44,7 @@ export default function StockSettingsPage() {
     const currentSettings = settingsData || [];
     const monitoredIds = useMemo(() => new Set((currentSettings as SKU[]).map(s => s.sku_id)), [currentSettings]);
 
-    // Live Catalog Search (Parquet based)
+    // Live Catalog Search (Parquet based) - Only for SKUs
     const performSearch = async (query: string) => {
         setIsSearching(true);
         try {
@@ -55,13 +59,15 @@ export default function StockSettingsPage() {
     };
 
     useEffect(() => {
+        if (activeCategory !== 'monitored_skus') return;
+        
         if (catalogSearch.length >= 2) {
             const delayDebounceFn = setTimeout(() => performSearch(catalogSearch), 300);
             return () => clearTimeout(delayDebounceFn);
         } else if (catalogSearch.length === 0 && showResults) {
             performSearch('');
         }
-    }, [catalogSearch, showResults]);
+    }, [catalogSearch, showResults, activeCategory]);
 
     // Grouping Logic for Monitored List
     const groupedSKUs = useMemo(() => {
@@ -80,25 +86,33 @@ export default function StockSettingsPage() {
     };
 
     const handleSaveBatch = async () => {
-        if (selectedItems.length === 0) return;
+        if (activeCategory === 'monitored_skus' && selectedItems.length === 0) return;
+        if (activeCategory === 'notification_recipients' && (!manualId || !manualName)) return;
+
         setIsSaving(true);
         try {
             const endpoint = activeCategory === 'monitored_skus' ? 'skus' : 'recipients';
             
-            for (const item of selectedItems) {
-                const payload = activeCategory === 'monitored_skus' 
-                    ? { sku_id: item.sku_id, name: item.name, group: newItemGroup }
-                    : { telegram_id: parseInt(item.sku_id), name: item.name };
-                
+            if (activeCategory === 'monitored_skus') {
+                for (const item of selectedItems) {
+                    await fetch(`${SETTINGS_API_BASE}/api/settings/${endpoint}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': 'admin_mock' },
+                        body: JSON.stringify({ sku_id: item.sku_id, name: item.name, group: newItemGroup })
+                    });
+                }
+            } else {
                 await fetch(`${SETTINGS_API_BASE}/api/settings/${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': 'admin_mock' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ telegram_id: parseInt(manualId), name: manualName })
                 });
             }
             
             mutate(`${SETTINGS_API_BASE}/api/settings/${endpoint}`);
             setSelectedItems([]);
+            setManualName('');
+            setManualId('');
             setCatalogSearch('');
             setEditingId(null);
             setShowResults(false);
@@ -120,14 +134,21 @@ export default function StockSettingsPage() {
     const startEditing = (item: any) => {
         const id = (item.sku_id || item.telegram_id || item.id).toString();
         setEditingId(id);
-        const sku: SKU = { sku_id: id, name: item.name, group: item.group };
-        setSelectedItems([sku]);
-        if (item.group) setNewItemGroup(item.group);
+        if (activeCategory === 'monitored_skus') {
+            const sku: SKU = { sku_id: id, name: item.name, group: item.group };
+            setSelectedItems([sku]);
+            if (item.group) setNewItemGroup(item.group);
+        } else {
+            setManualId(id);
+            setManualName(item.name);
+        }
     };
 
     const cancelEditing = () => {
         setEditingId(null);
         setSelectedItems([]);
+        setManualName('');
+        setManualId('');
     };
 
     const handleDeleteSetting = async (id: string) => {
@@ -188,103 +209,108 @@ export default function StockSettingsPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     {/* Left Panel: Catalog Search & Config */}
-                    <div className="lg:col-span-1 space-y-8 sticky top-8">
-                        <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-visible z-50 flex flex-col max-h-[calc(100vh-160px)]">
+                    <div className="lg:col-span-1 space-y-8">
+                        <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-visible z-50 flex flex-col h-[550px]">
                             <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">{editingId ? 'Edit Entry' : 'Configuration'}</Title>
                             
-                            <div className="space-y-6 overflow-y-auto pr-1 custom-scrollbar pb-2">
-                                {/* Group Name */}
-                                {activeCategory === 'monitored_skus' && (
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Group Name</label>
-                                        <input 
-                                            type="text" 
-                                            placeholder="e.g. USDT, Gift Cards..." 
-                                            value={newItemGroup} 
-                                            onChange={e => setNewItemGroup(e.target.value)} 
-                                            className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" 
-                                        />
-                                    </div>
-                                )}
+                            <div className="space-y-6 overflow-y-auto pr-1 custom-scrollbar pb-2 flex-1">
+                                {activeCategory === 'monitored_skus' ? (
+                                    <>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Group Name</label>
+                                            <input 
+                                                type="text" 
+                                                placeholder="e.g. USDT, Gift Cards..." 
+                                                value={newItemGroup} 
+                                                onChange={e => setNewItemGroup(e.target.value)} 
+                                                className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" 
+                                            />
+                                        </div>
 
-                                {/* Quick Search */}
-                                <div className="space-y-2 relative">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Quick Search</label>
-                                    <div className="relative">
-                                        <TextInput 
-                                            icon={isSearching ? undefined : Search} 
-                                            placeholder={activeCategory === 'monitored_skus' ? "Search by ID or Name..." : "Enter Telegram ID..."}
-                                            value={catalogSearch}
-                                            onChange={e => setCatalogSearch(e.target.value)}
-                                            onFocus={() => setShowResults(true)}
-                                            onBlur={() => setTimeout(() => setShowResults(false), 200)}
-                                            className="rounded-xl border-none bg-slate-50 font-bold"
-                                        />
-                                        {isSearching && <div className="absolute right-4 top-3 w-4 h-4 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />}
-                                        
-                                        {showResults && catalogResults.length > 0 && (
-                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden z-[100] max-h-[320px] overflow-y-auto custom-scrollbar">
-                                                {catalogResults.map(item => {
-                                                    const isSelected = selectedItems.some(i => i.sku_id === item.sku_id);
-                                                    return (
-                                                        <button 
-                                                            key={item.sku_id}
-                                                            onClick={() => toggleSelectItem(item)}
-                                                            className={`w-full flex items-center justify-between p-4 transition-colors border-b border-slate-50 last:border-none ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
-                                                        >
-                                                            <div className="text-left flex-1 min-w-0 mr-4">
-                                                                <div className={`text-sm font-black truncate ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{item.name}</div>
-                                                                <div className="text-[10px] text-slate-400 font-mono">ID: {item.sku_id}</div>
+                                        <div className="space-y-2 relative">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Quick Search</label>
+                                            <div className="relative">
+                                                <TextInput 
+                                                    icon={isSearching ? undefined : Search} 
+                                                    placeholder="Search by ID or Name..."
+                                                    value={catalogSearch}
+                                                    onChange={e => setCatalogSearch(e.target.value)}
+                                                    onFocus={() => setShowResults(true)}
+                                                    onBlur={() => setTimeout(() => setShowResults(false), 200)}
+                                                    className="rounded-xl border-none bg-slate-50 font-bold"
+                                                />
+                                                {isSearching && <div className="absolute right-4 top-3 w-4 h-4 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />}
+                                                
+                                                {showResults && catalogResults.length > 0 && (
+                                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden z-[100] max-h-[300px] overflow-y-auto custom-scrollbar">
+                                                        {catalogResults.map(item => {
+                                                            const isSelected = selectedItems.some(i => i.sku_id === item.sku_id);
+                                                            return (
+                                                                <button 
+                                                                    key={item.sku_id}
+                                                                    onClick={() => toggleSelectItem(item)}
+                                                                    className={`w-full flex items-center justify-between p-4 transition-colors border-b border-slate-50 last:border-none ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
+                                                                >
+                                                                    <div className="text-left flex-1 min-w-0 mr-4">
+                                                                        <div className={`text-sm font-black truncate ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{item.name}</div>
+                                                                        <div className="text-[10px] text-slate-400 font-mono">ID: {item.sku_id}</div>
+                                                                    </div>
+                                                                    {isSelected ? <CheckCircle className="w-5 h-5 text-blue-500" /> : monitoredIds.has(item.sku_id) ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4 text-slate-300" />}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {selectedItems.length > 0 && (
+                                            <div className="space-y-4 pt-4 animate-in fade-in duration-300">
+                                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 relative space-y-3">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Selection ({selectedItems.length})</p>
+                                                        {editingId && <button onClick={cancelEditing} className="text-slate-300 hover:text-rose-500"><XCircle className="w-4 h-4" /></button>}
+                                                    </div>
+                                                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                                                        {selectedItems.map(item => (
+                                                            <div key={item.sku_id} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm group/sel">
+                                                                <div className="min-w-0 flex-1">
+                                                                    <p className="text-[11px] font-black text-slate-900 leading-tight truncate">{item.name}</p>
+                                                                    <p className="text-[9px] font-mono text-slate-400 uppercase">ID: {item.sku_id}</p>
+                                                                </div>
+                                                                <button onClick={() => toggleSelectItem(item)} className="ml-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover/sel:opacity-100 transition-all"><X className="w-3.5 h-3.5" /></button>
                                                             </div>
-                                                            {isSelected ? <CheckCircle className="w-5 h-5 text-blue-500" /> : monitoredIds.has(item.sku_id) ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4 text-slate-300" />}
-                                                        </button>
-                                                    );
-                                                })}
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
-                                    </div>
-                                </div>
-
-                                {/* Selection Summary */}
-                                {selectedItems.length > 0 && (
-                                    <div className="space-y-4 pt-4 animate-in fade-in duration-300">
-                                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 relative space-y-3">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Selection ({selectedItems.length})</p>
-                                                {editingId && <button onClick={cancelEditing} className="text-slate-300 hover:text-rose-500"><XCircle className="w-4 h-4" /></button>}
-                                            </div>
-                                            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
-                                                {selectedItems.map(item => (
-                                                    <div key={item.sku_id} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm group/sel">
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="text-[11px] font-black text-slate-900 leading-tight truncate">{item.name}</p>
-                                                            <p className="text-[9px] font-mono text-slate-400 uppercase">ID: {item.sku_id}</p>
-                                                        </div>
-                                                        <button onClick={() => toggleSelectItem(item)} className="ml-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover/sel:opacity-100 transition-all"><X className="w-3.5 h-3.5" /></button>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                    </>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Contact Name</label>
+                                            <input type="text" placeholder="e.g. John Doe" value={manualName} onChange={e => setManualName(e.target.value)} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Telegram ID</label>
+                                            <input type="text" placeholder="e.g. 123456789" value={manualId} onChange={e => setManualId(e.target.value)} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" />
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Fixed Action Button at bottom of card */}
                             <div className="mt-6 pt-4 border-t border-slate-50 shrink-0">
-                                <button 
-                                    onClick={handleSaveBatch} 
-                                    disabled={isSaving || selectedItems.length === 0} 
-                                    className="w-full py-4 bg-[#0C0C0C] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale"
-                                >
+                                <button onClick={handleSaveBatch} disabled={isSaving || (activeCategory === 'monitored_skus' ? selectedItems.length === 0 : (!manualName || !manualId))} className="w-full py-4 bg-[#0C0C0C] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-30">
                                     {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                                    {editingId ? 'Update Entry' : selectedItems.length > 0 ? `Add ${selectedItems.length} items` : 'Select Items Above'}
+                                    {editingId ? 'Update Entry' : activeCategory === 'monitored_skus' ? (selectedItems.length > 0 ? `Add ${selectedItems.length} items` : 'Select Items Above') : 'Add Recipient'}
                                 </button>
                             </div>
                         </Card>
                     </div>
 
                     {/* Right Panel: Active List */}
-                    <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white flex flex-col h-[calc(100vh-160px)]">
+                    <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white flex flex-col h-[550px]">
                         <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">{activeCategory === 'monitored_skus' ? 'Active Monitoring' : 'Notification List'}</Title>
                         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                             {settingsLoading ? (
@@ -329,7 +355,7 @@ export default function StockSettingsPage() {
                                         {currentSettings.map((item: any) => (
                                             <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
                                                 <TableCell className="py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover/row:bg-black group-hover/row:text-white transition-all shadow-sm"><UserCircle className="w-6 h-6" /></div><div><div className="text-sm font-black text-[#0C0C0C]">{item.name}</div><div className="text-[10px] text-slate-400 font-mono uppercase">ID: {item.telegram_id || item.id}</div></div></div></TableCell>
-                                                <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => setEditingId(item.id.toString())} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all shadow-sm"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all shadow-sm"><Trash2 className="w-4 h-4" /></button></div></TableCell>
+                                                <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => startEditing(item)} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all shadow-sm"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all shadow-sm"><Trash2 className="w-4 h-4" /></button></div></TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>

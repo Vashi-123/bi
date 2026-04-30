@@ -104,10 +104,11 @@ export default function AccessManagementPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Admin Form */}
-                    <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-fit relative">
-                        {editingId && <button onClick={() => { setEditingId(null); setNewItemId(''); setNewItemName(''); }} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors"><XCircle className="w-5 h-5" /></button>}
-                        <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">{editingId ? 'Edit Permissions' : 'Authorize New Admin'}</Title>
-                        <div className="space-y-6">
+                    <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-[550px] relative flex flex-col">
+                        {editingId && <button onClick={() => { setEditingId(null); setNewItemId(''); setNewItemName(''); }} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors z-10"><XCircle className="w-5 h-5" /></button>}
+                        <Title className="text-xl font-bold mb-6 text-[#0C0C0C] shrink-0">{editingId ? 'Edit Permissions' : 'Authorize New Admin'}</Title>
+                        
+                        <div className="space-y-6 flex-1 overflow-y-auto pr-1 custom-scrollbar pb-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</label>
                                 <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="e.g. Usman G." className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5" />
@@ -135,7 +136,9 @@ export default function AccessManagementPage() {
                                     </select>
                                 </div>
                             </div>
+                        </div>
 
+                        <div className="mt-4 pt-4 border-t border-slate-50 shrink-0">
                             <button onClick={handleSave} disabled={isSaving || !newItemId || !newItemName} className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black transition-all flex items-center justify-center gap-2">
                                 {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                                 {editingId ? 'Update Permissions' : 'Grant Admin Access'}
@@ -144,54 +147,63 @@ export default function AccessManagementPage() {
                     </Card>
 
                     {/* Admin List */}
-                    <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-hidden">
-                        <Title className="text-xl font-bold mb-8 text-[#0C0C0C]">Authorized System Admins</Title>
-                        <Table>
-                            <TableHead className="bg-white sticky top-0 z-10 shadow-sm border-b border-slate-100">
-                                <TableRow>
-                                    <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">User</TableHeaderCell>
-                                    <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4 text-center">Stock</TableHeaderCell>
-                                    <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4 text-center">Reports</TableHeaderCell>
-                                    <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {isLoading ? (
-                                    <TableRow><TableCell colSpan={4} className="py-20 text-center animate-pulse text-slate-300 font-bold text-xs uppercase">Loading registry...</TableCell></TableRow>
-                                ) : (admins || []).map((admin: any) => (
-                                    <TableRow key={admin.telegram_id || admin.id} className="hover:bg-slate-50/50 transition-all border-b border-slate-50 group">
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-black group-hover:text-white transition-all"><UserCircle className="w-6 h-6" /></div>
-                                                <div>
-                                                    <p className="text-sm font-black text-[#0C0C0C]">{admin.name}</p>
-                                                    <p className="text-[10px] text-slate-400 font-mono">ID: {admin.telegram_id || admin.id}</p>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge size="xs" color={admin.stock_access === 'all' ? 'emerald' : admin.stock_access === 'view' ? 'blue' : 'slate'} className="text-[9px] uppercase font-bold px-2 py-0.5">
-                                                {admin.stock_access || 'none'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge size="xs" color={admin.report_access === 'all' ? 'emerald' : admin.report_access === 'view' ? 'blue' : 'slate'} className="text-[9px] uppercase font-bold px-2 py-0.5">
-                                                {admin.report_access || 'none'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-1">
-                                                <button onClick={() => startEditing(admin)} className="p-2 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button>
-                                                <button onClick={() => handleDelete(admin.telegram_id || admin.id)} className="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button>
-                                            </div>
-                                        </TableCell>
+                    <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white flex flex-col h-[550px]">
+                        <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">Authorized System Admins</Title>
+                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                            <Table>
+                                <TableHead className="bg-white sticky top-0 z-10 shadow-sm border-b border-slate-100">
+                                    <TableRow>
+                                        <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">User</TableHeaderCell>
+                                        <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4 text-center">Stock</TableHeaderCell>
+                                        <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4 text-center">Reports</TableHeaderCell>
+                                        <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHead>
+                                <TableBody>
+                                    {isLoading ? (
+                                        <TableRow><TableCell colSpan={4} className="py-20 text-center animate-pulse text-slate-300 font-bold text-xs uppercase">Loading registry...</TableCell></TableRow>
+                                    ) : (admins || []).map((admin: any) => (
+                                        <TableRow key={admin.telegram_id || admin.id} className="hover:bg-slate-50/50 transition-all border-b border-slate-50 group">
+                                            <TableCell>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-black group-hover:text-white transition-all"><UserCircle className="w-6 h-6" /></div>
+                                                    <div>
+                                                        <p className="text-sm font-black text-[#0C0C0C]">{admin.name}</p>
+                                                        <p className="text-[10px] text-slate-400 font-mono">ID: {admin.telegram_id || admin.id}</p>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge size="xs" color={admin.stock_access === 'all' ? 'emerald' : admin.stock_access === 'view' ? 'blue' : 'slate'} className="text-[9px] uppercase font-bold px-2 py-0.5">
+                                                    {admin.stock_access || 'none'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge size="xs" color={admin.report_access === 'all' ? 'emerald' : admin.report_access === 'view' ? 'blue' : 'slate'} className="text-[9px] uppercase font-bold px-2 py-0.5">
+                                                    {admin.report_access || 'none'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    <button onClick={() => startEditing(admin)} className="p-2 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button>
+                                                    <button onClick={() => handleDelete(admin.telegram_id || admin.id)} className="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </Card>
                 </div>
             </main>
+
+            <style jsx>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+            `}</style>
         </div>
     );
 }
