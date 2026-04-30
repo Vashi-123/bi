@@ -120,16 +120,17 @@ export default function DailyReportPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Create Form */}
-                    <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-fit relative">
+                    <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-[550px] relative flex flex-col">
                         {editingId && (
-                            <button onClick={cancelEditing} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors">
+                            <button onClick={cancelEditing} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors z-10">
                                 <XCircle className="w-5 h-5" />
                             </button>
                         )}
-                        <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">
+                        <Title className="text-xl font-bold mb-6 text-[#0C0C0C] shrink-0">
                             {editingId ? 'Edit Entry' : 'Add Recipient'}
                         </Title>
-                        <div className="space-y-6">
+                        
+                        <div className="space-y-6 flex-1 overflow-y-auto pr-1 custom-scrollbar pb-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</label>
                                 <input 
@@ -151,7 +152,9 @@ export default function DailyReportPage() {
                                     className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5 disabled:opacity-50"
                                 />
                             </div>
+                        </div>
 
+                        <div className="mt-6 pt-4 border-t border-slate-50 shrink-0">
                             <button 
                                 onClick={handleSaveSingle}
                                 disabled={isSaving || !newItemId || !newItemName}
@@ -164,14 +167,14 @@ export default function DailyReportPage() {
                     </Card>
 
                     {/* Entries List */}
-                    <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-hidden">
-                        <Title className="text-xl font-bold mb-8 text-[#0C0C0C]">
+                    <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white flex flex-col h-[550px]">
+                        <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">
                             Notification List
                         </Title>
-                        <div className="max-h-[500px] overflow-y-auto pr-2">
+                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                             <Table>
-                                <TableHead className="bg-white sticky top-0 z-10 shadow-sm">
-                                    <TableRow className="border-b border-slate-100">
+                                <TableHead className="bg-white sticky top-0 z-10 shadow-sm border-b border-slate-100">
+                                    <TableRow>
                                         <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">User Details</TableHeaderCell>
                                         <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
                                     </TableRow>
@@ -224,6 +227,13 @@ export default function DailyReportPage() {
                     </Card>
                 </div>
             </main>
+
+            <style jsx>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+            `}</style>
         </div>
     );
 }
