@@ -94,21 +94,21 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
 
                                       {/* Other Gainers */}
                                       {data.payload.drivers.other_clients?.gainers && (
-                                         <div className="bg-emerald-50/30 p-6 rounded-2xl border border-emerald-100 shadow-sm transition-all hover:shadow-md">
+                                         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md mt-4">
                                             <div className="flex justify-between items-start mb-4">
                                                <div className="flex flex-col gap-1">
-                                                  <span className="text-[13px] font-black text-emerald-700 uppercase leading-tight tracking-tight">{data.payload.drivers.other_clients.gainers.client}</span>
-                                                  <span className="text-[10px] font-black text-emerald-600/60 uppercase tracking-tighter">WAS: {formatCompact(data.payload.drivers.other_clients.gainers.rev_a)} → NOW: {formatCompact(data.payload.drivers.other_clients.gainers.rev_b)}</span>
+                                                  <span className="text-[13px] font-black text-slate-900 uppercase leading-tight tracking-tight">{data.payload.drivers.other_clients.gainers.client}</span>
+                                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">WAS: {formatCompact(data.payload.drivers.other_clients.gainers.rev_a)} → NOW: {formatCompact(data.payload.drivers.other_clients.gainers.rev_b)}</span>
                                                </div>
-                                               <span className="text-base font-black text-emerald-600 bg-white px-3 py-1 rounded-xl shadow-sm">
+                                               <span className="text-base font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl">
                                                   +{formatCompact(data.payload.drivers.other_clients.gainers.delta)}
                                                </span>
                                             </div>
-                                            <div className="space-y-2.5 border-t border-emerald-100/50 pt-4">
+                                            <div className="space-y-2.5 border-t border-slate-100 pt-4">
                                                {data.payload.drivers.other_clients.gainers.products?.map((p: any, pi: number) => (
-                                                  <div key={pi} className={`flex justify-between items-center text-[11px] ${p.is_summary ? 'italic text-emerald-600/50 mt-2' : 'text-emerald-800/70'}`}>
+                                                  <div key={pi} className={`flex justify-between items-center text-[11px] ${p.is_summary ? 'italic text-slate-400 mt-2' : 'text-slate-600'}`}>
                                                      <span className="font-bold truncate max-w-[240px]">{p.name}</span>
-                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-emerald-600/40' : 'text-emerald-900'}`}>
+                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-slate-400' : 'text-slate-900'}`}>
                                                         {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
                                                      </span>
                                                   </div>
@@ -151,21 +151,21 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
 
                                       {/* Other Decliners */}
                                       {data.payload.drivers.other_clients?.decliners && (
-                                         <div className="bg-rose-50/30 p-6 rounded-2xl border border-rose-100 shadow-sm transition-all hover:shadow-md">
+                                         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md mt-4">
                                             <div className="flex justify-between items-start mb-4">
                                                <div className="flex flex-col gap-1">
-                                                  <span className="text-[13px] font-black text-rose-700 uppercase leading-tight tracking-tight">{data.payload.drivers.other_clients.decliners.client}</span>
-                                                  <span className="text-[10px] font-black text-rose-600/60 uppercase tracking-tighter">WAS: {formatCompact(data.payload.drivers.other_clients.decliners.rev_a)} → NOW: {formatCompact(data.payload.drivers.other_clients.decliners.rev_b)}</span>
+                                                  <span className="text-[13px] font-black text-slate-900 uppercase leading-tight tracking-tight">{data.payload.drivers.other_clients.decliners.client}</span>
+                                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">WAS: {formatCompact(data.payload.drivers.other_clients.decliners.rev_a)} → NOW: {formatCompact(data.payload.drivers.other_clients.decliners.rev_b)}</span>
                                                </div>
-                                               <span className="text-base font-black text-rose-600 bg-white px-3 py-1 rounded-xl shadow-sm">
+                                               <span className="text-base font-black text-rose-600 bg-rose-50 px-3 py-1 rounded-xl">
                                                   {formatCompact(data.payload.drivers.other_clients.decliners.delta)}
                                                </span>
                                             </div>
-                                            <div className="space-y-2.5 border-t border-rose-100/50 pt-4">
+                                            <div className="space-y-2.5 border-t border-slate-100 pt-4">
                                                {data.payload.drivers.other_clients.decliners.products?.map((p: any, pi: number) => (
-                                                  <div key={pi} className={`flex justify-between items-center text-[11px] ${p.is_summary ? 'italic text-rose-600/50 mt-2' : 'text-rose-800/70'}`}>
+                                                  <div key={pi} className={`flex justify-between items-center text-[11px] ${p.is_summary ? 'italic text-slate-400 mt-2' : 'text-slate-600'}`}>
                                                      <span className="font-bold truncate max-w-[240px]">{p.name}</span>
-                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-rose-600/40' : 'text-rose-900'}`}>
+                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-slate-400' : 'text-slate-900'}`}>
                                                         {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
                                                      </span>
                                                   </div>
