@@ -35,7 +35,6 @@ export default function StockSettingsPage() {
     const [catalogResults, setCatalogResults] = useState<SKU[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [showResults, setShowResults] = useState(false);
     
     // Grouping State for SKUs
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -44,7 +43,7 @@ export default function StockSettingsPage() {
     const currentSettings = settingsData || [];
     const monitoredIds = useMemo(() => new Set((currentSettings as SKU[]).map(s => s.sku_id)), [currentSettings]);
 
-    // Live Catalog Search (Parquet based) - Only for SKUs
+    // Live Catalog Search (Parquet based)
     const performSearch = async (query: string) => {
         setIsSearching(true);
         try {
@@ -59,15 +58,15 @@ export default function StockSettingsPage() {
     };
 
     useEffect(() => {
+        // Initial search to show items immediately
+        performSearch(catalogSearch);
+    }, []);
+
+    useEffect(() => {
         if (activeCategory !== 'monitored_skus') return;
-        
-        if (catalogSearch.length >= 2) {
-            const delayDebounceFn = setTimeout(() => performSearch(catalogSearch), 300);
-            return () => clearTimeout(delayDebounceFn);
-        } else if (catalogSearch.length === 0 && showResults) {
-            performSearch('');
-        }
-    }, [catalogSearch, showResults, activeCategory]);
+        const delayDebounceFn = setTimeout(() => performSearch(catalogSearch), 300);
+        return () => clearTimeout(delayDebounceFn);
+    }, [catalogSearch, activeCategory]);
 
     // Grouping Logic for Monitored List
     const groupedSKUs = useMemo(() => {
@@ -115,7 +114,7 @@ export default function StockSettingsPage() {
             setManualId('');
             setCatalogSearch('');
             setEditingId(null);
-            setShowResults(false);
+            performSearch(''); // Refresh results to show Check marks
         } catch (e) {
             console.error(e);
         } finally {
@@ -210,10 +209,11 @@ export default function StockSettingsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     {/* Left Panel: Catalog Search & Config */}
                     <div className="lg:col-span-1 space-y-8">
-                        <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-visible z-50 flex flex-col h-[550px]">
-                            <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">{editingId ? 'Edit Entry' : 'Configuration'}</Title>
+                        <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-hidden z-50 flex flex-col h-[550px] relative">
+                            <Title className="text-xl font-bold mb-6 text-[#0C0C0C] shrink-0">{editingId ? 'Edit Entry' : 'Configuration'}</Title>
                             
-                            <div className="space-y-6 overflow-y-auto pr-1 custom-scrollbar pb-2 flex-1">
+                            {/* Fixed Inputs Header */}
+                            <div className="space-y-4 shrink-0 pb-4 border-b border-slate-50 mb-4">
                                 {activeCategory === 'monitored_skus' ? (
                                     <>
                                         <div className="space-y-2">
@@ -226,65 +226,16 @@ export default function StockSettingsPage() {
                                                 className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" 
                                             />
                                         </div>
-
-                                        <div className="space-y-2 relative">
+                                        <div className="space-y-2">
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Quick Search</label>
-                                            <div className="relative">
-                                                <TextInput 
-                                                    icon={isSearching ? undefined : Search} 
-                                                    placeholder="Search by ID or Name..."
-                                                    value={catalogSearch}
-                                                    onChange={e => setCatalogSearch(e.target.value)}
-                                                    onFocus={() => setShowResults(true)}
-                                                    onBlur={() => setTimeout(() => setShowResults(false), 200)}
-                                                    className="rounded-xl border-none bg-slate-50 font-bold"
-                                                />
-                                                {isSearching && <div className="absolute right-4 top-3 w-4 h-4 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />}
-                                                
-                                                {showResults && catalogResults.length > 0 && (
-                                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden z-[100] max-h-[300px] overflow-y-auto custom-scrollbar">
-                                                        {catalogResults.map(item => {
-                                                            const isSelected = selectedItems.some(i => i.sku_id === item.sku_id);
-                                                            return (
-                                                                <button 
-                                                                    key={item.sku_id}
-                                                                    onClick={() => toggleSelectItem(item)}
-                                                                    className={`w-full flex items-center justify-between p-4 transition-colors border-b border-slate-50 last:border-none ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
-                                                                >
-                                                                    <div className="text-left flex-1 min-w-0 mr-4">
-                                                                        <div className={`text-sm font-black truncate ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{item.name}</div>
-                                                                        <div className="text-[10px] text-slate-400 font-mono">ID: {item.sku_id}</div>
-                                                                    </div>
-                                                                    {isSelected ? <CheckCircle className="w-5 h-5 text-blue-500" /> : monitoredIds.has(item.sku_id) ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4 text-slate-300" />}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
+                                            <TextInput 
+                                                icon={isSearching ? undefined : Search} 
+                                                placeholder="Search products..."
+                                                value={catalogSearch}
+                                                onChange={e => setCatalogSearch(e.target.value)}
+                                                className="rounded-xl border-none bg-slate-50 font-bold"
+                                            />
                                         </div>
-
-                                        {selectedItems.length > 0 && (
-                                            <div className="space-y-4 pt-4 animate-in fade-in duration-300">
-                                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 relative space-y-3">
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Selection ({selectedItems.length})</p>
-                                                        {editingId && <button onClick={cancelEditing} className="text-slate-300 hover:text-rose-500"><XCircle className="w-4 h-4" /></button>}
-                                                    </div>
-                                                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
-                                                        {selectedItems.map(item => (
-                                                            <div key={item.sku_id} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm group/sel">
-                                                                <div className="min-w-0 flex-1">
-                                                                    <p className="text-[11px] font-black text-slate-900 leading-tight truncate">{item.name}</p>
-                                                                    <p className="text-[9px] font-mono text-slate-400 uppercase">ID: {item.sku_id}</p>
-                                                                </div>
-                                                                <button onClick={() => toggleSelectItem(item)} className="ml-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover/sel:opacity-100 transition-all"><X className="w-3.5 h-3.5" /></button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
                                     </>
                                 ) : (
                                     <div className="space-y-4">
@@ -300,8 +251,52 @@ export default function StockSettingsPage() {
                                 )}
                             </div>
 
-                            <div className="mt-6 pt-4 border-t border-slate-50 shrink-0">
-                                <button onClick={handleSaveBatch} disabled={isSaving || (activeCategory === 'monitored_skus' ? selectedItems.length === 0 : (!manualName || !manualId))} className="w-full py-4 bg-[#0C0C0C] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-30">
+                            {/* Flexible List Body - This scrolls! */}
+                            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                                {activeCategory === 'monitored_skus' && (
+                                    <div className="space-y-1">
+                                        {catalogResults.map(item => {
+                                            const isSelected = selectedItems.some(i => i.sku_id === item.sku_id);
+                                            const isAlreadyMonitored = monitoredIds.has(item.sku_id);
+                                            return (
+                                                <button 
+                                                    key={item.sku_id}
+                                                    onClick={() => toggleSelectItem(item)}
+                                                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all border border-transparent mb-1 ${isSelected ? 'bg-blue-50/50 border-blue-100 shadow-sm' : 'hover:bg-slate-50'}`}
+                                                >
+                                                    <div className="text-left flex-1 min-w-0 mr-3">
+                                                        <div className={`text-[13px] font-black truncate ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{item.name}</div>
+                                                        <div className="text-[9px] text-slate-400 font-mono tracking-tighter">ID: {item.sku_id}</div>
+                                                    </div>
+                                                    <div className="shrink-0">
+                                                        {isSelected ? <CheckCircle className="w-5 h-5 text-blue-500" /> : isAlreadyMonitored ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4 text-slate-300" />}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                        {catalogResults.length === 0 && !isSearching && (
+                                            <div className="py-10 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">No products found</div>
+                                        )}
+                                    </div>
+                                )}
+                                {activeCategory === 'notification_recipients' && (
+                                    <div className="py-10 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">Enter details above to add recipient</div>
+                                )}
+                            </div>
+
+                            {/* Fixed Footer with Summary and Action Button */}
+                            <div className="shrink-0 mt-4 pt-4 border-t border-slate-100 bg-white">
+                                {selectedItems.length > 0 && activeCategory === 'monitored_skus' && (
+                                    <div className="mb-4 flex items-center justify-between px-2">
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Selected: {selectedItems.length}</div>
+                                        {editingId && <button onClick={cancelEditing} className="text-[9px] font-bold text-rose-500 hover:underline uppercase">Cancel Edit</button>}
+                                    </div>
+                                )}
+                                <button 
+                                    onClick={handleSaveBatch} 
+                                    disabled={isSaving || (activeCategory === 'monitored_skus' ? selectedItems.length === 0 : (!manualName || !manualId))} 
+                                    className="w-full py-4 bg-[#0C0C0C] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-30"
+                                >
                                     {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
                                     {editingId ? 'Update Entry' : activeCategory === 'monitored_skus' ? (selectedItems.length > 0 ? `Add ${selectedItems.length} items` : 'Select Items Above') : 'Add Recipient'}
                                 </button>
@@ -350,7 +345,12 @@ export default function StockSettingsPage() {
                                 ))
                             ) : (
                                 <Table>
-                                    <TableHead className="bg-white sticky top-0 z-10 shadow-sm"><TableRow className="border-b border-slate-100"><TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">User Details</TableHeaderCell><TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell></TableRow></TableHead>
+                                    <TableHead className="bg-white sticky top-0 z-10 shadow-sm border-b border-slate-100">
+                                        <TableRow>
+                                            <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">User Details</TableHeaderCell>
+                                            <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
+                                        </TableRow>
+                                    </TableHead>
                                     <TableBody>
                                         {currentSettings.map((item: any) => (
                                             <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
