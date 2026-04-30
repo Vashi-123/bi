@@ -1002,7 +1002,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
         def get_detailed_products(client_name, client_delta):
             p_query = f"""
                 SELECT 
-                    "Item name" as product,
+                    "Product name" as product,
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b,
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) -
@@ -1034,7 +1034,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
             
             if not df_others.empty and abs(others_delta) >= abs(client_delta) * 0.05:
                 res.append({
-                    "name": f"Other {len(df_others)} items (avg movement)",
+                    "name": f"Other {len(df_others)} products (avg movement)",
                     "rev_a": round(df_others['p_rev_a'].sum(), 2),
                     "rev_b": round(df_others['p_rev_b'].sum(), 2),
                     "delta": round(others_delta, 2),
@@ -1066,7 +1066,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
         gp_threshold = (gross_positive if net_delta > 0 else abs(gross_negative)) * 0.15
         global_products_query = f"""
             SELECT 
-                "Item name" as product,
+                "Product name" as product,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as rev_a,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as rev_b,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) - 
@@ -1102,7 +1102,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
         # New Products
         new_products_query = f"""
             SELECT 
-                "Item name" as product,
+                "Product name" as product,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b
             FROM {table_name}
@@ -1120,7 +1120,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
         # Churned Products
         churned_products_query = f"""
             SELECT 
-                "Item name" as product,
+                "Product name" as product,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b
             FROM {table_name}
@@ -1196,7 +1196,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
             grp_placeholders = ",".join(["?"] * len(df_grp))
             grp_products_query = f"""
                 SELECT 
-                    "Item name" as product,
+                    "Product name" as product,
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b,
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) -
@@ -1225,7 +1225,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
                 """
                 # More robust: total products in group minus the top 3
                 total_grp_products_query = f"""
-                    SELECT "Item name", 
+                    SELECT "Product name", 
                            SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as r_a,
                            SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as r_b
                     FROM {table_name}
@@ -1234,7 +1234,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
                 """
                 df_all_p = conn.execute(total_grp_products_query, df_grp['counterparty'].tolist()).df()
                 top_p_names = [p['name'] for p in grp_products]
-                df_rem_p = df_all_p[~df_all_p['Item name'].isin(top_p_names)]
+                df_rem_p = df_all_p[~df_all_p['Product name'].isin(top_p_names)]
                 
                 if not df_rem_p.empty:
                     rem_rev_a = df_rem_p['r_a'].sum()
