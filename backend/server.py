@@ -62,7 +62,7 @@ except ImportError:
 
 ALLOWED_DIMENSIONS = {
     'type', 'Category', 'Currency', 'counterparty', 'Groupclient',
-    'Product country', 'CountryGroup', 'Item name', 'Product name'
+    'Product country', 'CountryGroup', 'Product name'
 }
 
 ALLOWED_METRICS = {'Amount_USD', 'Profit_USD', 'Qty', 'Margin_%'}

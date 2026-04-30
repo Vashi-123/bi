@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # Input validation
 DATE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 DATE_FILTER_KEYS = {'dateMode', 'startDate', 'endDate', 'relativeValue', 'relativeUnit'}
-ALLOWED_COLUMNS = {'type', 'Category', 'Currency', 'counterparty', 'Groupclient', 'Product country', 'CountryGroup', 'Item name', 'Product name'}
+ALLOWED_COLUMNS = {'type', 'Category', 'Currency', 'counterparty', 'Groupclient', 'Product country', 'CountryGroup', 'Product name'}
 
 def validate_date(date_str: str) -> bool:
     """Returns True if date_str matches YYYY-MM-DD format."""
@@ -723,11 +723,12 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
         cal_gen = f"SELECT CAST(generate_series AS DATE) as d FROM generate_series(date_trunc('month', CAST('{start_date}' AS DATE)), date_trunc('month', CAST('{end_date}' AS DATE)), interval '1 month')"
         sales_d = "date_trunc('month', CAST(date AS DATE))"
 
-    dim_expr = f"CASE WHEN \"{dimension}\" IN ({', '.join([f"'{d}'" for d in top_dims])}) THEN \"{dimension}\" ELSE 'Other' END"
+    top_dims_escaped = [d.replace("'", "''") for d in top_dims]
+    dim_expr = f"CASE WHEN \"{dimension}\" IN ({', '.join([f"'{d}'" for d in top_dims_escaped])}) THEN \"{dimension}\" ELSE 'Other' END"
     
     query = f"""
     WITH calendar AS ({cal_gen}),
-    dims AS (SELECT unnest([{', '.join([f"'{d}'" for d in top_dims + ['Other']])}]) as dim_val),
+    dims AS (SELECT unnest([{', '.join([f"'{d}'" for d in top_dims_escaped + ['Other']])}]) as dim_val),
     full_grid AS (SELECT c.d, d.dim_val FROM calendar c, dims d),
     sales_agg AS (
         SELECT CAST({sales_d} AS DATE) as cal_d, {dim_expr} as dim_val, SUM({col}) as val
@@ -867,8 +868,8 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     if cached: return cached
 
     cursor = get_cursor()
-    # In detail table, we filter based on 'Item name' for statuses
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension='Item name')
+    # In detail table, we filter based on 'Product name' for statuses
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension='Product name')
     mode = filters.get('dateMode', 'all') if filters else 'all'
     
     group_filter = ""
@@ -902,11 +903,11 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
 
     query = f"""
     WITH curr AS (
-        SELECT "Item name" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
+        SELECT "Product name" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
         FROM {table_name} {curr_filter} GROUP BY 1
     ),
     prev AS (
-        SELECT "Item name" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
+        SELECT "Product name" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
         FROM {table_name} {prev_filter} GROUP BY 1
     )
     SELECT 
