@@ -1254,6 +1254,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
 
             other_clients_payload[group_key] = {
                 "client": "Other Gainers" if group_key == "gainers" else "Other Decliners",
+                "count": len(df_grp),
                 "rev_a": round(grp_rev_a, 2),
                 "rev_b": round(grp_rev_b, 2),
                 "delta": round(grp_delta, 2),
