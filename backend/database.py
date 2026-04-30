@@ -1262,6 +1262,23 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
                 "products": grp_products
             }
 
+        # 6. TOP 5 RANKINGS BY DIMENSION
+        def get_top_5(dim):
+            try:
+                # Use curr_filter which is already defined for Period B
+                q = f'SELECT "{dim}" as name, SUM({revenue_col}) as rev FROM {table_name} {curr_filter} GROUP BY 1 ORDER BY 2 DESC LIMIT 5'
+                rows = cursor.execute(q).fetchall()
+                return [{"name": r[0], "rev": round(r[1], 2)} for r in rows]
+            except Exception as t5_err:
+                logger.error(f"Error calculating Top 5 for {dim}: {t5_err}")
+                return []
+
+        top_5_rankings = {
+            "products": get_top_5("Product name"),
+            "categories": get_top_5("Category"),
+            "clients": get_top_5("counterparty")
+        }
+
         # Final JSON Payload
         payload = {
             "daily_trends": daily_trends,
