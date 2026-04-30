@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, TrendingUp, TrendingDown, Package, Activity, Zap, Target } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, Package, Activity, Zap, Target, ArrowRight } from 'lucide-react';
 
 interface AISidebarProps {
   isOpen: boolean;
@@ -21,6 +21,11 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
       return `${sign}$${k >= 100 ? k.toFixed(0) : k.toFixed(1)}K`;
     }
     return `${sign}$${abs.toLocaleString()}`;
+  };
+
+  const getOtherLabel = (label: string) => {
+    // Converts "Other 63 Drivers" -> "Other 63 clients"
+    return label.replace(/Drivers/i, 'clients');
   };
 
   return (
@@ -71,7 +76,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
             </div>
           ) : data?.payload ? (
             <>
-              {/* 1. GROWTH DRIVERS */}
+              {/* 1. GROWTH ENGINE (CLIENTS) */}
               {(data.payload.drivers?.top_gainers?.length > 0 || data.payload.drivers?.other_clients?.gainers) && (
                 <section className="space-y-4">
                   <h3 className="px-4 text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
@@ -109,7 +114,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                       <div className="flex justify-between items-start mb-6">
                         <div className="flex-1 min-w-0 mr-4">
                           <h4 className="text-2xl font-black tracking-tight leading-none text-slate-900 mb-1 truncate">
-                            {data.payload.drivers.other_clients.gainers.client.replace(/Other/i, '').replace(/Drivers/i, 'clients').trim()}
+                            {getOtherLabel(data.payload.drivers.other_clients.gainers.client)}
                           </h4>
                           <p className="text-[10px] font-bold opacity-40 uppercase tracking-tight text-slate-500 whitespace-nowrap">
                             {formatCompact(data.payload.drivers.other_clients.gainers.rev_a)} → {formatCompact(data.payload.drivers.other_clients.gainers.rev_b)}
@@ -132,7 +137,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                 </section>
               )}
 
-              {/* 2. PERFORMANCE DECLINES */}
+              {/* 2. PERFORMANCE DECLINES (CLIENTS) */}
               {(data.payload.drivers?.top_decliners?.length > 0 || data.payload.drivers?.other_clients?.decliners) && (
                 <section className="space-y-4 pt-4">
                   <h3 className="px-4 text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
@@ -170,7 +175,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                       <div className="flex justify-between items-start mb-6">
                         <div className="flex-1 min-w-0 mr-4">
                           <h4 className="text-2xl font-black tracking-tight leading-none text-slate-900 mb-1 truncate">
-                            {data.payload.drivers.other_clients.decliners.client.replace(/Other/i, '').replace(/Drivers/i, 'clients').trim()}
+                            {getOtherLabel(data.payload.drivers.other_clients.decliners.client)}
                           </h4>
                           <p className="text-[10px] font-bold opacity-40 uppercase tracking-tight text-slate-500 whitespace-nowrap">
                             {formatCompact(data.payload.drivers.other_clients.decliners.rev_a)} → {formatCompact(data.payload.drivers.other_clients.decliners.rev_b)}
@@ -193,42 +198,134 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                 </section>
               )}
 
-              {/* 3. NEW BUSINESS */}
-              {data.payload.new_business?.new_clients?.length > 0 && (
+              {/* 3. PRODUCT HEALTH (SKU GAINS/LOSSES) */}
+              {(data.payload.global_product_health?.top_gainers?.length > 0 || data.payload.global_product_health?.top_decliners?.length > 0) && (
                 <section className="space-y-4 pt-4">
                   <h3 className="px-4 text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
-                    <Zap className="w-3.5 h-3.5 text-blue-500" /> New Horizons
+                    <Package className="w-3.5 h-3.5 text-blue-500" /> Product Health
                   </h3>
-                  <div className="bg-[#E5F6FF] p-7 rounded-[32px] border border-black/5 shadow-sm">
-                    <div className="space-y-4">
-                      {data.payload.new_business.new_clients.slice(0, 5).map((nc: any, idx: number) => (
-                        <div key={idx} className="flex justify-between items-center">
-                          <span className="text-xs font-black text-slate-900 tracking-tight">{nc.name}</span>
-                          <span className="px-2 py-1 rounded-lg bg-white/60 text-blue-700 text-[11px] font-black">+{formatCompact(nc.rev_b)}</span>
+                  <div className="bg-slate-50 p-7 rounded-[32px] border border-black/5 shadow-sm space-y-6">
+                    {/* Product Gains */}
+                    {data.payload.global_product_health.top_gainers?.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Top SKU Gains</p>
+                        <div className="space-y-3">
+                          {data.payload.global_product_health.top_gainers.map((p: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-black/5 shadow-sm">
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-black text-slate-900 truncate max-w-[240px] tracking-tight">{p.product}</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Was: {formatCompact(p.rev_a)}</span>
+                              </div>
+                              <div className="flex flex-col items-end shrink-0">
+                                <span className="text-[13px] font-black text-emerald-600">{formatCompact(p.rev_b)}</span>
+                                <span className="text-[10px] font-black text-emerald-600/60">+{((p.delta / (p.rev_a || 1)) * 100).toFixed(0)}%</span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
+                    {/* Product Declines */}
+                    {data.payload.global_product_health.top_decliners?.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 pt-2">Top SKU Declines</p>
+                        <div className="space-y-3">
+                          {data.payload.global_product_health.top_decliners.map((p: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white p-4 rounded-2xl border border-black/5 shadow-sm">
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-xs font-black text-slate-900 truncate max-w-[240px] tracking-tight">{p.product}</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Was: {formatCompact(p.rev_a)}</span>
+                              </div>
+                              <div className="flex flex-col items-end shrink-0">
+                                <span className="text-[13px] font-black text-rose-600">{formatCompact(p.rev_b)}</span>
+                                <span className="text-[10px] font-black text-rose-600/60">{((p.delta / (p.rev_a || 1)) * 100).toFixed(0)}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </section>
               )}
 
-              {/* Global Performance Footer */}
-              <div className="pt-8 border-t border-slate-100 bg-slate-50/50 -mx-6 px-6 pb-6 mt-4">
-                <div className="flex justify-between items-center mb-6">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Snapshot</span>
-                  <Activity className="w-4 h-4 text-slate-300" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-white p-5 rounded-3xl border border-black/5 shadow-sm">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1">Baseline</p>
-                      <p className="text-xl font-black text-slate-900 leading-none tracking-tighter">{formatCompact(data.payload.global_metrics.rev_a)}</p>
-                   </div>
-                   <div className="bg-white p-5 rounded-3xl border border-black/5 shadow-sm">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight mb-1">Target</p>
-                      <p className="text-xl font-black text-slate-900 leading-none tracking-tighter">{formatCompact(data.payload.global_metrics.rev_b)}</p>
-                   </div>
-                </div>
-              </div>
+              {/* 4. NEW BUSINESS ENTRIES */}
+              {(data.payload.new_business?.new_clients?.length > 0 || data.payload.new_business?.new_products_sold?.length > 0) && (
+                <section className="space-y-4 pt-4">
+                  <h3 className="px-4 text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
+                    <Target className="w-3.5 h-3.5 text-blue-500" /> New Business
+                  </h3>
+                  <div className="bg-[#E5F6FF] p-7 rounded-[32px] border border-black/5 shadow-sm space-y-6">
+                    {/* New Clients */}
+                    {data.payload.new_business.new_clients?.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">First-Time Partnerships</p>
+                        <div className="space-y-2">
+                          {data.payload.new_business.new_clients.map((nc: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white/60 p-4 rounded-2xl border border-black/5 shadow-sm">
+                              <span className="text-xs font-black text-slate-900 tracking-tight">{nc.name}</span>
+                              <span className="px-2 py-1 rounded-lg bg-blue-100 text-blue-700 text-[10px] font-black whitespace-nowrap shrink-0">NEW → {formatCompact(nc.rev_b)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* New Products */}
+                    {data.payload.new_business.new_products_sold?.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 pt-2">Newly Added Inventory</p>
+                        <div className="space-y-2">
+                          {data.payload.new_business.new_products_sold.map((np: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white/60 p-4 rounded-2xl border border-black/5 shadow-sm">
+                              <span className="text-xs font-black text-slate-900 tracking-tight truncate max-w-[240px]">{np.name}</span>
+                              <span className="px-2 py-1 rounded-lg bg-blue-100 text-blue-700 text-[10px] font-black whitespace-nowrap shrink-0">NEW → {formatCompact(np.rev_b)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* 5. CHURN & INACTIVITY */}
+              {(data.payload.churn?.churned_clients?.length > 0 || data.payload.churn?.churned_products?.length > 0) && (
+                <section className="space-y-4 pt-4 pb-4">
+                  <h3 className="px-4 text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-2">
+                    <Activity className="w-3.5 h-3.5 text-rose-500" /> Lost Horizons
+                  </h3>
+                  <div className="bg-[#FFF5F6] p-7 rounded-[32px] border border-black/5 shadow-sm space-y-6">
+                    {/* Lost Clients */}
+                    {data.payload.churn.churned_clients?.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lost Counterparties</p>
+                        <div className="space-y-2">
+                          {data.payload.churn.churned_clients.map((cc: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white/60 p-4 rounded-2xl border border-black/5 shadow-sm">
+                              <span className="text-xs font-black text-slate-900 tracking-tight">{cc.name}</span>
+                              <span className="px-2 py-1 rounded-lg bg-rose-100 text-rose-700 text-[10px] font-black whitespace-nowrap shrink-0">{formatCompact(cc.rev_a)} → LOST</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Discontinued SKUs */}
+                    {data.payload.churn.churned_products?.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 pt-2">Discontinued SKUs</p>
+                        <div className="space-y-2">
+                          {data.payload.churn.churned_products.map((cp: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white/60 p-4 rounded-2xl border border-black/5 shadow-sm">
+                              <span className="text-xs font-black text-slate-900 tracking-tight truncate max-w-[240px]">{cp.name}</span>
+                              <span className="px-2 py-1 rounded-lg bg-rose-100 text-rose-700 text-[10px] font-black whitespace-nowrap shrink-0">{formatCompact(cp.rev_a)} → $0</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
             </>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 font-black uppercase text-xs tracking-widest">
