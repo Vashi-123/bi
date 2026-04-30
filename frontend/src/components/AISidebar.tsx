@@ -91,35 +91,10 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                             </div>
                                          </div>
                                       ))}
-                                   </div>
-                                </div>
-                             )}
-                             {/* Decliners */}
-                             {data.payload?.drivers?.top_decliners?.length > 0 && (
-                                <div className="space-y-4">
-                                   <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-2 px-1">
-                                      <TrendingDown className="w-4 h-4" /> Performance Declines
-                                   </p>
-                                   <div className="space-y-4">
-                                      {data.payload.drivers.top_decliners.map((c: any, idx: number) => (
-                                         <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
-                                            <div className="flex justify-between items-start mb-4">
-                                               <div className="flex flex-col gap-1">
-                                                  <span className="text-[13px] font-black text-slate-900 uppercase leading-tight tracking-tight">{c.client}</span>
-                                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">WAS: {formatCompact(c.rev_a)} → NOW: {formatCompact(c.rev_b)}</span>
-                                               </div>
-                                               <span className="text-base font-black text-rose-600 bg-rose-50 px-3 py-1 rounded-xl">{formatCompact(c.delta)}</span>
-                                            </div>
-                                            <div className="space-y-2.5 border-t border-slate-100 pt-4">
-                                               {c.products?.map((p: any, pi: number) => (
-                                                  <div key={pi} className={`flex justify-between items-center text-[11px] ${p.is_summary ? 'italic text-slate-400 mt-2' : 'text-slate-600'}`}>
-                                                     <span className="font-bold truncate max-w-[240px]">{p.name}</span>
-                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-slate-400' : 'text-slate-900'}`}>
-                                                        {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
-                                                     </span>
+
                                       {/* Other Gainers */}
                                       {data.payload.drivers.other_clients?.gainers && (
-                                         <div className="bg-emerald-50/30 p-6 rounded-2xl border border-emerald-100 shadow-sm transition-all hover:shadow-md mt-4">
+                                         <div className="bg-emerald-50/30 p-6 rounded-2xl border border-emerald-100 shadow-sm transition-all hover:shadow-md">
                                             <div className="flex justify-between items-start mb-4">
                                                <div className="flex flex-col gap-1">
                                                   <span className="text-[13px] font-black text-emerald-700 uppercase leading-tight tracking-tight">{data.payload.drivers.other_clients.gainers.client}</span>
@@ -144,6 +119,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                    </div>
                                 </div>
                              )}
+
                              {/* Decliners */}
                              {data.payload?.drivers?.top_decliners?.length > 0 && (
                                 <div className="space-y-4">
@@ -172,9 +148,10 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                             </div>
                                          </div>
                                       ))}
+
                                       {/* Other Decliners */}
                                       {data.payload.drivers.other_clients?.decliners && (
-                                         <div className="bg-rose-50/30 p-6 rounded-2xl border border-rose-100 shadow-sm transition-all hover:shadow-md mt-4">
+                                         <div className="bg-rose-50/30 p-6 rounded-2xl border border-rose-100 shadow-sm transition-all hover:shadow-md">
                                             <div className="flex justify-between items-start mb-4">
                                                <div className="flex flex-col gap-1">
                                                   <span className="text-[13px] font-black text-rose-700 uppercase leading-tight tracking-tight">{data.payload.drivers.other_clients.decliners.client}</span>
@@ -200,7 +177,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                 </div>
                              )}
                           </div>
-                       </div>
+                        </div>
 
                         {/* SHELF 2: PRODUCT HEALTH */}
                         <div className="space-y-6 pt-4">
