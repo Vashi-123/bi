@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
 import { SETTINGS_API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, TextInput } from '@tremor/react';
-import { ArrowLeft, Plus, Search, Trash2, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle, Zap, ChevronDown, ChevronRight, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle, Zap, ChevronDown, ChevronRight, Check, X } from 'lucide-react';
 import Link from 'next/link';
 
 type SettingCategory = 'monitored_skus' | 'notification_recipients';
@@ -24,14 +24,14 @@ export default function StockSettingsPage() {
         fetcher
     );
 
-    const [newItemId, setNewItemId] = useState('');
-    const [newItemName, setNewItemName] = useState('');
+    const [selectedItems, setSelectedItems] = useState<SKU[]>([]);
     const [newItemGroup, setNewItemGroup] = useState('General');
     
     const [catalogSearch, setCatalogSearch] = useState('');
     const [catalogResults, setCatalogResults] = useState<SKU[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [showResults, setShowResults] = useState(false);
     
     // Grouping State for SKUs
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -41,27 +41,28 @@ export default function StockSettingsPage() {
     const monitoredIds = useMemo(() => new Set((currentSettings as SKU[]).map(s => s.sku_id)), [currentSettings]);
 
     // Live Catalog Search (Parquet based)
-    useEffect(() => {
-        if (!catalogSearch || catalogSearch.length < 2) {
-            setCatalogResults([]);
-            return;
+    const performSearch = async (query: string) => {
+        setIsSearching(true);
+        try {
+            // If empty, just get a general list (using a special or empty query if backend supports it)
+            const res = await fetch(`${SETTINGS_API_BASE}/api/catalog-search?q=${encodeURIComponent(query || ' ')}`);
+            const data = await res.json();
+            setCatalogResults(data.results || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSearching(false);
         }
+    };
 
-        const delayDebounceFn = setTimeout(async () => {
-            setIsSearching(true);
-            try {
-                const res = await fetch(`${SETTINGS_API_BASE}/api/catalog-search?q=${encodeURIComponent(catalogSearch)}`);
-                const data = await res.json();
-                setCatalogResults(data.results || []);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setIsSearching(false);
-            }
-        }, 300);
-
-        return () => clearTimeout(delayDebounceFn);
-    }, [catalogSearch]);
+    useEffect(() => {
+        if (catalogSearch.length >= 2) {
+            const delayDebounceFn = setTimeout(() => performSearch(catalogSearch), 300);
+            return () => clearTimeout(delayDebounceFn);
+        } else if (catalogSearch.length === 0 && showResults) {
+            performSearch('');
+        }
+    }, [catalogSearch, showResults]);
 
     // Grouping Logic for Monitored List
     const groupedSKUs = useMemo(() => {
@@ -79,29 +80,30 @@ export default function StockSettingsPage() {
         setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
     };
 
-    const handleSave = async () => {
-        if (!newItemId || !newItemName) return;
+    const handleSaveBatch = async () => {
+        if (selectedItems.length === 0) return;
         setIsSaving(true);
         try {
-            const payload = activeCategory === 'monitored_skus' 
-                ? { sku_id: newItemId, name: newItemName, group: newItemGroup }
-                : { telegram_id: parseInt(newItemId), name: newItemName };
-            
             const endpoint = activeCategory === 'monitored_skus' ? 'skus' : 'recipients';
             
-            const res = await fetch(`${SETTINGS_API_BASE}/api/settings/${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': 'admin_mock' },
-                body: JSON.stringify(payload)
-            });
-            
-            if (res.ok) {
-                mutate(`${SETTINGS_API_BASE}/api/settings/${endpoint}`);
-                setNewItemId('');
-                setNewItemName('');
-                setCatalogSearch('');
-                setEditingId(null);
+            // Sequential save (or we could add a bulk endpoint if needed, but existing add_sku is single)
+            for (const item of selectedItems) {
+                const payload = activeCategory === 'monitored_skus' 
+                    ? { sku_id: item.sku_id, name: item.name, group: newItemGroup }
+                    : { telegram_id: parseInt(item.sku_id), name: item.name };
+                
+                await fetch(`${SETTINGS_API_BASE}/api/settings/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': 'admin_mock' },
+                    body: JSON.stringify(payload)
+                });
             }
+            
+            mutate(`${SETTINGS_API_BASE}/api/settings/${endpoint}`);
+            setSelectedItems([]);
+            setCatalogSearch('');
+            setEditingId(null);
+            setShowResults(false);
         } catch (e) {
             console.error(e);
         } finally {
@@ -109,24 +111,25 @@ export default function StockSettingsPage() {
         }
     };
 
-    const selectFromCatalog = (item: SKU) => {
-        setNewItemId(item.sku_id);
-        setNewItemName(item.name);
-        setCatalogSearch('');
+    const toggleSelectItem = (item: SKU) => {
+        setSelectedItems(prev => {
+            const exists = prev.find(i => i.sku_id === item.sku_id);
+            if (exists) return prev.filter(i => i.sku_id !== item.sku_id);
+            return [...prev, item];
+        });
     };
 
     const startEditing = (item: any) => {
         const id = (item.sku_id || item.telegram_id || item.id).toString();
         setEditingId(id);
-        setNewItemId(id);
-        setNewItemName(item.name);
+        const sku: SKU = { sku_id: id, name: item.name, group: item.group };
+        setSelectedItems([sku]);
         if (item.group) setNewItemGroup(item.group);
     };
 
     const cancelEditing = () => {
         setEditingId(null);
-        setNewItemId('');
-        setNewItemName('');
+        setSelectedItems([]);
     };
 
     const handleDeleteSetting = async (id: string) => {
@@ -206,8 +209,8 @@ export default function StockSettingsPage() {
                                     </div>
                                 )}
 
-                                {/* Quick Search / Target Entry */}
-                                <div className="space-y-2">
+                                {/* Quick Search */}
+                                <div className="space-y-2 relative">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Quick Search</label>
                                     <div className="relative">
                                         <TextInput 
@@ -215,47 +218,63 @@ export default function StockSettingsPage() {
                                             placeholder={activeCategory === 'monitored_skus' ? "Search by ID or Name..." : "Enter Telegram ID..."}
                                             value={catalogSearch}
                                             onChange={e => setCatalogSearch(e.target.value)}
+                                            onFocus={() => setShowResults(true)}
+                                            onBlur={() => setTimeout(() => setShowResults(false), 200)}
                                             className="rounded-xl border-none bg-slate-50 font-bold"
                                         />
                                         {isSearching && <div className="absolute right-4 top-3 w-4 h-4 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />}
                                         
-                                        {catalogResults.length > 0 && (
-                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden z-[100]">
-                                                {catalogResults.map(item => (
-                                                    <button 
-                                                        key={item.sku_id}
-                                                        onClick={() => selectFromCatalog(item)}
-                                                        className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none"
-                                                    >
-                                                        <div className="text-left flex-1 min-w-0 mr-4">
-                                                            <div className="text-sm font-black text-slate-900 truncate">{item.name}</div>
-                                                            <div className="text-[10px] text-slate-400 font-mono">ID: {item.sku_id}</div>
-                                                        </div>
-                                                        {monitoredIds.has(item.sku_id) ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4 text-slate-300" />}
-                                                    </button>
-                                                ))}
+                                        {showResults && catalogResults.length > 0 && (
+                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden z-[100] max-h-[320px] overflow-y-auto custom-scrollbar">
+                                                {catalogResults.map(item => {
+                                                    const isSelected = selectedItems.some(i => i.sku_id === item.sku_id);
+                                                    return (
+                                                        <button 
+                                                            key={item.sku_id}
+                                                            onClick={() => toggleSelectItem(item)}
+                                                            className={`w-full flex items-center justify-between p-4 transition-colors border-b border-slate-50 last:border-none ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
+                                                        >
+                                                            <div className="text-left flex-1 min-w-0 mr-4">
+                                                                <div className={`text-sm font-black truncate ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{item.name}</div>
+                                                                <div className="text-[10px] text-slate-400 font-mono">ID: {item.sku_id}</div>
+                                                            </div>
+                                                            {isSelected ? <CheckCircle className="w-5 h-5 text-blue-500" /> : monitoredIds.has(item.sku_id) ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4 text-slate-300" />}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
                                 {/* Selection Summary & Manual Add Button */}
-                                {(newItemId || newItemName) && (
+                                {selectedItems.length > 0 && (
                                     <div className="space-y-6 pt-4 animate-in fade-in duration-300">
-                                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 relative">
-                                            {editingId && <button onClick={cancelEditing} className="absolute top-2 right-2 text-slate-300 hover:text-rose-500"><XCircle className="w-4 h-4" /></button>}
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-widest">Target Selection</p>
-                                            <p className="text-sm font-black text-slate-900 leading-tight mb-1">{newItemName || 'Selected Item'}</p>
-                                            <p className="text-[10px] font-mono text-slate-400 uppercase">ID: {newItemId}</p>
+                                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 relative space-y-3">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Selection ({selectedItems.length})</p>
+                                                {editingId && <button onClick={cancelEditing} className="text-slate-300 hover:text-rose-500"><XCircle className="w-4 h-4" /></button>}
+                                            </div>
+                                            <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                                                {selectedItems.map(item => (
+                                                    <div key={item.sku_id} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm group/sel">
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-[11px] font-black text-slate-900 leading-tight truncate">{item.name}</p>
+                                                            <p className="text-[9px] font-mono text-slate-400 uppercase">ID: {item.sku_id}</p>
+                                                        </div>
+                                                        <button onClick={() => toggleSelectItem(item)} className="ml-2 text-slate-300 hover:text-rose-500 opacity-0 group-hover/sel:opacity-100 transition-all"><X className="w-3.5 h-3.5" /></button>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                         
                                         <button 
-                                            onClick={handleSave} 
-                                            disabled={isSaving || !newItemId || !newItemName} 
+                                            onClick={handleSaveBatch} 
+                                            disabled={isSaving || selectedItems.length === 0} 
                                             className="w-full py-4 bg-[#0C0C0C] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2"
                                         >
                                             {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                                            {editingId ? 'Update Entry' : 'Add to Monitoring'}
+                                            {editingId ? 'Update Entry' : `Add ${selectedItems.length} items`}
                                         </button>
                                     </div>
                                 )}
@@ -307,7 +326,7 @@ export default function StockSettingsPage() {
                                         {currentSettings.map((item: any) => (
                                             <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
                                                 <TableCell className="py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover/row:bg-black group-hover/row:text-white transition-all"><UserCircle className="w-6 h-6" /></div><div><div className="text-sm font-black text-[#0C0C0C]">{item.name}</div><div className="text-[10px] text-slate-400 font-mono uppercase">ID: {item.telegram_id || item.id}</div></div></div></TableCell>
-                                                <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => startEditing(item)} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button></div></TableCell>
+                                                <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => setEditingId(item.id.toString())} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button></div></TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -317,6 +336,15 @@ export default function StockSettingsPage() {
                     </Card>
                 </div>
             </main>
+            
+            <style jsx>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
         </div>
     );
 }
