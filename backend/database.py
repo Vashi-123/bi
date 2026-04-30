@@ -1283,6 +1283,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
                 "other_clients": other_clients_payload
             },
             "global_product_health": global_product_health,
+            "top_5_rankings": top_5_rankings,
             "new_business": {
                 "new_clients": new_clients_list,
                 "new_products_sold": new_products_list
