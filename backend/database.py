@@ -1175,19 +1175,23 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
             daily_trends = []
             weekly_trends = []
 
-        # 7. Other Clients Aggregation (Remaining Business)
+        # 7. Other Clients Aggregation (Remaining Business - Split by G/D)
         top_client_names = [g['client'] for g in top_gainers] + [d['client'] for d in top_decliners]
-        df_others = df_clients[~df_clients['counterparty'].isin(top_client_names)]
+        df_all_others = df_clients[~df_clients['counterparty'].isin(top_client_names)]
         
-        other_clients_payload = None
-        if not df_others.empty:
-            others_rev_a = df_others['client_rev_a'].sum()
-            others_rev_b = df_others['client_rev_b'].sum()
-            others_delta = others_rev_b - others_rev_a
+        other_clients_payload = {"gainers": None, "decliners": None}
+        
+        for group_key, mask in [("gainers", df_all_others['client_delta'] > 0), ("decliners", df_all_others['client_delta'] < 0)]:
+            df_grp = df_all_others[mask]
+            if df_grp.empty: continue
             
-            # Find top 3 products across all these other clients
-            others_placeholders = ",".join(["?"] * len(df_others))
-            others_products_query = f"""
+            grp_rev_a = df_grp['client_rev_a'].sum()
+            grp_rev_b = df_grp['client_rev_b'].sum()
+            grp_delta = grp_rev_b - grp_rev_a
+            
+            # Find top 3 products for this group
+            grp_placeholders = ",".join(["?"] * len(df_grp))
+            grp_products_query = f"""
                 SELECT 
                     "Item name" as product,
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
@@ -1195,29 +1199,29 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) -
                     SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_delta
                 FROM {table_name}
-                WHERE counterparty IN ({others_placeholders})
+                WHERE counterparty IN ({grp_placeholders})
                 GROUP BY 1
                 HAVING p_delta != 0
                 ORDER BY ABS(p_delta) DESC
                 LIMIT 3
             """
             try:
-                df_others_p = conn.execute(others_products_query, df_others['counterparty'].tolist()).df()
-                others_products = [{
+                df_grp_p = conn.execute(grp_products_query, df_grp['counterparty'].tolist()).df()
+                grp_products = [{
                     "name": r['product'],
                     "rev_a": round(r['p_rev_a'], 2),
                     "rev_b": round(r['p_rev_b'], 2),
                     "delta": round(r['p_delta'], 2)
-                } for _, r in df_others_p.iterrows()]
+                } for _, r in df_grp_p.iterrows()]
             except:
-                others_products = []
+                grp_products = []
 
-            other_clients_payload = {
-                "client": "Other Clients",
-                "rev_a": round(others_rev_a, 2),
-                "rev_b": round(others_rev_b, 2),
-                "delta": round(others_delta, 2),
-                "products": others_products
+            other_clients_payload[group_key] = {
+                "client": "Other Gainers" if group_key == "gainers" else "Other Decliners",
+                "rev_a": round(grp_rev_a, 2),
+                "rev_b": round(grp_rev_b, 2),
+                "delta": round(grp_delta, 2),
+                "products": grp_products
             }
 
         # Final JSON Payload

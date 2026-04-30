@@ -125,32 +125,62 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                 </div>
                              )}
 
-                             {/* Other Clients (Remaining Business) */}
+                             {/* Other Clients (Remaining Business Split) */}
                              {data.payload?.drivers?.other_clients && (
                                 <div className="space-y-4 pt-4">
                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
                                       <LayoutGrid className="w-4 h-4" /> Remaining Business
                                    </p>
-                                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
-                                      <div className="flex justify-between items-start mb-4">
-                                         <div className="flex flex-col gap-1">
-                                            <span className="text-[13px] font-black text-slate-500 uppercase leading-tight tracking-tight">Other Clients</span>
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">WAS: {formatCompact(data.payload.drivers.other_clients.rev_a)} → NOW: {formatCompact(data.payload.drivers.other_clients.rev_b)}</span>
-                                         </div>
-                                         <span className={`text-base font-black ${data.payload.drivers.other_clients.delta >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'} px-3 py-1 rounded-xl`}>
-                                            {data.payload.drivers.other_clients.delta >= 0 ? '+' : ''}{formatCompact(data.payload.drivers.other_clients.delta)}
-                                         </span>
-                                      </div>
-                                      <div className="space-y-2.5 border-t border-slate-100 pt-4">
-                                         {data.payload.drivers.other_clients.products?.map((p: any, pi: number) => (
-                                            <div key={pi} className="flex justify-between items-center text-[11px] text-slate-600">
-                                               <span className="font-bold truncate max-w-[240px]">{p.name}</span>
-                                               <span className="font-black tracking-tighter text-slate-900">
-                                                  {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
+                                   <div className="space-y-4">
+                                      {/* Other Gainers */}
+                                      {data.payload.drivers.other_clients.gainers && (
+                                         <div className="bg-emerald-50/30 p-6 rounded-2xl border border-emerald-100 shadow-sm transition-all hover:shadow-md">
+                                            <div className="flex justify-between items-start mb-4">
+                                               <div className="flex flex-col gap-1">
+                                                  <span className="text-[13px] font-black text-emerald-700 uppercase leading-tight tracking-tight">Other Gainers</span>
+                                                  <span className="text-[10px] font-black text-emerald-600/60 uppercase tracking-tighter">WAS: {formatCompact(data.payload.drivers.other_clients.gainers.rev_a)} → NOW: {formatCompact(data.payload.drivers.other_clients.gainers.rev_b)}</span>
+                                               </div>
+                                               <span className="text-base font-black text-emerald-600 bg-white px-3 py-1 rounded-xl shadow-sm">
+                                                  +{formatCompact(data.payload.drivers.other_clients.gainers.delta)}
                                                </span>
                                             </div>
-                                         ))}
-                                      </div>
+                                            <div className="space-y-2.5 border-t border-emerald-100/50 pt-4">
+                                               {data.payload.drivers.other_clients.gainers.products?.map((p: any, pi: number) => (
+                                                  <div key={pi} className="flex justify-between items-center text-[11px] text-emerald-800/70">
+                                                     <span className="font-bold truncate max-w-[240px]">{p.name}</span>
+                                                     <span className="font-black tracking-tighter text-emerald-900">
+                                                        {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
+                                                     </span>
+                                                  </div>
+                                               ))}
+                                            </div>
+                                         </div>
+                                      )}
+
+                                      {/* Other Decliners */}
+                                      {data.payload.drivers.other_clients.decliners && (
+                                         <div className="bg-rose-50/30 p-6 rounded-2xl border border-rose-100 shadow-sm transition-all hover:shadow-md">
+                                            <div className="flex justify-between items-start mb-4">
+                                               <div className="flex flex-col gap-1">
+                                                  <span className="text-[13px] font-black text-rose-700 uppercase leading-tight tracking-tight">Other Decliners</span>
+                                                  <span className="text-[10px] font-black text-rose-600/60 uppercase tracking-tighter">WAS: {formatCompact(data.payload.drivers.other_clients.decliners.rev_a)} → NOW: {formatCompact(data.payload.drivers.other_clients.decliners.rev_b)}</span>
+                                               </div>
+                                               <span className="text-base font-black text-rose-600 bg-white px-3 py-1 rounded-xl shadow-sm">
+                                                  {formatCompact(data.payload.drivers.other_clients.decliners.delta)}
+                                               </span>
+                                            </div>
+                                            <div className="space-y-2.5 border-t border-rose-100/50 pt-4">
+                                               {data.payload.drivers.other_clients.decliners.products?.map((p: any, pi: number) => (
+                                                  <div key={pi} className="flex justify-between items-center text-[11px] text-rose-800/70">
+                                                     <span className="font-bold truncate max-w-[240px]">{p.name}</span>
+                                                     <span className="font-black tracking-tighter text-rose-900">
+                                                        {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
+                                                     </span>
+                                                  </div>
+                                               ))}
+                                            </div>
+                                         </div>
+                                      )}
                                    </div>
                                 </div>
                              )}
