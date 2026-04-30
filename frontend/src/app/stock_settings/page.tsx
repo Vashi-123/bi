@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
 import { SETTINGS_API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, TextInput } from '@tremor/react';
-import { ArrowLeft, Plus, Search, Trash2, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle, Zap, ChevronDown, ChevronRight, Check, X } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle, Zap, ChevronDown, ChevronRight, Check, X, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 
 type SettingCategory = 'monitored_skus' | 'notification_recipients';
