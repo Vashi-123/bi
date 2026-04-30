@@ -272,6 +272,30 @@ def delete_group(name: str, group_type: str = Query(default='counterparties')):
             return {"status": "ok"}
     return JSONResponse(status_code=404, content={"error": "Group not found"})
     
+@app.get("/api/catalog-search")
+def search_catalog(q: str = Query(..., min_length=1)):
+    """Searches products in the external parquet file."""
+    try:
+        import pandas as pd
+        path = "/home/usman/onedrive_folder/project_data/df_product/data.parquet"
+        if not os.path.exists(path):
+            logger.warning(f"Catalog file not found at {path}")
+            return {"results": []}
+        
+        df = pd.read_parquet(path)
+        # Search in item_name or item_id
+        search_q = q.lower()
+        mask = (df['item_name'].str.lower().str.contains(search_q, na=False)) | \
+               (df['item_id'].astype(str).str.contains(search_q, na=False))
+        
+        results = df[mask].head(15).to_dict('records')
+        # Map item_name -> name, item_id -> sku_id for frontend compatibility
+        mapped = [{"sku_id": str(r['item_id']), "name": r['item_name']} for r in results]
+        return {"results": mapped}
+    except Exception as e:
+        logger.error(f"Catalog search error: {e}")
+        return {"results": [], "error": str(e)}
+    
 # --- Stock Settings Management ---
 
 @app.get("/api/stock/items")

@@ -1,21 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
-import { API_BASE, SETTINGS_API_BASE, fetcher } from '@/lib/constants';
+import { SETTINGS_API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, TextInput } from '@tremor/react';
-import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle, Zap, ChevronDown, ChevronRight, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle, Zap, ChevronDown, ChevronRight, Check } from 'lucide-react';
 import Link from 'next/link';
 
 type SettingCategory = 'monitored_skus' | 'notification_recipients';
 
 interface SKU {
-    sku_id: string;
-    name: string;
-    group?: string;
-}
-
-interface InventoryItem {
     sku_id: string;
     name: string;
     group?: string;
@@ -30,36 +24,41 @@ export default function StockSettingsPage() {
         fetcher
     );
 
-    // Fetch full inventory for catalog search
-    const { data: inventoryData } = useSWR(
-        activeCategory === 'monitored_skus' ? `${SETTINGS_API_BASE}/api/inventory` : null, 
-        fetcher
-    );
-
-    const [newItemId, setNewItemId] = useState('');
-    const [newItemName, setNewItemName] = useState('');
     const [newItemGroup, setNewItemGroup] = useState('General');
     const [catalogSearch, setCatalogSearch] = useState('');
+    const [catalogResults, setCatalogResults] = useState<SKU[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     
     // Grouping State for SKUs
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingItem, setEditingItem] = useState<any>(null);
 
     const currentSettings = settingsData || [];
     const monitoredIds = useMemo(() => new Set((currentSettings as SKU[]).map(s => s.sku_id)), [currentSettings]);
 
-    // Catalog Search Results
-    const catalogResults = useMemo(() => {
-        if (!inventoryData || !catalogSearch) return [];
-        const query = catalogSearch.toLowerCase();
-        return (inventoryData as InventoryItem[])
-            .filter(item => 
-                item.name.toLowerCase().includes(query) || 
-                item.sku_id.toString().includes(query)
-            )
-            .slice(0, 10); // Limit results
-    }, [inventoryData, catalogSearch]);
+    // Live Catalog Search (Parquet based)
+    useEffect(() => {
+        if (!catalogSearch || catalogSearch.length < 2) {
+            setCatalogResults([]);
+            return;
+        }
+
+        const delayDebounceFn = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const res = await fetch(`${SETTINGS_API_BASE}/api/catalog-search?q=${encodeURIComponent(catalogSearch)}`);
+                const data = await res.json();
+                setCatalogResults(data.results || []);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [catalogSearch]);
 
     // Grouping Logic for Monitored List
     const groupedSKUs = useMemo(() => {
@@ -77,29 +76,46 @@ export default function StockSettingsPage() {
         setExpandedGroups(prev => ({ ...prev, [group]: !prev[group] }));
     };
 
-    const handleSaveSingle = async (manualPayload?: any) => {
+    const handleSaveSKU = async (item: SKU, customGroup?: string) => {
         setIsSaving(true);
         try {
-            const payload = manualPayload || (activeCategory === 'monitored_skus' 
-                ? { sku_id: newItemId, name: newItemName, group: newItemGroup }
-                : { telegram_id: parseInt(newItemId), name: newItemName });
+            const payload = { 
+                sku_id: item.sku_id, 
+                name: item.name, 
+                group: customGroup || newItemGroup || 'General' 
+            };
             
-            const endpoint = activeCategory === 'monitored_skus' ? 'skus' : 'recipients';
-            
-            const res = await fetch(`${SETTINGS_API_BASE}/api/settings/${endpoint}`, {
+            const res = await fetch(`${SETTINGS_API_BASE}/api/settings/skus`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': 'admin_mock' },
                 body: JSON.stringify(payload)
             });
             
             if (res.ok) {
-                mutate(`${SETTINGS_API_BASE}/api/settings/${endpoint}`);
-                if (!manualPayload) {
-                    setNewItemId('');
-                    setNewItemName('');
-                    setNewItemGroup('General');
-                    setEditingId(null);
-                }
+                mutate(`${SETTINGS_API_BASE}/api/settings/skus`);
+                setCatalogSearch('');
+                setEditingItem(null);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSaveRecipient = async (id: string, name: string) => {
+        setIsSaving(true);
+        try {
+            const res = await fetch(`${SETTINGS_API_BASE}/api/settings/recipients`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': 'admin_mock' },
+                body: JSON.stringify({ telegram_id: parseInt(id), name })
+            });
+            
+            if (res.ok) {
+                mutate(`${SETTINGS_API_BASE}/api/settings/recipients`);
+                setCatalogSearch('');
+                setEditingItem(null);
             }
         } catch (e) {
             console.error(e);
@@ -122,28 +138,6 @@ export default function StockSettingsPage() {
         } catch (e) {
             console.error(e);
         }
-    };
-
-    const selectFromCatalog = (item: InventoryItem) => {
-        setNewItemId(item.sku_id);
-        setNewItemName(item.name);
-        setNewItemGroup(item.group || 'General');
-        setCatalogSearch('');
-    };
-
-    const startEditing = (item: any) => {
-        const id = (item.sku_id || item.telegram_id || item.id).toString();
-        setEditingId(id);
-        setNewItemId(id);
-        setNewItemName(item.name);
-        if (item.group) setNewItemGroup(item.group);
-    };
-
-    const cancelEditing = () => {
-        setEditingId(null);
-        setNewItemId('');
-        setNewItemName('');
-        setNewItemGroup('General');
     };
 
     return (
@@ -180,70 +174,104 @@ export default function StockSettingsPage() {
                             </Link>
                         </div>
                         <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
-                            <button onClick={() => setActiveCategory('monitored_skus')} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === 'monitored_skus' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-black'}`}><Package className="w-4 h-4" /> SKUs</button>
-                            <button onClick={() => setActiveCategory('notification_recipients')} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === 'notification_recipients' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-black'}`}><BellRing className="w-4 h-4" /> Notify</button>
+                            <button onClick={() => { setActiveCategory('monitored_skus'); setEditingItem(null); }} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === 'monitored_skus' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-black'}`}><Package className="w-4 h-4" /> SKUs</button>
+                            <button onClick={() => { setActiveCategory('notification_recipients'); setEditingItem(null); }} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === 'notification_recipients' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-black'}`}><BellRing className="w-4 h-4" /> Notify</button>
                         </div>
                     </div>
                 </Flex>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Panel: Catalog Search & Form */}
+                    {/* Left Panel: Catalog Search & Config */}
                     <div className="lg:col-span-1 space-y-8">
-                        {activeCategory === 'monitored_skus' && (
-                            <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-visible z-50">
-                                <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">Quick Search</Title>
-                                <div className="relative">
-                                    <TextInput 
-                                        icon={Search} 
-                                        placeholder="Search by SKU ID or Name..." 
-                                        value={catalogSearch}
-                                        onChange={e => setCatalogSearch(e.target.value)}
-                                        className="rounded-xl border-none bg-slate-50 font-bold"
-                                    />
-                                    {catalogResults.length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden z-[100]">
-                                            {catalogResults.map(item => (
-                                                <button 
-                                                    key={item.sku_id}
-                                                    onClick={() => selectFromCatalog(item)}
-                                                    className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none"
-                                                >
-                                                    <div className="text-left">
-                                                        <div className="text-sm font-black text-slate-900">{item.name}</div>
-                                                        <div className="text-[10px] text-slate-400 font-mono">ID: {item.sku_id} // {item.group}</div>
-                                                    </div>
-                                                    {monitoredIds.has(item.sku_id) ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4 text-slate-300" />}
-                                                </button>
-                                            ))}
+                        <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-visible z-50 relative">
+                            {editingItem ? (
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <Title className="text-xl font-bold text-[#0C0C0C]">Edit Entry</Title>
+                                        <button onClick={() => setEditingItem(null)} className="text-slate-300 hover:text-rose-500"><XCircle className="w-5 h-5" /></button>
+                                    </div>
+                                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-widest">Editing Target</p>
+                                        <p className="text-sm font-bold text-slate-900">{editingItem.name}</p>
+                                        <p className="text-[10px] font-mono text-slate-400">ID: {editingItem.sku_id || editingItem.telegram_id}</p>
+                                    </div>
+                                    {activeCategory === 'monitored_skus' && (
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Update Group</label>
+                                            <input 
+                                                type="text" 
+                                                value={newItemGroup} 
+                                                onChange={e => setNewItemGroup(e.target.value)} 
+                                                className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" 
+                                            />
                                         </div>
                                     )}
+                                    <button 
+                                        onClick={() => activeCategory === 'monitored_skus' ? handleSaveSKU(editingItem) : handleSaveRecipient(editingItem.telegram_id.toString(), editingItem.name)}
+                                        className="w-full py-4 bg-[#0C0C0C] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all"
+                                    >
+                                        Save Changes
+                                    </button>
                                 </div>
-                            </Card>
-                        )}
+                            ) : (
+                                <div className="space-y-8">
+                                    <Title className="text-xl font-bold text-[#0C0C0C]">{activeCategory === 'monitored_skus' ? 'Add SKU' : 'Add Recipient'}</Title>
+                                    
+                                    {activeCategory === 'monitored_skus' && (
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Group Name</label>
+                                            <input 
+                                                type="text" 
+                                                placeholder="e.g. USDT, Gift Cards..." 
+                                                value={newItemGroup} 
+                                                onChange={e => setNewItemGroup(e.target.value)} 
+                                                className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" 
+                                            />
+                                        </div>
+                                    )}
 
-                        <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-fit relative">
-                            {editingId && <button onClick={cancelEditing} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors"><XCircle className="w-5 h-5" /></button>}
-                            <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">{editingId ? 'Edit' : 'Manual Entry'}</Title>
-                            <div className="space-y-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Name / Label</label>
-                                    <input type="text" value={newItemName} onChange={e => setNewItemName(e.target.value)} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{activeCategory === 'monitored_skus' ? 'SKU ID' : 'Telegram ID'}</label>
-                                    <input type="text" value={newItemId} disabled={!!editingId} onChange={e => setNewItemId(e.target.value)} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5 disabled:opacity-50" />
-                                </div>
-                                {activeCategory === 'monitored_skus' && (
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Group / Category</label>
-                                        <input type="text" value={newItemGroup} onChange={e => setNewItemGroup(e.target.value)} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" />
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Quick Search</label>
+                                        <div className="relative">
+                                            <TextInput 
+                                                icon={isSearching ? undefined : Search} 
+                                                placeholder={activeCategory === 'monitored_skus' ? "Search by SKU ID or Name..." : "Enter Telegram ID..."}
+                                                value={catalogSearch}
+                                                onChange={e => setCatalogSearch(e.target.value)}
+                                                className="rounded-xl border-none bg-slate-50 font-bold"
+                                            />
+                                            {isSearching && <div className="absolute right-4 top-3 w-4 h-4 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />}
+                                            
+                                            {activeCategory === 'notification_recipients' && catalogSearch.length > 5 && (
+                                                <button 
+                                                    onClick={() => handleSaveRecipient(catalogSearch, 'New Contact')}
+                                                    className="mt-4 w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2"
+                                                >
+                                                    <Plus className="w-3.5 h-3.5" /> Add Manual ID
+                                                </button>
+                                            )}
+
+                                            {catalogResults.length > 0 && (
+                                                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-100 shadow-2xl rounded-2xl overflow-hidden z-[100]">
+                                                    {catalogResults.map(item => (
+                                                        <button 
+                                                            key={item.sku_id}
+                                                            onClick={() => handleSaveSKU(item)}
+                                                            className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none"
+                                                        >
+                                                            <div className="text-left flex-1 min-w-0 mr-4">
+                                                                <div className="text-sm font-black text-slate-900 truncate">{item.name}</div>
+                                                                <div className="text-[10px] text-slate-400 font-mono">ID: {item.sku_id}</div>
+                                                            </div>
+                                                            {monitoredIds.has(item.sku_id) ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4 text-slate-300" />}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                )}
-                                <button onClick={() => handleSaveSingle()} disabled={isSaving || !newItemId || !newItemName} className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2">
-                                    {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                                    {editingId ? 'Update' : 'Add to Monitoring'}
-                                </button>
-                            </div>
+                                </div>
+                            )}
                         </Card>
                     </div>
 
@@ -267,15 +295,15 @@ export default function StockSettingsPage() {
                                             <div className="p-2 space-y-1">
                                                 {skus.map(sku => (
                                                     <div key={sku.sku_id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-all group/item">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 group-hover/item:bg-black group-hover/item:text-white transition-all">{sku.sku_id.slice(-2)}</div>
-                                                            <div>
-                                                                <div className="text-sm font-black text-[#0C0C0C]">{sku.name}</div>
+                                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                            <div className="w-8 h-8 shrink-0 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 group-hover/item:bg-black group-hover/item:text-white transition-all">{sku.sku_id.slice(-2)}</div>
+                                                            <div className="min-w-0">
+                                                                <div className="text-sm font-black text-[#0C0C0C] truncate">{sku.name}</div>
                                                                 <div className="text-[10px] text-slate-400 font-mono uppercase">ID: {sku.sku_id}</div>
                                                             </div>
                                                         </div>
-                                                        <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                                            <button onClick={() => startEditing(sku)} className="p-2 hover:bg-white text-slate-300 hover:text-black rounded-lg transition-all"><Edit3 className="w-3.5 h-3.5" /></button>
+                                                        <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity pl-2">
+                                                            <button onClick={() => { setEditingItem(sku); setNewItemGroup(sku.group || 'General'); }} className="p-2 hover:bg-white text-slate-300 hover:text-black rounded-lg transition-all"><Edit3 className="w-3.5 h-3.5" /></button>
                                                             <button onClick={() => handleDeleteSetting(sku.sku_id)} className="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                                                         </div>
                                                     </div>
@@ -291,7 +319,7 @@ export default function StockSettingsPage() {
                                         {currentSettings.map((item: any) => (
                                             <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
                                                 <TableCell className="py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover/row:bg-black group-hover/row:text-white transition-all"><UserCircle className="w-6 h-6" /></div><div><div className="text-sm font-black text-[#0C0C0C]">{item.name}</div><div className="text-[10px] text-slate-400 font-mono uppercase">ID: {item.telegram_id || item.id}</div></div></div></TableCell>
-                                                <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => startEditing(item)} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button></div></TableCell>
+                                                <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => setEditingItem(item)} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button></div></TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
