@@ -12,8 +12,14 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
   const formatCompact = (val: number) => {
     const abs = Math.abs(val);
     const sign = val < 0 ? '-' : '';
-    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(0)}M`;
-    if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(0)}K`;
+    if (abs >= 1_000_000) {
+      const m = abs / 1_000_000;
+      return `${sign}$${m >= 100 ? m.toFixed(0) : m.toFixed(2)}M`;
+    }
+    if (abs >= 1_000) {
+      const k = abs / 1_000;
+      return `${sign}$${k >= 100 ? k.toFixed(0) : k.toFixed(1)}K`;
+    }
     return `${sign}$${abs.toLocaleString()}`;
   };
 
