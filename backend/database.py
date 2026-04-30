@@ -1135,8 +1135,50 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
             for r in churned_products_res
         ]
 
+        # 6. Mini App Specific Trends (Last 7 Days & Last 7 Weeks)
+        # We use end_b as the "reference" today for the report
+        try:
+            ref_date = pandas.to_datetime(end_b)
+            
+            # 7 Days Trend (Yesterday + 6 days before)
+            seven_days_start = (ref_date - pandas.Timedelta(days=6)).strftime('%Y-%m-%d')
+            daily_query = f"""
+                SELECT CAST(date AS DATE) as date, SUM(Amount_USD) as revenue
+                FROM {table_name}
+                WHERE CAST(date AS DATE) BETWEEN '{seven_days_start}' AND '{end_b}'
+                GROUP BY 1 ORDER BY 1 ASC
+            """
+            df_daily = conn.execute(daily_query).df()
+            if not df_daily.empty:
+                df_daily['date'] = pandas.to_datetime(df_daily['date']).dt.strftime('%Y-%m-%d')
+                daily_trends = df_daily.to_dict(orient='records')
+            else:
+                daily_trends = []
+
+            # 7 Weeks Trend (Current week + 6 weeks before)
+            # Align to Monday
+            seven_weeks_start = (ref_date - pandas.Timedelta(days=ref_date.weekday()) - pandas.Timedelta(weeks=6)).strftime('%Y-%m-%d')
+            weekly_query = f"""
+                SELECT date_trunc('week', CAST(date AS DATE)) as week_start, SUM(Amount_USD) as revenue
+                FROM {table_name}
+                WHERE CAST(date AS DATE) BETWEEN '{seven_weeks_start}' AND '{end_b}'
+                GROUP BY 1 ORDER BY 1 ASC
+            """
+            df_weekly = conn.execute(weekly_query).df()
+            if not df_weekly.empty:
+                df_weekly['week_start'] = pandas.to_datetime(df_weekly['week_start']).dt.strftime('%Y-%m-%d')
+                weekly_trends = df_weekly.to_dict(orient='records')
+            else:
+                weekly_trends = []
+        except Exception as trend_err:
+            logger.error(f"Error calculating mini-app trends: {trend_err}")
+            daily_trends = []
+            weekly_trends = []
+
         # Final JSON Payload
         payload = {
+            "daily_trends": daily_trends,
+            "weekly_trends": weekly_trends,
             "period_info": {
                 "period_a": {"start": start_a, "end": end_a},
                 "period_b": {"start": start_b, "end": end_b}
