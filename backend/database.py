@@ -945,7 +945,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
         WITH period_data AS (
             SELECT 
                 counterparty,
-                "Item name" as product,
+                "Product name" as product,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as rev_a,
                 SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as rev_b
             FROM {table_name}
@@ -1265,9 +1265,9 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
         # 6. TOP 5 RANKINGS BY DIMENSION
         def get_top_5(dim):
             try:
-                # Use curr_filter which is already defined for Period B
-                q = f'SELECT "{dim}" as name, SUM(Amount_USD) as rev FROM {table_name} {curr_filter} GROUP BY 1 ORDER BY 2 DESC LIMIT 5'
-                rows = cursor.execute(q).fetchall()
+                # Use start_b and end_b which are parameters of the outer function
+                q = f'SELECT "{dim}" as name, SUM(Amount_USD) as rev FROM {table_name} WHERE CAST(date AS DATE) BETWEEN \'{start_b}\' AND \'{end_b}\' GROUP BY 1 ORDER BY 2 DESC LIMIT 5'
+                rows = conn.execute(q).fetchall()
                 return [{"name": r[0], "rev": round(r[1], 2)} for r in rows]
             except Exception as t5_err:
                 logger.error(f"Error calculating Top 5 for {dim}: {t5_err}")
