@@ -1266,7 +1266,7 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
         def get_top_5(dim):
             try:
                 # Use curr_filter which is already defined for Period B
-                q = f'SELECT "{dim}" as name, SUM({revenue_col}) as rev FROM {table_name} {curr_filter} GROUP BY 1 ORDER BY 2 DESC LIMIT 5'
+                q = f'SELECT "{dim}" as name, SUM(Amount_USD) as rev FROM {table_name} {curr_filter} GROUP BY 1 ORDER BY 2 DESC LIMIT 5'
                 rows = cursor.execute(q).fetchall()
                 return [{"name": r[0], "rev": round(r[1], 2)} for r in rows]
             except Exception as t5_err:
