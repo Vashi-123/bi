@@ -44,7 +44,6 @@ export default function StockSettingsPage() {
     const performSearch = async (query: string) => {
         setIsSearching(true);
         try {
-            // If empty, just get a general list (using a special or empty query if backend supports it)
             const res = await fetch(`${SETTINGS_API_BASE}/api/catalog-search?q=${encodeURIComponent(query || ' ')}`);
             const data = await res.json();
             setCatalogResults(data.results || []);
@@ -86,7 +85,6 @@ export default function StockSettingsPage() {
         try {
             const endpoint = activeCategory === 'monitored_skus' ? 'skus' : 'recipients';
             
-            // Sequential save (or we could add a bulk endpoint if needed, but existing add_sku is single)
             for (const item of selectedItems) {
                 const payload = activeCategory === 'monitored_skus' 
                     ? { sku_id: item.sku_id, name: item.name, group: newItemGroup }
@@ -188,14 +186,14 @@ export default function StockSettingsPage() {
                     </div>
                 </Flex>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     {/* Left Panel: Catalog Search & Config */}
-                    <div className="lg:col-span-1 space-y-8">
-                        <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-visible z-50 relative">
-                            <Title className="text-xl font-bold mb-8 text-[#0C0C0C]">{editingId ? 'Edit Entry' : 'Configuration'}</Title>
+                    <div className="lg:col-span-1 space-y-8 sticky top-8">
+                        <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-visible z-50 flex flex-col max-h-[calc(100vh-160px)]">
+                            <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">{editingId ? 'Edit Entry' : 'Configuration'}</Title>
                             
-                            <div className="space-y-6">
-                                {/* Group Name (Always visible for SKUs) */}
+                            <div className="space-y-6 overflow-y-auto pr-1 custom-scrollbar pb-2">
+                                {/* Group Name */}
                                 {activeCategory === 'monitored_skus' && (
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Group Name</label>
@@ -247,15 +245,15 @@ export default function StockSettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* Selection Summary & Manual Add Button */}
+                                {/* Selection Summary */}
                                 {selectedItems.length > 0 && (
-                                    <div className="space-y-6 pt-4 animate-in fade-in duration-300">
+                                    <div className="space-y-4 pt-4 animate-in fade-in duration-300">
                                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 relative space-y-3">
                                             <div className="flex justify-between items-center mb-1">
                                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Selection ({selectedItems.length})</p>
                                                 {editingId && <button onClick={cancelEditing} className="text-slate-300 hover:text-rose-500"><XCircle className="w-4 h-4" /></button>}
                                             </div>
-                                            <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                                            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
                                                 {selectedItems.map(item => (
                                                     <div key={item.sku_id} className="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm group/sel">
                                                         <div className="min-w-0 flex-1">
@@ -267,30 +265,33 @@ export default function StockSettingsPage() {
                                                 ))}
                                             </div>
                                         </div>
-                                        
-                                        <button 
-                                            onClick={handleSaveBatch} 
-                                            disabled={isSaving || selectedItems.length === 0} 
-                                            className="w-full py-4 bg-[#0C0C0C] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2"
-                                        >
-                                            {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                                            {editingId ? 'Update Entry' : `Add ${selectedItems.length} items`}
-                                        </button>
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Fixed Action Button at bottom of card */}
+                            <div className="mt-6 pt-4 border-t border-slate-50 shrink-0">
+                                <button 
+                                    onClick={handleSaveBatch} 
+                                    disabled={isSaving || selectedItems.length === 0} 
+                                    className="w-full py-4 bg-[#0C0C0C] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:grayscale"
+                                >
+                                    {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+                                    {editingId ? 'Update Entry' : selectedItems.length > 0 ? `Add ${selectedItems.length} items` : 'Select Items Above'}
+                                </button>
                             </div>
                         </Card>
                     </div>
 
                     {/* Right Panel: Active List */}
-                    <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-hidden">
-                        <Title className="text-xl font-bold mb-8 text-[#0C0C0C]">{activeCategory === 'monitored_skus' ? 'Active Monitoring' : 'Notification List'}</Title>
-                        <div className="max-h-[700px] overflow-y-auto pr-2 no-scrollbar">
+                    <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white flex flex-col h-[calc(100vh-160px)]">
+                        <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">{activeCategory === 'monitored_skus' ? 'Active Monitoring' : 'Notification List'}</Title>
+                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                             {settingsLoading ? (
                                 <div className="py-20 text-center animate-pulse text-slate-300 font-bold text-xs uppercase tracking-widest">Loading...</div>
                             ) : activeCategory === 'monitored_skus' ? (
                                 Object.entries(groupedSKUs || {}).map(([group, skus]) => (
-                                    <div key={group} className="mb-4 border border-slate-50 rounded-2xl overflow-hidden shadow-sm">
+                                    <div key={group} className="mb-4 border border-slate-50 rounded-2xl overflow-hidden shadow-sm bg-white">
                                         <button onClick={() => toggleGroup(group)} className="w-full flex items-center justify-between p-4 bg-slate-50/50 hover:bg-slate-50 transition-colors">
                                             <div className="flex items-center gap-3">
                                                 <Badge color="slate" size="xs" className="text-[9px] uppercase font-bold px-2.5 py-1 rounded-lg">{group}</Badge>
@@ -303,15 +304,17 @@ export default function StockSettingsPage() {
                                                 {skus.map(sku => (
                                                     <div key={sku.sku_id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-all group/item">
                                                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                            <div className="w-8 h-8 shrink-0 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 group-hover/item:bg-black group-hover/item:text-white transition-all">{sku.sku_id.slice(-2)}</div>
+                                                            <div className="w-8 h-8 shrink-0 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 group-hover/item:bg-black group-hover/item:text-white transition-all shadow-sm">
+                                                                {sku.sku_id.slice(-2)}
+                                                            </div>
                                                             <div className="min-w-0">
                                                                 <div className="text-sm font-black text-[#0C0C0C] truncate">{sku.name}</div>
-                                                                <div className="text-[10px] text-slate-400 font-mono uppercase">ID: {sku.sku_id}</div>
+                                                                <div className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">ID: {sku.sku_id}</div>
                                                             </div>
                                                         </div>
                                                         <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity pl-2">
-                                                            <button onClick={() => startEditing(sku)} className="p-2 hover:bg-white text-slate-300 hover:text-black rounded-lg transition-all"><Edit3 className="w-3.5 h-3.5" /></button>
-                                                            <button onClick={() => handleDeleteSetting(sku.sku_id)} className="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                            <button onClick={() => startEditing(sku)} className="p-2 hover:bg-white text-slate-300 hover:text-black rounded-lg transition-all shadow-sm"><Edit3 className="w-3.5 h-3.5" /></button>
+                                                            <button onClick={() => handleDeleteSetting(sku.sku_id)} className="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-all shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -325,8 +328,8 @@ export default function StockSettingsPage() {
                                     <TableBody>
                                         {currentSettings.map((item: any) => (
                                             <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
-                                                <TableCell className="py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover/row:bg-black group-hover/row:text-white transition-all"><UserCircle className="w-6 h-6" /></div><div><div className="text-sm font-black text-[#0C0C0C]">{item.name}</div><div className="text-[10px] text-slate-400 font-mono uppercase">ID: {item.telegram_id || item.id}</div></div></div></TableCell>
-                                                <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => setEditingId(item.id.toString())} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"><Trash2 className="w-4 h-4" /></button></div></TableCell>
+                                                <TableCell className="py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover/row:bg-black group-hover/row:text-white transition-all shadow-sm"><UserCircle className="w-6 h-6" /></div><div><div className="text-sm font-black text-[#0C0C0C]">{item.name}</div><div className="text-[10px] text-slate-400 font-mono uppercase">ID: {item.telegram_id || item.id}</div></div></div></TableCell>
+                                                <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => setEditingId(item.id.toString())} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all shadow-sm"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all shadow-sm"><Trash2 className="w-4 h-4" /></button></div></TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -342,8 +345,6 @@ export default function StockSettingsPage() {
                 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
                 .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             `}</style>
         </div>
     );
