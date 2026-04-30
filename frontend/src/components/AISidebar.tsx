@@ -93,9 +93,7 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                       ))}
                                    </div>
                                 </div>
-                             )}
-
-                             {/* Decliners */}
+                                                           {/* Decliners */}
                              {data.payload?.drivers?.top_decliners?.length > 0 && (
                                 <div className="space-y-4">
                                    <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-2 px-1">
@@ -126,8 +124,38 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                    </div>
                                 </div>
                              )}
+
+                             {/* Other Clients (Remaining Business) */}
+                             {data.payload?.drivers?.other_clients && (
+                                <div className="space-y-4 pt-4">
+                                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
+                                      <LayoutGrid className="w-4 h-4" /> Remaining Business
+                                   </p>
+                                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                                      <div className="flex justify-between items-start mb-4">
+                                         <div className="flex flex-col gap-1">
+                                            <span className="text-[13px] font-black text-slate-500 uppercase leading-tight tracking-tight">Other Clients</span>
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">WAS: {formatCompact(data.payload.drivers.other_clients.rev_a)} → NOW: {formatCompact(data.payload.drivers.other_clients.rev_b)}</span>
+                                         </div>
+                                         <span className={`text-base font-black ${data.payload.drivers.other_clients.delta >= 0 ? 'text-emerald-600 bg-emerald-50' : 'text-rose-600 bg-rose-50'} px-3 py-1 rounded-xl`}>
+                                            {data.payload.drivers.other_clients.delta >= 0 ? '+' : ''}{formatCompact(data.payload.drivers.other_clients.delta)}
+                                         </span>
+                                      </div>
+                                      <div className="space-y-2.5 border-t border-slate-100 pt-4">
+                                         {data.payload.drivers.other_clients.products?.map((p: any, pi: number) => (
+                                            <div key={pi} className="flex justify-between items-center text-[11px] text-slate-600">
+                                               <span className="font-bold truncate max-w-[240px]">{p.name}</span>
+                                               <span className="font-black tracking-tighter text-slate-900">
+                                                  {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
+                                               </span>
+                                            </div>
+                                         ))}
+                                      </div>
+                                   </div>
+                                </div>
+                             )}
                           </div>
-                        </div>
+                       </div>
 
                         {/* SHELF 2: PRODUCT HEALTH */}
                         <div className="space-y-6 pt-4">

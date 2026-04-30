@@ -1170,6 +1170,11 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
                 weekly_trends = df_weekly.to_dict(orient='records')
             else:
                 weekly_trends = []
+        except Exception as trend_err:
+            logger.error(f"Error calculating mini-app trends: {trend_err}")
+            daily_trends = []
+            weekly_trends = []
+
         # 7. Other Clients Aggregation (Remaining Business)
         top_client_names = [g['client'] for g in top_gainers] + [d['client'] for d in top_decliners]
         df_others = df_clients[~df_clients['counterparty'].isin(top_client_names)]
