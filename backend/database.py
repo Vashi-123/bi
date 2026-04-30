@@ -1189,7 +1189,10 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
             grp_rev_b = df_grp['client_rev_b'].sum()
             grp_delta = grp_rev_b - grp_rev_a
             
-            # Find top 3 products for this group
+            # Find top 3 products for this group (Gainers show growth, Decliners show decline)
+            dir_filter = "p_delta > 0" if group_key == "gainers" else "p_delta < 0"
+            dir_order = "p_delta DESC" if group_key == "gainers" else "p_delta ASC"
+            
             grp_placeholders = ",".join(["?"] * len(df_grp))
             grp_products_query = f"""
                 SELECT 
@@ -1201,8 +1204,8 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
                 FROM {table_name}
                 WHERE counterparty IN ({grp_placeholders})
                 GROUP BY 1
-                HAVING p_delta != 0
-                ORDER BY ABS(p_delta) DESC
+                HAVING {dir_filter}
+                ORDER BY {dir_order}
                 LIMIT 3
             """
             try:
@@ -1213,7 +1216,40 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
                     "rev_b": round(r['p_rev_b'], 2),
                     "delta": round(r['p_delta'], 2)
                 } for _, r in df_grp_p.iterrows()]
-            except:
+                
+                # Summary for remaining products in this group
+                p_sum_query = f"""
+                    SELECT COUNT(DISTINCT "Item name"), SUM(Amount_USD)
+                    FROM {table_name}
+                    WHERE counterparty IN ({grp_placeholders})
+                """
+                # More robust: total products in group minus the top 3
+                total_grp_products_query = f"""
+                    SELECT "Item name", 
+                           SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as r_a,
+                           SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as r_b
+                    FROM {table_name}
+                    WHERE counterparty IN ({grp_placeholders})
+                    GROUP BY 1
+                """
+                df_all_p = conn.execute(total_grp_products_query, df_grp['counterparty'].tolist()).df()
+                top_p_names = [p['name'] for p in grp_products]
+                df_rem_p = df_all_p[~df_all_p['Item name'].isin(top_p_names)]
+                
+                if not df_rem_p.empty:
+                    rem_rev_a = df_rem_p['r_a'].sum()
+                    rem_rev_b = df_rem_p['r_b'].sum()
+                    rem_delta = rem_rev_b - rem_rev_a
+                    if abs(rem_delta) > 0.01:
+                        grp_products.append({
+                            "name": f"Other {len(df_rem_p)} products (avg movement)",
+                            "rev_a": round(rem_rev_a, 2),
+                            "rev_b": round(rem_rev_b, 2),
+                            "delta": round(rem_delta, 2),
+                            "is_summary": True
+                        })
+            except Exception as grp_p_err:
+                logger.error(f"Error in group products: {grp_p_err}")
                 grp_products = []
 
             other_clients_payload[group_key] = {

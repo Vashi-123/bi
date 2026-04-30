@@ -146,9 +146,9 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                             </div>
                                             <div className="space-y-2.5 border-t border-emerald-100/50 pt-4">
                                                {data.payload.drivers.other_clients.gainers.products?.map((p: any, pi: number) => (
-                                                  <div key={pi} className="flex justify-between items-center text-[11px] text-emerald-800/70">
+                                                  <div key={pi} className={`flex justify-between items-center text-[11px] ${p.is_summary ? 'italic text-emerald-600/50 mt-2' : 'text-emerald-800/70'}`}>
                                                      <span className="font-bold truncate max-w-[240px]">{p.name}</span>
-                                                     <span className="font-black tracking-tighter text-emerald-900">
+                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-emerald-600/40' : 'text-emerald-900'}`}>
                                                         {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
                                                      </span>
                                                   </div>
@@ -171,9 +171,9 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                             </div>
                                             <div className="space-y-2.5 border-t border-rose-100/50 pt-4">
                                                {data.payload.drivers.other_clients.decliners.products?.map((p: any, pi: number) => (
-                                                  <div key={pi} className="flex justify-between items-center text-[11px] text-rose-800/70">
+                                                  <div key={pi} className={`flex justify-between items-center text-[11px] ${p.is_summary ? 'italic text-rose-600/50 mt-2' : 'text-rose-800/70'}`}>
                                                      <span className="font-bold truncate max-w-[240px]">{p.name}</span>
-                                                     <span className="font-black tracking-tighter text-rose-900">
+                                                     <span className={`font-black tracking-tighter ${p.is_summary ? 'text-rose-600/40' : 'text-rose-900'}`}>
                                                         {formatCompact(p.rev_a)} → {formatCompact(p.rev_b)}
                                                      </span>
                                                   </div>
