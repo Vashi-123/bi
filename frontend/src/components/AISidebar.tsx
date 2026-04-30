@@ -93,7 +93,8 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                                       ))}
                                    </div>
                                 </div>
-                                                           {/* Decliners */}
+                             )}
+                             {/* Decliners */}
                              {data.payload?.drivers?.top_decliners?.length > 0 && (
                                 <div className="space-y-4">
                                    <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-2 px-1">
