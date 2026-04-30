@@ -12,8 +12,8 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
   const formatCompact = (val: number) => {
     const abs = Math.abs(val);
     const sign = val < 0 ? '-' : '';
-    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}M`;
-    if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(2)}K`;
+    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(0)}M`;
+    if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(0)}K`;
     return `${sign}$${abs.toLocaleString()}`;
   };
 
@@ -76,13 +76,13 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                   {data.payload.drivers.top_gainers?.map((c: any, idx: number) => (
                     <div key={idx} className="bg-[#F3FFEF] p-7 rounded-[32px] border border-black/5 shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h4 className="text-2xl font-black tracking-tight leading-none text-slate-900 mb-1">{c.client}</h4>
-                          <p className="text-[10px] font-bold opacity-40 uppercase tracking-tight text-slate-500">
+                        <div className="flex-1 min-w-0 mr-4">
+                          <h4 className="text-2xl font-black tracking-tight leading-none text-slate-900 mb-1 truncate">{c.client}</h4>
+                          <p className="text-[10px] font-bold opacity-40 uppercase tracking-tight text-slate-500 whitespace-nowrap">
                             {formatCompact(c.rev_a)} → {formatCompact(c.rev_b)}
                           </p>
                         </div>
-                        <span className="px-3 py-1.5 rounded-2xl bg-white/60 text-emerald-700 text-[12px] font-black shadow-sm">
+                        <span className="px-3 py-1.5 rounded-2xl bg-white/60 text-emerald-700 text-[12px] font-black shadow-sm shrink-0 whitespace-nowrap">
                           +{formatCompact(c.delta)}
                         </span>
                       </div>
@@ -101,15 +101,15 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                   {data.payload.drivers.other_clients?.gainers && (
                     <div className="bg-[#F3FFEF] p-7 rounded-[32px] border border-black/5 shadow-sm">
                       <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h4 className="text-2xl font-black tracking-tight leading-none text-slate-900 mb-1">
+                        <div className="flex-1 min-w-0 mr-4">
+                          <h4 className="text-2xl font-black tracking-tight leading-none text-slate-900 mb-1 truncate">
                             {data.payload.drivers.other_clients.gainers.client.replace(/Other/i, '').replace(/Drivers/i, 'clients').trim()}
                           </h4>
-                          <p className="text-[10px] font-bold opacity-40 uppercase tracking-tight text-slate-500">
+                          <p className="text-[10px] font-bold opacity-40 uppercase tracking-tight text-slate-500 whitespace-nowrap">
                             {formatCompact(data.payload.drivers.other_clients.gainers.rev_a)} → {formatCompact(data.payload.drivers.other_clients.gainers.rev_b)}
                           </p>
                         </div>
-                        <span className="px-3 py-1.5 rounded-2xl bg-white/60 text-emerald-700 text-[12px] font-black shadow-sm">
+                        <span className="px-3 py-1.5 rounded-2xl bg-white/60 text-emerald-700 text-[12px] font-black shadow-sm shrink-0 whitespace-nowrap">
                           +{formatCompact(data.payload.drivers.other_clients.gainers.delta)}
                         </span>
                       </div>
@@ -137,13 +137,13 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                   {data.payload.drivers.top_decliners?.map((c: any, idx: number) => (
                     <div key={idx} className="bg-[#FFE5E8] p-7 rounded-[32px] border border-black/5 shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h4 className="text-2xl font-black tracking-tight leading-none text-slate-900 mb-1">{c.client}</h4>
-                          <p className="text-[10px] font-bold opacity-40 uppercase tracking-tight text-slate-500">
+                        <div className="flex-1 min-w-0 mr-4">
+                          <h4 className="text-2xl font-black tracking-tight leading-none text-slate-900 mb-1 truncate">{c.client}</h4>
+                          <p className="text-[10px] font-bold opacity-40 uppercase tracking-tight text-slate-500 whitespace-nowrap">
                             {formatCompact(c.rev_a)} → {formatCompact(c.rev_b)}
                           </p>
                         </div>
-                        <span className="px-3 py-1.5 rounded-2xl bg-white/60 text-rose-700 text-[12px] font-black shadow-sm">
+                        <span className="px-3 py-1.5 rounded-2xl bg-white/60 text-rose-700 text-[12px] font-black shadow-sm shrink-0 whitespace-nowrap">
                           {formatCompact(c.delta)}
                         </span>
                       </div>
@@ -162,15 +162,15 @@ export const AISidebar: React.FC<AISidebarProps> = ({ isOpen, onClose, isLoading
                   {data.payload.drivers.other_clients?.decliners && (
                     <div className="bg-[#FFE5E8] p-7 rounded-[32px] border border-black/5 shadow-sm">
                       <div className="flex justify-between items-start mb-6">
-                        <div>
-                          <h4 className="text-2xl font-black tracking-tight leading-none text-slate-900 mb-1">
+                        <div className="flex-1 min-w-0 mr-4">
+                          <h4 className="text-2xl font-black tracking-tight leading-none text-slate-900 mb-1 truncate">
                             {data.payload.drivers.other_clients.decliners.client.replace(/Other/i, '').replace(/Drivers/i, 'clients').trim()}
                           </h4>
-                          <p className="text-[10px] font-bold opacity-40 uppercase tracking-tight text-slate-500">
+                          <p className="text-[10px] font-bold opacity-40 uppercase tracking-tight text-slate-500 whitespace-nowrap">
                             {formatCompact(data.payload.drivers.other_clients.decliners.rev_a)} → {formatCompact(data.payload.drivers.other_clients.decliners.rev_b)}
                           </p>
                         </div>
-                        <span className="px-3 py-1.5 rounded-2xl bg-white/60 text-rose-700 text-[12px] font-black shadow-sm">
+                        <span className="px-3 py-1.5 rounded-2xl bg-white/60 text-rose-700 text-[12px] font-black shadow-sm shrink-0 whitespace-nowrap">
                           {formatCompact(data.payload.drivers.other_clients.decliners.delta)}
                         </span>
                       </div>
