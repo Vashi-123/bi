@@ -22,14 +22,17 @@ try:
     sb_manager = SupabaseManager(SUPABASE_URL, SUPABASE_KEY)
 except ImportError:
     import sys
-    # Try alternate path if needed
-    sys.path.append(os.path.join(os.getcwd(), 'miniapps', 'backend'))
+    # Look one level up for miniapps folder
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    miniapps_path = os.path.join(base_dir, 'miniapps', 'backend')
+    if miniapps_path not in sys.path:
+        sys.path.append(miniapps_path)
     try:
         from supabase_client import SupabaseManager
         sb_manager = SupabaseManager(SUPABASE_URL, SUPABASE_KEY)
-    except:
+    except Exception as e:
         sb_manager = None
-        logging.getLogger("giftery-api").error("⚠️ SupabaseManager not found")
+        logging.getLogger("giftery-api").error(f"⚠️ SupabaseManager not found: {e}")
 
 # Configure structured logging
 logging.basicConfig(
@@ -40,7 +43,8 @@ logging.basicConfig(
 logger = logging.getLogger("giftery-api")
 
 # Путь к модулю синхронизации
-SYNC_PATH = "/home/usman/miniapps/backend"
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SYNC_PATH = os.path.join(base_dir, "miniapps", "backend")
 if SYNC_PATH not in sys.path:
     sys.path.append(SYNC_PATH)
 
@@ -48,7 +52,7 @@ try:
     import sync_settings
 except ImportError:
     sync_settings = None
-    logger.error("⚠️ Предупреждение: Модуль sync_settings не найден в /home/usman/miniapps/backend")
+    logger.error(f"⚠️ Предупреждение: Модуль sync_settings не найден в {SYNC_PATH}")
 
 
 # Ensure local imports work regardless of how script is run
