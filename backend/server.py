@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Query, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -408,11 +408,11 @@ def health_check():
     return {"status": "ok", "version": "2.0.0"}
 
 @app.get("/api/refresh")
-def refresh_data():
-    """Hot-reloads the in-memory data tables from disk."""
+def refresh_data(background_tasks: BackgroundTasks):
+    """Hot-reloads the in-memory data tables from disk in the background."""
     try:
-        database.refresh_in_memory_data()
-        return {"status": "ok", "message": "Data refreshed in RAM successfully"}
+        background_tasks.add_task(database.refresh_in_memory_data)
+        return {"status": "accepted", "message": "Data reload started in background"}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
