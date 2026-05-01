@@ -49,17 +49,14 @@ def get_connection():
             start_load = time.time()
             
             # Load SALES data
-            max_row_s = _CONN.execute(f"SELECT MAX(date) FROM read_parquet('{DATA_PATH}')").fetchone()
-            if max_row_s and max_row_s[0]:
-                max_date_s = max_row_s[0]
-                _CONN.execute(f"""
-                    CREATE OR REPLACE TABLE sales_raw AS 
-                    SELECT * FROM read_parquet('{DATA_PATH}') 
-                    WHERE CAST(date AS DATE) >= CAST('{max_date_s}' AS DATE) - INTERVAL '6 month'
-                """)
-                logger.info(f"Loaded sales data into RAM. Window: 6 months from {max_date_s}")
-            else:
-                _CONN.execute(f"CREATE OR REPLACE TABLE sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}')")
+            # Optimization: Instead of scanning all files for MAX(date), 
+            # we just load the last 6 months relative to CURRENT_DATE.
+            _CONN.execute(f"""
+                CREATE OR REPLACE TABLE sales_raw AS 
+                SELECT * FROM read_parquet('{DATA_PATH}') 
+                WHERE CAST(date AS DATE) >= CURRENT_DATE - INTERVAL '6 month'
+            """)
+            logger.info("Loaded sales data into RAM (Last 6 months window)")
 
             # Load PURCHASE data
             if os.path.exists(PURCHASE_DATA_PATH):
@@ -164,24 +161,20 @@ def refresh_in_memory_data():
     start_load = time.time()
     
     # 1. Reload Sales Data
-    max_row = conn.execute(f"SELECT MAX(date) FROM read_parquet('{DATA_PATH}')").fetchone()
-    if max_row and max_row[0]:
-        max_date = max_row[0]
-        conn.execute(f"""
-            CREATE OR REPLACE TABLE sales_raw AS 
-            SELECT * FROM read_parquet('{DATA_PATH}') 
-            WHERE CAST(date AS DATE) >= CAST('{max_date}' AS DATE) - INTERVAL '6 month'
-        """)
+    logger.info("Hot Refresh: Reloading sales data...")
+    conn.execute(f"""
+        CREATE OR REPLACE TABLE sales_raw AS 
+        SELECT * FROM read_parquet('{DATA_PATH}') 
+        WHERE CAST(date AS DATE) >= CURRENT_DATE - INTERVAL '6 month'
+    """)
     
     # 2. Reload Purchase Data
-    max_row_p = conn.execute(f"SELECT MAX(date) FROM read_parquet('{PURCHASE_DATA_PATH}')").fetchone()
-    if max_row_p and max_row_p[0]:
-        max_date_p = max_row_p[0]
-        conn.execute(f"""
-            CREATE OR REPLACE TABLE purchase_raw AS 
-            SELECT * FROM read_parquet('{PURCHASE_DATA_PATH}') 
-            WHERE CAST(date AS DATE) >= CAST('{max_date_p}' AS DATE) - INTERVAL '6 month'
-        """)
+    logger.info("Hot Refresh: Reloading purchase data...")
+    conn.execute(f"""
+        CREATE OR REPLACE TABLE purchase_raw AS 
+        SELECT * FROM read_parquet('{PURCHASE_DATA_PATH}') 
+        WHERE CAST(date AS DATE) >= CURRENT_DATE - INTERVAL '6 month'
+    """)
     
     # 2. Reload Statuses
     if os.path.exists(STATUS_PATH):
