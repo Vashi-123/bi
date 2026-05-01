@@ -45,12 +45,12 @@ def get_inventory_turnover(filters=None):
             where_clause = "AND " + " AND ".join(clauses)
 
     try:
-        # We'll use DuckDB to join and aggregate directly from parquet files
+        # Optimization: Use in-memory tables instead of slow disk reads
         query = f"""
         WITH 
         latest_dates AS (
             SELECT DISTINCT CAST(date AS DATE) as d 
-            FROM read_parquet('{STOCK_DATA_PATH}') 
+            FROM stock_raw 
             ORDER BY d DESC LIMIT 30
         ),
         stock_agg AS (
@@ -60,7 +60,7 @@ def get_inventory_turnover(filters=None):
                 ANY_VALUE(product_name) as product_name,
                 AVG(quantity) as avg_stock,
                 MAX_BY(quantity, date) as current_stock
-            FROM read_parquet('{STOCK_DATA_PATH}')
+            FROM stock_raw
             WHERE CAST(date AS DATE) IN (SELECT d FROM latest_dates)
             {where_clause}
             GROUP BY 1
@@ -68,11 +68,11 @@ def get_inventory_turnover(filters=None):
         sales_agg AS (
             SELECT 
                 item_id, 
-                SUM(qty) as total_sales
-            FROM read_parquet('{SALES_DATA_PATH}')
+                SUM(Qty) as total_sales
+            FROM sales_raw
             WHERE status = 'SUCCESS' AND type = 'VOUCHER_SALE'
-            AND CAST(created_at_ymd AS DATE) IN (SELECT d FROM latest_dates)
-            {where_clause.replace('Product name', 'product_name')} 
+            AND CAST(date AS DATE) IN (SELECT d FROM latest_dates)
+            {where_clause.replace('Product name', '"Product name"')} 
             GROUP BY 1
         )
         SELECT 

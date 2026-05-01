@@ -29,6 +29,7 @@ def extract_column_filters(filters: dict) -> dict:
 DATA_PATH = os.getenv("DATA_PATH", "/home/usman/project_data/processed/final_df/**/*.parquet")
 PURCHASE_DATA_PATH = os.getenv("PURCHASE_DATA_PATH", "/home/usman/project_data/processed/final_df_purch/**/*.parquet")
 STATUS_PATH = os.getenv("STATUS_PATH", "/home/usman/project_data/result/unified_status.parquet")
+STOCK_RAW_PATH = os.getenv("STOCK_RAW_PATH", "/home/usman/project_data/processed/df_stock/**/*.parquet")
 
 # Global connection and cache
 _CONN = None
@@ -78,6 +79,18 @@ def get_connection():
             else:
                 # Empty table if path doesn't exist
                 _CONN.execute("CREATE TABLE IF NOT EXISTS purchase_raw AS SELECT * FROM sales_raw LIMIT 0")
+            
+            # Load STOCK data into RAM
+            try:
+                _CONN.execute(f"""
+                    CREATE OR REPLACE TABLE stock_raw AS 
+                    SELECT * FROM read_parquet('{STOCK_RAW_PATH}') 
+                    WHERE CAST(date AS DATE) >= CURRENT_DATE - INTERVAL '6 month'
+                """)
+                logger.info("Loaded stock data into RAM")
+            except Exception as st_err:
+                logger.warning(f"Could not load stock data into RAM: {st_err}")
+                _CONN.execute("CREATE TABLE IF NOT EXISTS stock_raw (item_id VARCHAR, item_name VARCHAR, product_name VARCHAR, quantity DOUBLE, date DATE)")
             
             # Load custom groups
             refresh_groups_table()
@@ -176,7 +189,15 @@ def refresh_in_memory_data():
         WHERE CAST(date AS DATE) >= CURRENT_DATE - INTERVAL '6 month'
     """)
     
-    # 2. Reload Statuses
+    # 3. Reload Stock Data
+    logger.info("Hot Refresh: Reloading stock data...")
+    conn.execute(f"""
+        CREATE OR REPLACE TABLE stock_raw AS 
+        SELECT * FROM read_parquet('{STOCK_RAW_PATH}') 
+        WHERE CAST(date AS DATE) >= CURRENT_DATE - INTERVAL '6 month'
+    """)
+    
+    # 4. Reload Statuses
     if os.path.exists(STATUS_PATH):
         conn.execute(f"CREATE OR REPLACE TABLE statuses_view AS SELECT * FROM read_parquet('{STATUS_PATH}')")
     elif os.path.exists("unified_status.parquet"):
