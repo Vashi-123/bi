@@ -29,16 +29,27 @@ def get_inventory_turnover(filters=None):
         latest_report = max(report_files, key=os.path.getmtime)
         logger.info(f"Using pre-calculated turnover report: {latest_report}")
 
-        # Build filter clause for the pre-calculated data
+        # Check columns in the parquet file to be safe
+        file_columns = cursor.execute(f"SELECT * FROM read_parquet('{latest_report}') LIMIT 0").description
+        existing_cols = [col[0] for col in file_columns]
+        logger.info(f"Report columns: {existing_cols}")
+
+        # Build filter clause safely
         filter_clause = "1=1"
         if filters:
             clauses = []
             for col, values in filters.items():
                 if values:
-                    val_list = "', '".join([v.replace("'", "''") for v in values])
-                    # Map filter names if needed (Product name -> product_name)
-                    col_name = f'"{col}"' if ' ' in col else col
-                    clauses.append(f"{col_name} IN ('{val_list}')")
+                    # Map common frontend names to potential parquet names
+                    target_col = col
+                    if col not in existing_cols:
+                        if col == 'Product name' and 'product_name' in existing_cols: target_col = 'product_name'
+                        elif col == 'Category' and 'category' in existing_cols: target_col = 'category'
+                        elif col == 'Category' and 'Category' in existing_cols: target_col = 'Category'
+                    
+                    if target_col in existing_cols:
+                        val_list = "', '".join([str(v).replace("'", "''") for v in values])
+                        clauses.append(f'"{target_col}" IN (\'{val_list}\')')
             if clauses:
                 filter_clause = " AND ".join(clauses)
 
@@ -64,5 +75,5 @@ def get_inventory_turnover(filters=None):
         return [dict(zip(columns, row)) for row in res]
         
     except Exception as e:
-        logger.error(f"Error calculating inventory turnover: {e}")
-        return {"error": str(e)}
+        logger.error(f"Error in inventory turnover API: {e}", exc_info=True)
+        return [] # Return empty list instead of error object to keep frontend alive
