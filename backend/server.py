@@ -55,8 +55,9 @@ except ImportError:
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 try:
     import database
+    import inventory
 except ImportError:
-    from . import database
+    from . import database, inventory
 
 # --- Validation ---
 
@@ -444,6 +445,19 @@ async def analyze_data(
             status_code=500, 
             content={"error": str(e)}
         )
+
+
+@app.get("/api/inventory/turnover")
+async def get_turnover(request: Request):
+    """
+    Returns inventory turnover analytics for all products.
+    """
+    try:
+        filters = parse_filters(dict(request.query_params))
+        return inventory.get_inventory_turnover(filters=filters)
+    except Exception as e:
+        logger.error(f"Turnover calculation failed: {str(e)}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 if __name__ == "__main__":
     import uvicorn
