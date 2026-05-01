@@ -2,7 +2,10 @@ import os
 import glob
 import logging
 import pandas
-from .database import get_cursor
+try:
+    from database import get_cursor
+except ImportError:
+    from .database import get_cursor
 
 logger = logging.getLogger(__name__)
 
