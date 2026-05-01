@@ -29,7 +29,7 @@ def extract_column_filters(filters: dict) -> dict:
 DATA_PATH = os.getenv("DATA_PATH", "/home/usman/project_data/processed/final_df/**/*.parquet")
 PURCHASE_DATA_PATH = os.getenv("PURCHASE_DATA_PATH", "/home/usman/project_data/processed/final_df_purch/**/*.parquet")
 STATUS_PATH = os.getenv("STATUS_PATH", "/home/usman/project_data/result/unified_status.parquet")
-STOCK_RAW_PATH = os.getenv("STOCK_RAW_PATH", "/home/usman/project_data/processed/df_stock/**/*.parquet")
+STOCK_RAW_PATH = os.getenv("STOCK_RAW_PATH", "/home/usman/onedrive_folder/project_data/df_stock/**/*.parquet")
 
 # Global connection and cache
 _CONN = None
