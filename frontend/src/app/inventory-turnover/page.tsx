@@ -23,9 +23,9 @@ function formatCurrency(val: number) {
   return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-const CustomTooltip = ({ payload, active }: any) => {
-  if (!active || !payload || payload.length === 0) return null;
-  const data = payload[0].payload;
+  const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#64748b'];
+  const color = colors[data.index % colors.length];
+
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-2xl min-w-[200px]">
       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-50 pb-2">
@@ -38,7 +38,7 @@ const CustomTooltip = ({ payload, active }: any) => {
             <Text className="text-[10px] font-black text-[#0C0C0C]">{data.SKUs} SKUs</Text>
           </Flex>
           <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
-            <div className="h-full bg-slate-300 rounded-full" style={{ width: `${data['Share count']}%` }} />
+            <div className="h-full rounded-full opacity-60" style={{ width: `${data['Share count']}%`, backgroundColor: color }} />
           </div>
           <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share count']}% share</Text>
         </div>
@@ -179,7 +179,7 @@ export default function InventoryTurnoverPage() {
     const totalSales = data.reduce((sum, item) => sum + (item.total_sales || 0), 0) || 1;
     const totalStock = data.reduce((sum, item) => sum + (item.stock_value_usd || 0), 0) || 1;
 
-    const result = buckets.map(b => {
+    const result = buckets.map((b, idx) => {
       const filtered = data.filter(i => {
         if (b.min === 0) {
            return i.turnover_days >= 0 && i.turnover_days <= 1;
@@ -198,7 +198,8 @@ export default function InventoryTurnoverPage() {
         'Stock': stockValue,
         'Share count': parseFloat(((count / totalSKUs) * 100).toFixed(1)),
         'Share sales': parseFloat(((sales / totalSales) * 100).toFixed(1)),
-        'Share stock': parseFloat(((stockValue / totalStock) * 100).toFixed(1))
+        'Share stock': parseFloat(((stockValue / totalStock) * 100).toFixed(1)),
+        'index': idx
       };
     });
 
@@ -334,7 +335,7 @@ export default function InventoryTurnoverPage() {
                   data={distributionData}
                   index="range"
                   categories={["SKUs"]}
-                  colors={["blue"]}
+                  colors={['rose', 'cyan', 'orange', 'olive', 'stone', 'slate']}
                   valueFormatter={(number) => number.toLocaleString()}
                   showAnimation={true}
                   yAxisWidth={48}
@@ -343,25 +344,32 @@ export default function InventoryTurnoverPage() {
                 />
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2 shrink-0">
-                {distributionData.slice(0, 3).map((item, idx) => (
-                  <div key={item.range} className="p-3 rounded-2xl bg-slate-50 border border-slate-100/50 space-y-2">
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate border-b border-slate-100 pb-1">{item.range} Days</p>
-                    <div className="space-y-1">
-                      <Flex justifyContent="between">
-                        <p className="text-[7px] font-bold text-slate-400 uppercase">Count</p>
-                        <p className="text-[9px] font-black text-[#0C0C0C]">{item['Share count']}%</p>
+                {distributionData.slice(0, 3).map((item, idx) => {
+                  const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A'];
+                  const color = colors[idx % colors.length];
+                  return (
+                    <div key={item.range} className="p-3 rounded-2xl bg-slate-50 border border-slate-100/50 space-y-2">
+                      <Flex justifyContent="between" alignItems="center" className="border-b border-slate-100 pb-1">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate">{item.range} Days</p>
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
                       </Flex>
-                      <Flex justifyContent="between">
-                        <p className="text-[7px] font-bold text-slate-400 uppercase">Sales</p>
-                        <p className="text-[9px] font-black text-emerald-600">{item['Share sales']}%</p>
-                      </Flex>
-                      <Flex justifyContent="between">
-                        <p className="text-[7px] font-bold text-slate-400 uppercase">Stock</p>
-                        <p className="text-[9px] font-black text-blue-600">{item['Share stock']}%</p>
-                      </Flex>
+                      <div className="space-y-1">
+                        <Flex justifyContent="between">
+                          <p className="text-[7px] font-bold text-slate-400 uppercase">Count</p>
+                          <p className="text-[9px] font-black text-[#0C0C0C]">{item['Share count']}%</p>
+                        </Flex>
+                        <Flex justifyContent="between">
+                          <p className="text-[7px] font-bold text-slate-400 uppercase">Sales</p>
+                          <p className="text-[9px] font-black text-emerald-600">{item['Share sales']}%</p>
+                        </Flex>
+                        <Flex justifyContent="between">
+                          <p className="text-[7px] font-bold text-slate-400 uppercase">Stock</p>
+                          <p className="text-[9px] font-black text-blue-600">{item['Share stock']}%</p>
+                        </Flex>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </Card>
