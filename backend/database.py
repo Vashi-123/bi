@@ -45,11 +45,26 @@ def get_connection():
         # Initialize one global connection
         _CONN = duckdb.connect(database=':memory:')
         # Create empty tables immediately so queries don't fail before data is loaded
-        _CONN.execute("CREATE TABLE IF NOT EXISTS sales_raw (date DATE, Amount_USD DOUBLE, Profit_USD DOUBLE, Qty DOUBLE, counterparty VARCHAR, \"Product country\" VARCHAR, Category VARCHAR, \"Product name\" VARCHAR, \"Margin_%\" DOUBLE, Groupclient VARCHAR, CountryGroup VARCHAR)")
+        # We include all common columns to avoid BinderErrors in views
+        _CONN.execute("""
+            CREATE TABLE IF NOT EXISTS sales_raw (
+                date DATE, 
+                item_id VARCHAR,
+                "Item name" VARCHAR,
+                Amount_USD DOUBLE, 
+                Profit_USD DOUBLE, 
+                Qty DOUBLE, 
+                counterparty VARCHAR, 
+                "Product country" VARCHAR, 
+                Category VARCHAR, 
+                "Product name" VARCHAR, 
+                "Margin_%" DOUBLE, 
+                Groupclient VARCHAR, 
+                CountryGroup VARCHAR
+            )
+        """)
         _CONN.execute("CREATE TABLE IF NOT EXISTS purchase_raw AS SELECT * FROM sales_raw LIMIT 0")
         _CONN.execute("CREATE TABLE IF NOT EXISTS stock_raw (item_id VARCHAR, item_name VARCHAR, product_name VARCHAR, quantity DOUBLE, date DATE)")
-        _CONN.execute("CREATE TABLE IF NOT EXISTS custom_groups (counterparty VARCHAR, group_name VARCHAR)")
-        _CONN.execute("CREATE TABLE IF NOT EXISTS custom_country_groups (country_code VARCHAR, group_name VARCHAR)")
         _CONN.execute("CREATE TABLE IF NOT EXISTS statuses_view (name VARCHAR, status VARCHAR, status_owner VARCHAR, type VARCHAR)")
         
         # Initialize views
@@ -108,22 +123,29 @@ def refresh_groups_table():
         except:
             existing_cols = []
 
+        # Find which columns exist to build a safe EXCLUDE clause
         exclude_cols = []
-        if "Groupclient" in existing_cols: exclude_cols.append("Groupclient")
-        if "CountryGroup" in existing_cols: exclude_cols.append("CountryGroup")
-        exclude_clause = f"EXCLUDE ({', '.join(exclude_cols)})" if exclude_cols else ""
-
-        gc_fallback = "s.Groupclient" if "Groupclient" in existing_cols else "NULL"
-        cg_fallback = "s.CountryGroup" if "CountryGroup" in existing_cols else "NULL"
+        gc_col = next((c for c in existing_cols if c.lower() == 'groupclient'), None)
+        cg_col = next((c for c in existing_cols if c.lower() == 'countrygroup'), None)
         
-        conn.execute(f"""
+        if gc_col: exclude_cols.append(f'"{gc_col}"')
+        if cg_col: exclude_cols.append(f'"{cg_col}"')
+        
+        exclude_clause = f"EXCLUDE ({', '.join(exclude_cols)})" if exclude_cols else ""
+        
+        # If the column exists in raw, use it as base for COALESCE, else use NULL
+        gc_source = f's."{gc_col}"' if gc_col else "NULL"
+        cg_source = f's."{cg_col}"' if cg_col else "NULL"
+        
+        query = f"""
             CREATE OR REPLACE VIEW {table_type} AS 
             SELECT 
                 s.* {exclude_clause},
-                COALESCE({gc_fallback}, s.counterparty) as Groupclient,
-                COALESCE({cg_fallback}, 'Other') as CountryGroup
+                COALESCE({gc_source}, s.counterparty) as Groupclient,
+                COALESCE({cg_source}, 'Other') as CountryGroup
             FROM {raw_name} s
-        """)
+        """
+        conn.execute(query)
 
 def refresh_in_memory_data():
     """Forces a reload of parquet files into the in-memory tables."""
