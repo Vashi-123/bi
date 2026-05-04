@@ -125,8 +125,10 @@ def refresh_groups_table():
             pass
 
         try:
-            col_res = conn.execute(f"DESCRIBE {raw_name}").fetchall()
-            existing_cols = [row[0] for row in col_res]
+            # Use PRAGMA table_info as it's more stable than DESCRIBE
+            col_res = conn.execute(f"PRAGMA table_info('{raw_name}')").fetchall()
+            existing_cols = [row[1] for row in col_res] # row[1] is name
+            logger.info(f"Columns for {raw_name}: {existing_cols}")
         except Exception as e:
             logger.error(f"Error describing {raw_name}: {e}")
             existing_cols = []
@@ -145,14 +147,15 @@ def refresh_groups_table():
         for c in existing_cols:
             cl = c.lower()
             if cl not in ['groupclient', 'countrygroup']:
-                base_cols.append(f's."{c}"')
+                # Quote all columns to be safe with spaces/keywords
+                base_cols.append(f'"{c}"')
         
         select_list = ", ".join(base_cols)
         
         # Sources for new columns
-        gc_source = f's."{gc_col}"' if gc_col else "NULL"
-        cg_source = f's."{cg_col}"' if cg_col else "NULL"
-        cp_ref = f's."{cp_col}"' if cp_col else "NULL"
+        gc_source = f'"{gc_col}"' if gc_col else "NULL"
+        cg_source = f'"{cg_col}"' if cg_col else "NULL"
+        cp_ref = f'"{cp_col}"' if cp_col else "NULL"
         
         query = f"""
             CREATE VIEW {table_type} AS 
@@ -160,13 +163,13 @@ def refresh_groups_table():
                 {select_list},
                 COALESCE({gc_source}, {cp_ref}) as Groupclient,
                 COALESCE({cg_source}, 'Other') as CountryGroup
-            FROM {raw_name} s
+            FROM {raw_name}
         """
         try:
             conn.execute(query)
             logger.info(f"Successfully created view {table_type} with {len(existing_cols)} columns.")
         except Exception as e:
-            logger.error(f"Failed to create view {table_type}: {e}")
+            logger.error(f"Failed to create view {table_type}: {e}\nQuery: {query}")
             # Fallback: simple view
             try:
                 conn.execute(f"CREATE VIEW {table_type} AS SELECT * FROM {raw_name}")
