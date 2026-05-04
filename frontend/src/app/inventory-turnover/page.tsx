@@ -25,7 +25,9 @@ function formatCurrency(val: number) {
 
 const CustomTooltip = ({ payload, active }: any) => {
   if (!active || !payload || payload.length === 0) return null;
-  const data = payload[0].payload;
+  // In a multi-category chart, find the payload item that has a value
+  const activePayload = payload.find((p: any) => p.value !== undefined && p.value !== null) || payload[0];
+  const data = activePayload.payload;
   const colors_palette = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#64748b'];
   const bar_color = colors_palette[data.index % colors_palette.length];
 
@@ -48,7 +50,7 @@ const CustomTooltip = ({ payload, active }: any) => {
 
         <div>
           <Flex justifyContent="between">
-            <Text className="text-[9px] font-bold text-slate-500 uppercase">Sales</Text>
+            <Text className="text-[9px] font-bold text-slate-500 uppercase">Sales (Qty)</Text>
             <Text className="text-[10px] font-black text-emerald-600">{data.Sales.toLocaleString()}</Text>
           </Flex>
           <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
@@ -196,6 +198,7 @@ export default function InventoryTurnoverPage() {
       
       return { 
         range: b.label, 
+        [b.label]: count, // Use label as the key for multi-color bars
         'SKUs': count, 
         'Sales': sales,
         'Stock': stockValue,
@@ -337,12 +340,13 @@ export default function InventoryTurnoverPage() {
                   className="h-full"
                   data={distributionData}
                   index="range"
-                  categories={["SKUs"]}
-                  colors={['rose', 'cyan', 'orange', 'olive', 'stone', 'slate']}
-                  valueFormatter={(number) => number.toLocaleString()}
+                  categories={['0-1', '1-5', '5-15', '15-30', '30-60', '60+']}
+                  colors={['rose', 'cyan', 'orange', 'emerald', 'indigo', 'slate']}
+                  valueFormatter={(number) => number?.toLocaleString() ?? '0'}
                   showAnimation={true}
                   yAxisWidth={48}
                   showLegend={false}
+                  stack={true}
                   customTooltip={CustomTooltip}
                 />
               </div>
@@ -362,7 +366,7 @@ export default function InventoryTurnoverPage() {
                           <p className="text-[9px] font-black text-[#0C0C0C]">{item['Share count']}%</p>
                         </Flex>
                         <Flex justifyContent="between">
-                          <p className="text-[7px] font-bold text-slate-400 uppercase">Sales</p>
+                          <p className="text-[7px] font-bold text-slate-400 uppercase">Sales (Qty)</p>
                           <p className="text-[9px] font-black text-emerald-600">{item['Share sales']}%</p>
                         </Flex>
                         <Flex justifyContent="between">
