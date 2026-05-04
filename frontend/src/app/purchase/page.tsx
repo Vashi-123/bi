@@ -207,6 +207,26 @@ export default function PurchaseDashboard() {
   // Check if server is potentially restarting (connection refused or 5xx)
   const isServerInitializing = kpiError && !kpiData;
 
+  // --- SKU Search Logic ---
+  const [skuSearchQuery, setSkuSearchQuery] = useState('');
+  const { data: skuSearchResults, isLoading: isSearchingSkus } = useSWR(
+    skuSearchQuery.length > 1 ? `${API_BASE}/api/catalog-search?q=${skuSearchQuery}` : null,
+    fetcher
+  );
+
+  const selectedSkus = filters['Item name'] || [];
+
+  const toggleSkuSelection = (skuName: string) => {
+    const current = [...selectedSkus];
+    const index = current.indexOf(skuName);
+    if (index > -1) {
+      current.splice(index, 1);
+    } else {
+      current.push(skuName);
+    }
+    setFilter('Item name', current);
+  };
+
   // --- Initializing Overlay ---
   if (isServerInitializing) {
     return (
@@ -415,7 +435,11 @@ export default function PurchaseDashboard() {
           <Link href="/sales" className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-slate-100 transition-all text-[11px] font-bold uppercase tracking-tight text-slate-600">
             <TrendingUp className="w-4 h-4 text-slate-400" /> Sales
           </Link>
-          <button onClick={() => setSidebarOpen(true)} className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 rounded-xl hover:shadow-md transition-all relative group text-[13px] font-bold">
+          <button 
+            onClick={() => setSidebarOpen(true)} 
+            disabled={activeMetric === 'stock'}
+            className={`flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 rounded-xl hover:shadow-md transition-all relative group text-[13px] font-bold ${activeMetric === 'stock' ? 'opacity-40 cursor-not-allowed grayscale' : ''}`}
+          >
             <FilterIcon className="w-4 h-4 text-[#FF843B]" /> Filters
           </button>
         </Flex>
@@ -437,30 +461,99 @@ export default function PurchaseDashboard() {
             <KPICard title="Quantity" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.qty.value} baseline={kpiData?.qty.prev} growth={kpiData?.qty.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} hasComparison={canCompare} />
         </div>
 
-        <Flex className="gap-6 bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/20">
-            <div className="flex items-center gap-3 ml-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Show Top:</span>
-                <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={topN} onChange={e => setTopN(parseInt(e.target.value))}>
-                    {(chartView === 'combined' ? [3, 5] : [5, 10, 25, 50, 100]).map(v => <option key={v} value={v}>Top {v}</option>)}
-                </select>
-            </div>
-            <div className="w-px h-5 bg-slate-100" />
-            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
-                <button onClick={() => setChartView('combined')} className={`p-1.5 rounded-lg transition-all ${chartView === 'combined' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400'}`}><LayoutGrid className="w-4 h-4" /></button>
-                <button onClick={() => setChartView('multiples')} className={`p-1.5 rounded-lg transition-all ${chartView === 'multiples' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400'}`}><Layout className="w-4 h-4" /></button>
-            </div>
-            <div className="w-px h-5 bg-slate-100" />
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dimension:</span>
-                    <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={legendDimension} onChange={e => setLegendDimension(e.target.value as any)}>
-                        <option value="Category">Category</option>
-                        <option value="Product name">Product</option>
-                        <option value="Item name">SKU</option>
-                        <option value="counterparty">Supplier</option>
+        <Flex className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/20" justifyContent="between" alignItems="center">
+            {activeMetric === 'stock' ? (
+              <div className="flex-1 flex items-center gap-4">
+                <div className="relative flex-1 max-w-md group">
+                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <FilterIcon className="w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search SKU..."
+                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm font-bold text-[#0C0C0C] placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    value={skuSearchQuery}
+                    onChange={(e) => setSkuSearchQuery(e.target.value)}
+                  />
+                  {skuSearchResults?.results && skuSearchQuery.length > 1 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-[100] max-h-60 overflow-y-auto scrollbar-hide">
+                      {skuSearchResults.results.map((res: any) => {
+                        const isSelected = selectedSkus.includes(res.name);
+                        return (
+                          <div 
+                            key={res.sku_id}
+                            onClick={() => toggleSkuSelection(res.name)}
+                            className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}
+                          >
+                            <span className="text-[11px] font-bold truncate max-w-[80%]">{res.name}</span>
+                            {isSelected && <X className="w-3 h-3" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 flex-1">
+                  {selectedSkus.map((sku: string) => (
+                    <Badge key={sku} color="blue" className="rounded-lg px-2 py-1 flex items-center gap-1 group cursor-pointer hover:bg-rose-50 hover:text-rose-600 transition-all border-none shadow-sm" onClick={() => toggleSkuSelection(sku)}>
+                      <span className="text-[9px] font-bold uppercase tracking-tight">{sku}</span>
+                      <X className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100" />
+                    </Badge>
+                  ))}
+                  {selectedSkus.length > 0 && (
+                    <button onClick={() => setFilter('Item name', [])} className="text-[9px] font-bold text-rose-500 uppercase tracking-widest px-2 hover:underline">Clear</button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 ml-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Show Top:</span>
+                    <select 
+                        className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer"
+                        value={topN}
+                        onChange={(e) => setTopN(Number(e.target.value))}
+                    >
+                        {[3, 5, 10, 15, 20].map(n => <option key={n} value={n}>Top {n}</option>)}
                     </select>
                 </div>
-            </div>
+                
+                <div className="w-px h-5 bg-slate-100" />
+
+                <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
+                    <button 
+                        onClick={() => setChartView('grid')}
+                        className={`p-1.5 rounded-lg transition-all ${chartView === 'grid' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <LayoutGrid className="w-4 h-4" />
+                    </button>
+                    <button 
+                        onClick={() => setChartView('list')}
+                        className={`p-1.5 rounded-lg transition-all ${chartView === 'list' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Layout className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div className="w-px h-5 bg-slate-100" />
+
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dimension:</span>
+                        <select 
+                            className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer"
+                            value={legendDimension}
+                            onChange={(e) => setLegendDimension(e.target.value as any)}
+                        >
+                            <option value="Category">Category</option>
+                            <option value="Product name">Product</option>
+                            <option value="Item name">SKU</option>
+                            <option value="counterparty">Supplier</option>
+                        </select>
+                    </div>
+                </div>
+              </>
+            )}
         </Flex>
 
         {activeMetric === 'stock' ? (
