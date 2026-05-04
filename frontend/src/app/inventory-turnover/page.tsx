@@ -27,17 +27,43 @@ const CustomTooltip = ({ payload, active }: any) => {
   if (!active || !payload || payload.length === 0) return null;
   const data = payload[0].payload;
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-xl">
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{data.range} Days</p>
-      <div className="space-y-1">
-        <Flex className="gap-4">
-          <Text className="text-xs font-bold text-slate-600">Count:</Text>
-          <Text className="text-xs font-black text-[#0C0C0C]">{data.SKUs} SKUs</Text>
-        </Flex>
-        <Flex className="gap-4">
-          <Text className="text-xs font-bold text-slate-600">Share:</Text>
-          <Text className="text-xs font-black text-blue-600">{data['Share %']}%</Text>
-        </Flex>
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-2xl min-w-[200px]">
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-50 pb-2">
+        {data.range} Days Turnover
+      </p>
+      <div className="space-y-3">
+        <div>
+          <Flex justifyContent="between">
+            <Text className="text-[9px] font-bold text-slate-500 uppercase">Count</Text>
+            <Text className="text-[10px] font-black text-[#0C0C0C]">{data.SKUs} SKUs</Text>
+          </Flex>
+          <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
+            <div className="h-full bg-slate-300 rounded-full" style={{ width: `${data['Share count']}%` }} />
+          </div>
+          <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share count']}% share</Text>
+        </div>
+
+        <div>
+          <Flex justifyContent="between">
+            <Text className="text-[9px] font-bold text-slate-500 uppercase">Sales</Text>
+            <Text className="text-[10px] font-black text-emerald-600">{data.Sales.toLocaleString()}</Text>
+          </Flex>
+          <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
+            <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${data['Share sales']}%` }} />
+          </div>
+          <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share sales']}% share</Text>
+        </div>
+
+        <div>
+          <Flex justifyContent="between">
+            <Text className="text-[9px] font-bold text-slate-500 uppercase">Stock Value</Text>
+            <Text className="text-[10px] font-black text-blue-600">{formatCurrency(data.Stock)}</Text>
+          </Flex>
+          <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
+            <div className="h-full bg-blue-400 rounded-full" style={{ width: `${data['Share stock']}%` }} />
+          </div>
+          <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share stock']}% share</Text>
+        </div>
       </div>
     </div>
   );
@@ -150,21 +176,29 @@ export default function InventoryTurnoverPage() {
     ];
 
     const totalSKUs = data.length;
+    const totalSales = data.reduce((sum, item) => sum + (item.total_sales || 0), 0) || 1;
+    const totalStock = data.reduce((sum, item) => sum + (item.stock_value_usd || 0), 0) || 1;
 
     const result = buckets.map(b => {
-      const count = data.filter(i => {
+      const filtered = data.filter(i => {
         if (b.min === 0) {
            return i.turnover_days >= 0 && i.turnover_days <= 1;
         }
         return i.turnover_days > b.min && i.turnover_days <= b.max;
-      }).length;
+      });
       
-      const share = (count / totalSKUs) * 100;
+      const count = filtered.length;
+      const sales = filtered.reduce((sum, item) => sum + (item.total_sales || 0), 0);
+      const stockValue = filtered.reduce((sum, item) => sum + (item.stock_value_usd || 0), 0);
       
       return { 
         range: b.label, 
         'SKUs': count, 
-        'Share %': parseFloat(share.toFixed(1))
+        'Sales': sales,
+        'Stock': stockValue,
+        'Share count': parseFloat(((count / totalSKUs) * 100).toFixed(1)),
+        'Share sales': parseFloat(((sales / totalSales) * 100).toFixed(1)),
+        'Share stock': parseFloat(((stockValue / totalStock) * 100).toFixed(1))
       };
     });
 
@@ -310,10 +344,22 @@ export default function InventoryTurnoverPage() {
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2 shrink-0">
                 {distributionData.slice(0, 3).map((item, idx) => (
-                  <div key={item.range} className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100/50">
-                    <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-0.5 truncate">{item.range} Days</p>
-                    <p className="text-sm font-black text-[#0C0C0C]">{item['Share %']}%</p>
-                    <p className="text-[7px] font-bold text-slate-400 uppercase mt-0.5 truncate">{item.SKUs} SKUs</p>
+                  <div key={item.range} className="p-3 rounded-2xl bg-slate-50 border border-slate-100/50 space-y-2">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate border-b border-slate-100 pb-1">{item.range} Days</p>
+                    <div className="space-y-1">
+                      <Flex justifyContent="between">
+                        <p className="text-[7px] font-bold text-slate-400 uppercase">Count</p>
+                        <p className="text-[9px] font-black text-[#0C0C0C]">{item['Share count']}%</p>
+                      </Flex>
+                      <Flex justifyContent="between">
+                        <p className="text-[7px] font-bold text-slate-400 uppercase">Sales</p>
+                        <p className="text-[9px] font-black text-emerald-600">{item['Share sales']}%</p>
+                      </Flex>
+                      <Flex justifyContent="between">
+                        <p className="text-[7px] font-bold text-slate-400 uppercase">Stock</p>
+                        <p className="text-[9px] font-black text-blue-600">{item['Share stock']}%</p>
+                      </Flex>
+                    </div>
                   </div>
                 ))}
               </div>
