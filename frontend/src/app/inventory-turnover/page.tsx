@@ -9,7 +9,7 @@ import {
 } from '@tremor/react';
 import { 
   Activity, Package, ArrowLeft, Download, RefreshCcw,
-  PieChart as PieIcon, ChevronUp, ChevronDown
+  PieChart as PieIcon, ChevronUp, ChevronDown, Target
 } from 'lucide-react';
 import Link from 'next/link';
 import { API_BASE, fetcher } from '@/lib/constants';
@@ -53,7 +53,7 @@ interface TurnoverItem {
   turnover_days: number;
 }
 
-type SortCol = 'item_name' | 'avg_stock' | 'current_stock' | 'total_sales' | 'turnover_ratio' | 'turnover_days';
+type SortCol = 'item_name' | 'avg_stock' | 'current_stock' | 'total_sales' | 'turnover_ratio' | 'turnover_days' | 'target_15d';
 
 export default function InventoryTurnoverPage() {
   const { data, isLoading, error, mutate } = useSWR<TurnoverItem[]>(
@@ -73,22 +73,33 @@ export default function InventoryTurnoverPage() {
     }
   };
 
-  const sortedData = useMemo(() => {
+  const processedData = useMemo(() => {
     if (!data) return [];
-    return [...data].sort((a, b) => {
+    return data.map(item => ({
+      ...item,
+      target_15d: item.turnover_days >= 15 ? Math.round((item.total_sales / 30) * 15) : null
+    }));
+  }, [data]);
+
+  const sortedData = useMemo(() => {
+    return [...processedData].sort((a, b) => {
       const aVal = a[sortCol];
       const bVal = b[sortCol];
+      
+      if (aVal === null || aVal === undefined) return sortDir === 'asc' ? -1 : 1;
+      if (bVal === null || bVal === undefined) return sortDir === 'asc' ? 1 : -1;
+
       if (typeof aVal === 'string' && typeof bVal === 'string') {
         return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
       }
       return sortDir === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
     });
-  }, [data, sortCol, sortDir]);
+  }, [processedData, sortCol, sortDir]);
 
   const handleExport = () => {
     if (!data || data.length === 0) return;
-    const headers = ['SKU ID', 'SKU Name', 'Product', 'Median Stock', 'Current Stock', 'Sales (30d)', 'Ratio', 'Days'];
-    const rows = data.map(item => [
+    const headers = ['SKU ID', 'SKU Name', 'Product', 'Median Stock', 'Current Stock', 'Sales (30d)', 'Ratio', 'Days', 'Target Stock (15d)'];
+    const rows = processedData.map(item => [
       item.item_id,
       `"${item.item_name.replace(/"/g, '""')}"`,
       `"${item.product_name.replace(/"/g, '""')}"`,
@@ -96,7 +107,8 @@ export default function InventoryTurnoverPage() {
       item.current_stock,
       item.total_sales,
       item.turnover_ratio,
-      item.turnover_days
+      item.turnover_days,
+      item.target_15d ?? '-'
     ]);
 
     const csvContent = "\uFEFF" + [
@@ -146,7 +158,7 @@ export default function InventoryTurnoverPage() {
       
       return { 
         range: b.label, 
-        'SKUs': count,
+        'SKUs': count, 
         'Share %': parseFloat(share.toFixed(1))
       };
     });
@@ -223,7 +235,7 @@ export default function InventoryTurnoverPage() {
                 <Title className="text-xl font-bold text-[#0C0C0C]">SKU Leaderboard</Title>
                 <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Top SKUs by Turnover Ratio</Text>
               </div>
-              <Badge color="emerald" className="rounded-md font-bold uppercase text-[9px] bg-emerald-50 text-emerald-600 ring-emerald-500/20">Ratio</Badge>
+              <Badge className="rounded-md font-bold uppercase text-[9px] bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-500/20">Ratio</Badge>
             </Flex>
             
             <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-hide">
@@ -298,12 +310,12 @@ export default function InventoryTurnoverPage() {
         </div>
 
         <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-6 bg-white flex flex-col h-[700px] overflow-hidden">
-          <div className="flex-1 overflow-auto scrollbar-hide">
+          <div className="flex-1 overflow-auto scrollbar-hide relative">
             <Table>
               <TableHead className="sticky top-0 bg-white z-20">
-                <TableRow className="border-b border-slate-100">
+                <TableRow className="border-b border-slate-100 bg-white">
                   <TableHeaderCell 
-                    className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('item_name')}
                   >
                     <Flex justifyContent="start" className="gap-1">
@@ -311,7 +323,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('avg_stock')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -319,7 +331,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('current_stock')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -327,7 +339,15 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    onClick={() => handleSort('target_15d')}
+                  >
+                    <Flex justifyContent="end" className="gap-1">
+                      Stock for 15D {sortCol === 'target_15d' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                    </Flex>
+                  </TableHeaderCell>
+                  <TableHeaderCell 
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('total_sales')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -335,7 +355,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('turnover_ratio')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -343,7 +363,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('turnover_days')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -360,6 +380,7 @@ export default function InventoryTurnoverPage() {
                       <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
+                      <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
                     </TableRow>
@@ -372,11 +393,14 @@ export default function InventoryTurnoverPage() {
                     </TableCell>
                     <TableCell className="text-right text-xs font-bold text-slate-600">{item.avg_stock.toLocaleString()}</TableCell>
                     <TableCell className="text-right text-xs font-bold text-blue-600">{item.current_stock.toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-xs font-bold text-slate-400">
+                      {item.target_15d ? item.target_15d.toLocaleString() : '-'}
+                    </TableCell>
                     <TableCell className="text-right text-xs font-bold text-[#0C0C0C]">{item.total_sales.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
-                      <Badge size="xs" color={item.turnover_ratio > 1 ? "emerald" : item.turnover_ratio > 0.5 ? "orange" : "slate"} className="rounded-md font-bold">
+                      <span className="inline-flex items-center bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-500/20 px-2.5 py-0.5 rounded-md font-bold text-[10px]">
                         {item.turnover_ratio.toFixed(2)}x
-                      </Badge>
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <span className={`text-xs font-black ${item.turnover_days < 7 ? 'text-emerald-600' : item.turnover_days > 60 ? 'text-rose-600' : 'text-[#0C0C0C]'}`}>
