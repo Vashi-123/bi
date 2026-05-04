@@ -408,36 +408,39 @@ def get_kpi_data(filters=None, table_name='sales'):
     
     extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
     
-    # Determine columns based on table
-    if table_name == 'purchase':
-        revenue_col = "Amount_USD"
-        # We will replace profit with stock_value calculation
-        profit_col = "0" 
-        margin_col = "0"
-        qty_col = "Qty"
-    else:
-        revenue_col = "Amount_USD"
-        profit_col = "Profit_USD"
-        margin_col = "\"Margin_%\""
-        qty_col = "Qty"
+    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
+    
+    # Dynamically determine columns based on table
+    try:
+        col_res = cursor.execute(f"PRAGMA table_info('{raw_table}')").fetchall()
+        existing_cols = [row[1].lower() for row in col_res]
+    except:
+        existing_cols = []
+
+    is_purchase = 'purchase' in table_name.lower()
+
+    revenue_col = "Amount_USD" if 'amount_usd' in existing_cols else "0"
+    profit_col = "Profit_USD" if ('profit_usd' in existing_cols and not is_purchase) else "0"
+    margin_col = "\"Margin_%\"" if ('margin_%' in existing_cols and not is_purchase) else "0"
+    qty_col = "Qty" if 'qty' in existing_cols else "0"
 
     # 1. Base query depends on mode
     if mode == 'all':
         # Truly all data, no date filter
-        curr_query = f"SELECT SUM({revenue_col}), SUM({profit_col}), AVG({margin_col}), SUM({qty_col}) FROM {table_name} WHERE 1=1 {extra_filters}"
+        curr_query = f"SELECT SUM({revenue_col}), SUM({profit_col}), AVG({margin_col}), SUM({qty_col}) FROM {raw_table} WHERE 1=1 {extra_filters}"
         curr_label = "All Time"
         p_res = [0, 0, 0, 0]
         prev_label = None
     else:
         # Filtered period
-        curr_query = f"SELECT SUM({revenue_col}), SUM({profit_col}), AVG({margin_col}), SUM({qty_col}) FROM {table_name} WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}"
+        curr_query = f"SELECT SUM({revenue_col}), SUM({profit_col}), AVG({margin_col}), SUM({qty_col}) FROM {raw_table} WHERE CAST(date AS DATE) >= '{curr_s}' AND CAST(date AS DATE) <= '{curr_e}' {extra_filters}"
         curr_label = format_period_label(curr_s, curr_e)
         
         # Comparison logic
         p_res = [0, 0, 0, 0]
         prev_label = None
         if prev_s and prev_e:
-            prev_query = f"SELECT SUM({revenue_col}), SUM({profit_col}), AVG({margin_col}), SUM({qty_col}) FROM {table_name} WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
+            prev_query = f"SELECT SUM({revenue_col}), SUM({profit_col}), AVG({margin_col}), SUM({qty_col}) FROM {raw_table} WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
             p_res = cursor.execute(prev_query).fetchone()
             # If query returns None for all (which fetchone might do if no rows match), p_res might be [None, None, None, None]
             if p_res is None: p_res = [0, 0, 0, 0]
