@@ -126,10 +126,11 @@ def calculate_turnover(df, period_days=30):
     stats['turnover_days'] = stats['turnover_days'].fillna(999).replace([np.inf, -np.inf], 999).round(1)
     
     # Add current status (latest quantity AND latest value)
-    cols_to_fetch = ['item_id', 'quantity']
-    if 'amount_usd' in df.columns: cols_to_fetch.append('amount_usd')
+    # item_id is the index, so we don't include it in selection to avoid collision on reset_index
+    cols_to_select = ['quantity']
+    if 'amount_usd' in df.columns: cols_to_select.append('amount_usd')
     
-    latest_data = df.sort_values('date').groupby('item_id')[cols_to_fetch].last().reset_index()
+    latest_data = df.sort_values('date').groupby('item_id')[cols_to_select].last().reset_index()
     
     rename_map = {'quantity': 'current_stock'}
     if 'amount_usd' in df.columns: rename_map['amount_usd'] = 'current_stock_usd'
