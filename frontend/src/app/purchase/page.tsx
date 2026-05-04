@@ -1,8 +1,8 @@
 'use client';
 
 import { useDashboardStore } from '@/store/useDashboardStore';
-import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex } from '@tremor/react';
-import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus, Layout, LayoutGrid, Package, XCircle, TrendingUp, TrendingDown, Zap, Target, Lightbulb } from 'lucide-react';
+import { Card, Title, Text, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex, BarChart } from '@tremor/react';
+import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus, Layout, LayoutGrid, Package, XCircle, TrendingUp, TrendingDown, Zap, Target, Lightbulb, ChevronUp, ChevronDown, PieChart as PieIcon } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Sector, Tooltip as ReTooltip } from 'recharts';
 import useSWR from 'swr';
 import { useEffect, useState, useMemo, Fragment } from 'react';
@@ -24,7 +24,7 @@ export default function PurchaseDashboard() {
     topN, setTopN, 
     selectedGroup, setSelectedGroup,
     dateFilter, setDateFilter,
-    filters, setFilter
+    filters, setFilter, sortCol, setSortCol, sortDir, setSortDir
   } = useDashboardStore();
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -134,6 +134,131 @@ export default function PurchaseDashboard() {
       </div>
     );
   }
+  const { data: inventoryData, isLoading: inventoryLoading } = useSWR(`${API_BASE}/api/inventory/turnover`, fetcher, swrConfig);
+
+  const totalStockValue = useMemo(() => {
+    if (!inventoryData || !Array.isArray(inventoryData)) return 0;
+    const seenGroups = new Set();
+    return inventoryData.reduce((acc, item) => {
+      if (item.is_group) {
+        if (seenGroups.has(item.group_key)) return acc;
+        seenGroups.add(item.group_key);
+      }
+      return acc + (item.stock_value_usd || 0);
+    }, 0);
+  }, [inventoryData]);
+
+  // Inventory Distribution Logic
+  const distributionData = useMemo(() => {
+    if (!inventoryData) return [];
+    const buckets = [
+      { label: '0-1', min: 0, max: 1 },
+      { label: '1-5', min: 1, max: 5 },
+      { label: '5-15', min: 5, max: 15 },
+      { label: '15-30', min: 15, max: 30 },
+      { label: '30-60', min: 30, max: 60 },
+      { label: '60+', min: 60, max: Infinity }
+    ];
+
+    const totalSKUs = inventoryData.length;
+    const totalSales = inventoryData.reduce((acc, i) => acc + (i.total_sales || 0), 0) || 1;
+    const totalStock = inventoryData.reduce((acc, i) => acc + (i.stock_value_usd || 0), 0) || 1;
+
+    return buckets.map((b, idx) => {
+      const items = inventoryData.filter(i => i.turnover_days >= b.min && i.turnover_days < b.max);
+      const count = items.length;
+      const sales = items.reduce((acc, i) => acc + (i.total_sales || 0), 0);
+      const stockValue = items.reduce((acc, i) => acc + (i.stock_value_usd || 0), 0);
+      
+      return { 
+        range: b.label, 
+        [b.label]: count,
+        'SKUs': count, 
+        'Sales': sales,
+        'Stock': stockValue,
+        'Share count': parseFloat(((count / totalSKUs) * 100).toFixed(1)),
+        'Share sales': parseFloat(((sales / totalSales) * 100).toFixed(1)),
+        'Share stock': parseFloat(((stockValue / totalStock) * 100).toFixed(1)),
+        'index': idx
+      };
+    });
+  }, [inventoryData]);
+
+  const sortedInventoryData = useMemo(() => {
+    if (!inventoryData) return [];
+    return [...inventoryData].sort((a, b) => {
+      const aVal = a[sortCol as keyof any] ?? 0;
+      const bVal = b[sortCol as keyof any] ?? 0;
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDir === 'desc' ? bVal.localeCompare(aVal) : aVal.localeCompare(bVal);
+      }
+      return sortDir === 'desc' ? Number(bVal) - Number(aVal) : Number(aVal) - Number(bVal);
+    });
+  }, [inventoryData, sortCol, sortDir]);
+
+  const inventoryLeaderboard = useMemo(() => {
+    if (!inventoryData) return [];
+    return [...inventoryData]
+      .sort((a, b) => (b.stock_value_usd || 0) - (a.stock_value_usd || 0))
+      .slice(0, 10);
+  }, [inventoryData]);
+
+  const handleSortCol = (col: any) => {
+    if (sortCol === col) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('desc');
+    }
+  };
+
+  const InventoryTooltip = ({ payload, active }: any) => {
+    if (!active || !payload || payload.length === 0) return null;
+    const activePayload = payload.find((p: any) => p.value !== undefined && p.value !== null) || payload[0];
+    const data = activePayload.payload;
+    const colors_palette = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#000000'];
+    const bar_color = colors_palette[data.index % colors_palette.length];
+
+    return (
+      <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-2xl min-w-[200px]">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-50 pb-2">
+          {data.range} Days Turnover
+        </p>
+        <div className="space-y-3">
+          <div>
+            <Flex justifyContent="between">
+              <Text className="text-[9px] font-bold text-slate-500 uppercase">Count</Text>
+              <Text className="text-[10px] font-black text-[#0C0C0C]">{data.SKUs} SKUs</Text>
+            </Flex>
+            <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
+              <div className="h-full rounded-full opacity-60" style={{ width: `${data['Share count']}%`, backgroundColor: bar_color }} />
+            </div>
+            <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share count']}% share</Text>
+          </div>
+          <div>
+            <Flex justifyContent="between">
+              <Text className="text-[9px] font-bold text-slate-500 uppercase">Sales (Qty)</Text>
+              <Text className="text-[10px] font-black text-emerald-600">{data.Sales.toLocaleString()}</Text>
+            </Flex>
+            <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
+              <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${data['Share sales']}%` }} />
+            </div>
+            <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share sales']}% share</Text>
+          </div>
+          <div>
+            <Flex justifyContent="between">
+              <Text className="text-[9px] font-bold text-slate-500 uppercase">Stock Value</Text>
+              <Text className="text-[10px] font-black text-blue-600">{formatValue(data.Stock)}</Text>
+            </Flex>
+            <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
+              <div className="h-full bg-blue-400 rounded-full" style={{ width: `${data['Share stock']}%` }} />
+            </div>
+            <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share stock']}% share</Text>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const ratingData = fullDistData;
   const distData = useMemo(() => {
@@ -321,130 +446,268 @@ export default function PurchaseDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <KPICard title="Total Spending" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.revenue.value} baseline={kpiData?.revenue.prev} growth={kpiData?.revenue.growth} active={activeMetric === 'revenue'} onClick={() => setActiveMetric('revenue')} isCurrency={true} hasComparison={canCompare} />
-            <KPICard title="Net Profit" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.profit.value} baseline={kpiData?.profit.prev} growth={kpiData?.profit.growth} active={activeMetric === 'profit'} onClick={() => setActiveMetric('profit')} isCurrency={true} hasComparison={canCompare} />
+            <KPICard title="Stock Value" period="Current" value={totalStockValue} active={activeMetric === 'inventory'} onClick={() => setActiveMetric('inventory')} isCurrency={true} hasComparison={false} />
             <KPICard title="Margin" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.margin.value} baseline={kpiData?.margin.prev} growth={kpiData?.margin.growth} active={activeMetric === 'margin'} onClick={() => setActiveMetric('margin')} isPercent={true} hasComparison={canCompare} />
             <KPICard title="Quantity" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.qty.value} baseline={kpiData?.qty.prev} growth={kpiData?.qty.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} hasComparison={canCompare} />
         </div>
 
-        <Flex className="gap-6 bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/20">
-            <div className="flex items-center gap-3 ml-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Show Top:</span>
-                <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={topN} onChange={e => setTopN(parseInt(e.target.value))}>
-                    {(chartView === 'combined' ? [3, 5] : [5, 10, 25, 50, 100]).map(v => <option key={v} value={v}>Top {v}</option>)}
-                </select>
-            </div>
-            <div className="w-px h-5 bg-slate-100" />
-            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
-                <button onClick={() => setChartView('combined')} className={`p-1.5 rounded-lg transition-all ${chartView === 'combined' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400'}`}><LayoutGrid className="w-4 h-4" /></button>
-                <button onClick={() => setChartView('multiples')} className={`p-1.5 rounded-lg transition-all ${chartView === 'multiples' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400'}`}><Layout className="w-4 h-4" /></button>
-            </div>
-            <div className="w-px h-5 bg-slate-100" />
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dimension:</span>
-                    <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={legendDimension} onChange={e => setLegendDimension(e.target.value as any)}>
-                        <option value="Category">Category</option>
-                        <option value="Product name">Product</option>
-                        <option value="Item name">SKU</option>
-                        <option value="counterparty">Supplier</option>
-                    </select>
-                </div>
-            </div>
-        </Flex>
+        {activeMetric !== 'inventory' && (
+          <Flex className="gap-6 bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/20">
+              <div className="flex items-center gap-3 ml-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Show Top:</span>
+                  <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={topN} onChange={e => setTopN(parseInt(e.target.value))}>
+                      {(chartView === 'combined' ? [3, 5] : [5, 10, 25, 50, 100]).map(v => <option key={v} value={v}>Top {v}</option>)}
+                  </select>
+              </div>
+              <div className="w-px h-5 bg-slate-100" />
+              <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
+                  <button onClick={() => setChartView('combined')} className={`p-1.5 rounded-lg transition-all ${chartView === 'combined' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400'}`}><LayoutGrid className="w-4 h-4" /></button>
+                  <button onClick={() => setChartView('multiples')} className={`p-1.5 rounded-lg transition-all ${chartView === 'multiples' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400'}`}><Layout className="w-4 h-4" /></button>
+              </div>
+              <div className="w-px h-5 bg-slate-100" />
+              <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dimension:</span>
+                      <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={legendDimension} onChange={e => setLegendDimension(e.target.value as any)}>
+                          <option value="Category">Category</option>
+                          <option value="Product name">Product</option>
+                          <option value="Item name">SKU</option>
+                          <option value="counterparty">Supplier</option>
+                      </select>
+                  </div>
+              </div>
+          </Flex>
+        )}
 
-        <section className="space-y-12">
-            <ChartSection title="Weekly Trend" data={weeklyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="week" />} />
-            <ChartSection title="Monthly Trend" data={monthlyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="month" />} />
-            <ChartSection title="Daily Trend" data={dailyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="day" />} />
-        </section>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
-                <Title className="text-xl font-bold mb-8">Supplier Leaderboard</Title>
+        {activeMetric === 'inventory' ? (
+          <div className="space-y-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
+                <Title className="text-xl font-bold mb-8">SKU Value Leaderboard</Title>
                 <div className="flex-1 overflow-y-auto space-y-6 pr-4 scrollbar-thin">
-                    {ratingData?.filter((d: any) => d.dimension_value !== 'Other').map((d: any, i: number) => (
-                        <div key={d.dimension_value} className="space-y-2">
-                            <div className="flex justify-between text-[11px] font-bold text-slate-500 uppercase">
-                                <span>{d.dimension_value}</span>
-                                <span>{formatValue(d.value)}</span>
-                            </div>
-                            <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
-                                <div className="h-full transition-all duration-1000" style={{ width: `${(d.value / ratingData[0].value) * 100}%`, backgroundColor: getColor(i, 10) }} />
-                            </div>
+                  {inventoryLeaderboard.map((item, i) => (
+                    <div key={item.item_id} className="space-y-2">
+                      <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+                        <div className="flex items-center gap-3 max-w-[70%]">
+                          <span className="text-slate-300">#{(i+1).toString().padStart(2, '0')}</span>
+                          <span className="truncate" title={item.item_name}>{item.item_name}</span>
+                          {item.is_group && <Badge size="xs" color="amber" className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter shrink-0 ring-1 ring-amber-500/20 bg-amber-50 text-amber-600">GROUP</Badge>}
                         </div>
+                        <span className="text-[#0C0C0C] font-black">{formatValue(item.stock_value_usd)}</span>
+                      </div>
+                      <div className="h-1.5 bg-slate-50 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${(item.stock_value_usd / (inventoryLeaderboard[0].stock_value_usd || 1)) * 100}%`, backgroundColor: ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A'][i % 5] }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[580px] flex flex-col overflow-hidden">
+                <Flex className="mb-2 shrink-0" justifyContent="between" alignItems="start">
+                  <div>
+                    <Title className="text-xl font-bold text-[#0C0C0C]">Inventory Distribution</Title>
+                    <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">SKU Count & Share by Turnover Days</Text>
+                  </div>
+                  <div className="p-2 bg-slate-50 rounded-xl">
+                    <PieIcon className="w-5 h-5 text-slate-400" />
+                  </div>
+                </Flex>
+                
+                <div className="flex-1 min-h-0 w-full mt-4 flex flex-col overflow-hidden">
+                  <div className="flex-1 distribution-chart-container relative">
+                    <style>{`
+                      .distribution-chart-container .recharts-bar:nth-child(1) path { fill: #8F3F48 !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(2) path { fill: #638994 !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(3) path { fill: #FF843B !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(4) path { fill: #79783F !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(5) path { fill: #A68B7A !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #000000 !important; }
+                    `}</style>
+                    <BarChart
+                      className="h-full"
+                      data={distributionData}
+                      index="range"
+                      categories={['0-1', '1-5', '5-15', '15-30', '30-60', '60+']}
+                      colors={['rose', 'cyan', 'orange', 'emerald', 'indigo', 'slate']}
+                      valueFormatter={(number) => number?.toLocaleString() ?? '0'}
+                      showAnimation={true}
+                      yAxisWidth={48}
+                      showLegend={false}
+                      stack={true}
+                      customTooltip={InventoryTooltip}
+                    />
+                  </div>
+                  <div className="mt-4 grid grid-cols-3 gap-2 shrink-0">
+                    {distributionData.slice(0, 3).map((item, idx) => {
+                      const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#000000'];
+                      const color = colors[idx % colors.length];
+                      return (
+                        <div key={item.range} className="p-3 rounded-2xl bg-slate-50 border border-slate-100/50 space-y-2">
+                          <Flex justifyContent="between" alignItems="center" className="border-b border-slate-100 pb-1">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate">{item.range} Days</p>
+                            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+                          </Flex>
+                          <div className="space-y-1">
+                            <Flex justifyContent="between">
+                              <p className="text-[7px] font-bold text-slate-400 uppercase">Count</p>
+                              <p className="text-[9px] font-black text-[#0C0C0C]">{item['Share count']}%</p>
+                            </Flex>
+                            <Flex justifyContent="between">
+                              <p className="text-[7px] font-bold text-slate-400 uppercase">Sales (Qty)</p>
+                              <p className="text-[9px] font-black text-emerald-600">{item['Share sales']}%</p>
+                            </Flex>
+                            <Flex justifyContent="between">
+                              <p className="text-[7px] font-bold text-slate-400 uppercase">Stock</p>
+                              <p className="text-[9px] font-black text-blue-600">{item['Share stock']}%</p>
+                            </Flex>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-0 bg-white flex flex-col h-[700px] overflow-hidden">
+              <div className="p-6 pb-2 border-b border-slate-100 shrink-0">
+                <Title className="text-xl font-bold text-[#0C0C0C]">Inventory Details</Title>
+                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Full SKU metrics and stock values</Text>
+              </div>
+              <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                <table className="w-full text-left border-separate border-spacing-0">
+                  <thead className="sticky top-0 z-30 shadow-sm">
+                    <tr className="bg-white">
+                      <th className="p-4 sticky top-0 z-30 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer" onClick={() => handleSortCol('item_name')}>SKU Name</th>
+                      <th className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer" onClick={() => handleSortCol('current_stock')}>Stock</th>
+                      <th className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer" onClick={() => handleSortCol('stock_value_usd')}>Value</th>
+                      <th className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer" onClick={() => handleSortCol('total_sales')}>Sales</th>
+                      <th className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer" onClick={() => handleSortCol('turnover_days')}>Days</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100/50">
+                    {sortedInventoryData.map((item: any) => (
+                      <tr key={item.item_id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="p-4 text-xs font-bold text-[#0C0C0C]">
+                          <div className="flex items-center gap-2">
+                            <span>{item.item_name}</span>
+                            {item.is_group && <Badge size="xs" color="amber" className="text-[8px]">GROUP</Badge>}
+                          </div>
+                          <p className="text-[9px] text-slate-400 font-normal uppercase mt-0.5">{item.product_name}</p>
+                        </td>
+                        <td className="p-4 text-right text-xs font-bold">{item.current_stock.toLocaleString()}</td>
+                        <td className="p-4 text-right text-xs font-black text-blue-600">{formatValue(item.stock_value_usd)}</td>
+                        <td className="p-4 text-right text-xs font-black text-emerald-600">{item.total_sales.toLocaleString()}</td>
+                        <td className="p-4 text-right">
+                          <Badge size="xs" color={item.turnover_days <= 15 ? "emerald" : item.turnover_days <= 30 ? "amber" : "rose"}>
+                            {item.turnover_days.toFixed(0)}d
+                          </Badge>
+                        </td>
+                      </tr>
                     ))}
-                </div>
+                  </tbody>
+                </table>
+              </div>
             </Card>
-            <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
-                <Title className="text-xl font-bold mb-8">Supply Structure</Title>
-                <div className="flex-1 flex flex-col items-center justify-center">
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie data={distData} innerRadius={80} outerRadius={120} paddingAngle={5} dataKey="value" nameKey="dimension_value">
-                                {distData.map((item: any, index: number) => <Cell key={index} fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)} />)}
-                            </Pie>
-                            <ReTooltip />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
-            </Card>
-        </div>
+          </div>
+        ) : (
+          <>
+            <section className="space-y-12">
+                <ChartSection title="Weekly Trend" data={weeklyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="week" />} />
+                <ChartSection title="Monthly Trend" data={monthlyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="month" />} />
+                <ChartSection title="Daily Trend" data={dailyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="day" />} />
+            </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500 ${expandedTable === 'master' ? 'lg:col-span-2' : expandedTable === 'detail' ? 'hidden' : ''}`}>
-                <div className="absolute top-1 right-6 flex items-center gap-1 z-20">
-                    <button onClick={() => setFullscreenTable('master')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"><Expand className="w-4 h-4" /></button>
-                    <button onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]">{expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}</button>
-                </div>
-                <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
-                    <Table className="min-w-[600px]">
-                        <TableHead className="bg-slate-50/80 sticky top-0 z-10">
-                            <TableRow className="border-b border-slate-100">
-                                <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Group Name</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Spending</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {masterData?.map((item: any) => (
-                                <TableRow key={item.name} className={`cursor-pointer transition-all border-b border-slate-100/50 border-l-4 ${selectedGroup === item.name ? 'bg-slate-50/50 border-l-slate-400' : 'hover:bg-slate-50/30 border-l-transparent'}`} onClick={() => setSelectedGroup(item.name === selectedGroup ? null : item.name)}>
-                                    <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
-                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
-                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
+                    <Title className="text-xl font-bold mb-8">Supplier Leaderboard</Title>
+                    <div className="flex-1 overflow-y-auto space-y-6 pr-4 scrollbar-thin">
+                        {ratingData?.filter((d: any) => d.dimension_value !== 'Other').map((d: any, i: number) => (
+                            <div key={d.dimension_value} className="space-y-2">
+                                <div className="flex justify-between text-[11px] font-bold text-slate-500 uppercase">
+                                    <span>{d.dimension_value}</span>
+                                    <span>{formatValue(d.value)}</span>
+                                </div>
+                                <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
+                                    <div className="h-full transition-all duration-1000" style={{ width: `${(d.value / ratingData[0].value) * 100}%`, backgroundColor: getColor(i, 10) }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+                <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
+                    <Title className="text-xl font-bold mb-8">Supply Structure</Title>
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                        <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                                <Pie data={distData} innerRadius={80} outerRadius={120} paddingAngle={5} dataKey="value" nameKey="dimension_value">
+                                    {distData.map((item: any, index: number) => <Cell key={index} fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)} />)}
+                                </Pie>
+                                <ReTooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+            </div>
 
-            <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500 ${expandedTable === 'detail' ? 'lg:col-span-2' : expandedTable === 'master' ? 'hidden' : ''}`}>
-                <div className="absolute top-1 right-6 flex items-center gap-1 z-20">
-                    <button onClick={() => setFullscreenTable('detail')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"><Expand className="w-4 h-4" /></button>
-                    <button onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]">{expandedTable === 'detail' ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}</button>
-                </div>
-                <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
-                    <Table className="min-w-[600px]">
-                        <TableHead className="bg-slate-50/80 sticky top-0 z-10">
-                            <TableRow className="border-b border-slate-100">
-                                <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Spending</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {detailData?.map((item: any) => (
-                                <TableRow key={item.name} className="border-b border-slate-100/50 hover:bg-slate-50/30 transition-all">
-                                    <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
-                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
-                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500 ${expandedTable === 'master' ? 'lg:col-span-2' : expandedTable === 'detail' ? 'hidden' : ''}`}>
+                    <div className="absolute top-1 right-6 flex items-center gap-1 z-20">
+                        <button onClick={() => setFullscreenTable('master')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"><Expand className="w-4 h-4" /></button>
+                        <button onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]">{expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}</button>
+                    </div>
+                    <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
+                        <Table className="min-w-[600px]">
+                            <TableHead className="bg-slate-50/80 sticky top-0 z-10">
+                                <TableRow className="border-b border-slate-100">
+                                    <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Group Name</TableHeaderCell>
+                                    <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Spending</TableHeaderCell>
+                                    <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </Card>
-        </div>
+                            </TableHead>
+                            <TableBody>
+                                {masterData?.map((item: any) => (
+                                    <TableRow key={item.name} className={`cursor-pointer transition-all border-b border-slate-100/50 border-l-4 ${selectedGroup === item.name ? 'bg-slate-50/50 border-l-slate-400' : 'hover:bg-slate-50/30 border-l-transparent'}`} onClick={() => setSelectedGroup(item.name === selectedGroup ? null : item.name)}>
+                                        <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
+                                        <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
+                                        <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </Card>
+
+                <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500 ${expandedTable === 'detail' ? 'lg:col-span-2' : expandedTable === 'master' ? 'hidden' : ''}`}>
+                    <div className="absolute top-1 right-6 flex items-center gap-1 z-20">
+                        <button onClick={() => setFullscreenTable('detail')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"><Expand className="w-4 h-4" /></button>
+                        <button onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]">{expandedTable === 'detail' ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}</button>
+                    </div>
+                    <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
+                        <Table className="min-w-[600px]">
+                            <TableHead className="bg-slate-50/80 sticky top-0 z-10">
+                                <TableRow className="border-b border-slate-100">
+                                    <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
+                                    <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Spending</TableHeaderCell>
+                                    <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {detailData?.map((item: any) => (
+                                    <TableRow key={item.name} className="border-b border-slate-100/50 hover:bg-slate-50/30 transition-all">
+                                        <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
+                                        <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
+                                        <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </Card>
+            </div>
+          </>
+        )}
       </main>
 
       {/* Overlays */}
