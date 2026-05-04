@@ -865,17 +865,17 @@ def get_master_table(dimension='Category', filters=None, table_name='sales'):
         else:
             prev_filter = "WHERE 1=0"
     
-    # Determine columns based on table
-    if table_name == 'purchase':
-        revenue_col = "Amount_USD"
-        profit_col = "0"
-        margin_col = "0"
-        qty_col = "Qty"
-    else:
-        revenue_col = "Amount_USD"
-        profit_col = "Profit_USD"
-        margin_col = "\"Margin_%\""
-        qty_col = "Qty"
+    # Dynamically determine columns based on table
+    try:
+        col_res = cursor.execute(f"PRAGMA table_info('{table_name}')").fetchall()
+        existing_cols = [row[1].lower() for row in col_res]
+    except:
+        existing_cols = []
+
+    revenue_col = "Amount_USD" if 'amount_usd' in existing_cols else "0"
+    profit_col = "Profit_USD" if 'profit_usd' in existing_cols else "0"
+    margin_col = "\"Margin_%\"" if 'margin_%' in existing_cols else "0"
+    qty_col = "Qty" if 'qty' in existing_cols else "0"
 
     query = f"""
     WITH curr AS (
@@ -933,17 +933,17 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
         else:
             prev_filter = "WHERE 1=0"
     
-    # Determine columns based on table
-    if table_name == 'purchase':
-        revenue_col = "Amount_USD"
-        profit_col = "0"
-        margin_col = "0"
-        qty_col = "Qty"
-    else:
-        revenue_col = "Amount_USD"
-        profit_col = "Profit_USD"
-        margin_col = "\"Margin_%\""
-        qty_col = "Qty"
+    # Dynamically determine columns based on table
+    try:
+        col_res = cursor.execute(f"PRAGMA table_info('{table_name}')").fetchall()
+        existing_cols = [row[1].lower() for row in col_res]
+    except:
+        existing_cols = []
+
+    revenue_col = "Amount_USD" if 'amount_usd' in existing_cols else "0"
+    profit_col = "Profit_USD" if 'profit_usd' in existing_cols else "0"
+    margin_col = "\"Margin_%\"" if 'margin_%' in existing_cols else "0"
+    qty_col = "Qty" if 'qty' in existing_cols else "0"
 
     query = f"""
     WITH curr AS (
