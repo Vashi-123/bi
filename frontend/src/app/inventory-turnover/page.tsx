@@ -9,7 +9,7 @@ import {
 } from '@tremor/react';
 import { 
   Activity, Package, ArrowLeft, Download, RefreshCcw,
-  PieChart as PieIcon, TrendingUp
+  PieChart as PieIcon, ChevronUp, ChevronDown
 } from 'lucide-react';
 import Link from 'next/link';
 import { API_BASE, fetcher } from '@/lib/constants';
@@ -53,11 +53,37 @@ interface TurnoverItem {
   turnover_days: number;
 }
 
+type SortCol = 'item_name' | 'avg_stock' | 'current_stock' | 'total_sales' | 'turnover_ratio' | 'turnover_days';
+
 export default function InventoryTurnoverPage() {
   const { data, isLoading, error, mutate } = useSWR<TurnoverItem[]>(
     `${API_BASE}/api/inventory/turnover`, 
     fetcher
   );
+
+  const [sortCol, setSortCol] = useState<SortCol>('total_sales');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (col: SortCol) => {
+    if (sortCol === col) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('desc');
+    }
+  };
+
+  const sortedData = useMemo(() => {
+    if (!data) return [];
+    return [...data].sort((a, b) => {
+      const aVal = a[sortCol];
+      const bVal = b[sortCol];
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sortDir === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+    });
+  }, [data, sortCol, sortDir]);
 
   const handleExport = () => {
     if (!data || data.length === 0) return;
@@ -91,8 +117,7 @@ export default function InventoryTurnoverPage() {
   const skuLeaderboard = useMemo(() => {
     if (!data) return [];
     return [...data]
-      .sort((a, b) => b.turnover_ratio - a.turnover_ratio)
-      .slice(0, 15);
+      .sort((a, b) => b.turnover_ratio - a.turnover_ratio);
   }, [data]);
 
   const distributionData = useMemo(() => {
@@ -198,7 +223,7 @@ export default function InventoryTurnoverPage() {
                 <Title className="text-xl font-bold text-[#0C0C0C]">SKU Leaderboard</Title>
                 <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Top SKUs by Turnover Ratio</Text>
               </div>
-              <Badge color="emerald" className="rounded-md font-bold uppercase text-[9px]">Velocity</Badge>
+              <Badge color="emerald" className="rounded-md font-bold uppercase text-[9px] bg-emerald-50 text-emerald-600 ring-emerald-500/20">Ratio</Badge>
             </Flex>
             
             <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-hide">
@@ -244,7 +269,7 @@ export default function InventoryTurnoverPage() {
               </div>
             </Flex>
             
-            <div className="flex-1 min-h-0 w-full mt-4 flex flex-col">
+            <div className="flex-1 min-h-0 w-full mt-4 flex flex-col overflow-hidden">
               <div className="flex-1">
                 <BarChart
                   className="h-full"
@@ -259,12 +284,12 @@ export default function InventoryTurnoverPage() {
                   customTooltip={CustomTooltip}
                 />
               </div>
-              <div className="mt-6 grid grid-cols-3 gap-3 shrink-0">
+              <div className="mt-4 grid grid-cols-3 gap-2 shrink-0">
                 {distributionData.slice(0, 3).map((item, idx) => (
-                  <div key={item.range} className="p-3 rounded-2xl bg-slate-50 border border-slate-100/50">
-                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1 truncate">{item.range} Days</p>
-                    <p className="text-base font-black text-[#0C0C0C]">{item['Share %']}%</p>
-                    <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">{item.SKUs} SKUs</p>
+                  <div key={item.range} className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100/50">
+                    <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-0.5 truncate">{item.range} Days</p>
+                    <p className="text-sm font-black text-[#0C0C0C]">{item['Share %']}%</p>
+                    <p className="text-[7px] font-bold text-slate-400 uppercase mt-0.5 truncate">{item.SKUs} SKUs</p>
                   </div>
                 ))}
               </div>
@@ -272,27 +297,59 @@ export default function InventoryTurnoverPage() {
           </Card>
         </div>
 
-        <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white flex flex-col h-[700px]">
-          <Flex className="mb-6 shrink-0" justifyContent="between" alignItems="center">
-            <div>
-              <Title className="text-xl font-bold text-[#0C0C0C]">Inventory Details</Title>
-              <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Comprehensive SKU performance list</Text>
-            </div>
-            <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
-               <TrendingUp className="w-5 h-5 text-slate-400" />
-            </div>
-          </Flex>
-          
+        <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-6 bg-white flex flex-col h-[700px] overflow-hidden">
           <div className="flex-1 overflow-auto scrollbar-hide">
             <Table>
               <TableHead className="sticky top-0 bg-white z-20">
                 <TableRow className="border-b border-slate-100">
-                  <TableHeaderCell className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">SKU Name</TableHeaderCell>
-                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">Median Stock</TableHeaderCell>
-                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">Current Stock</TableHeaderCell>
-                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">Sales (30d)</TableHeaderCell>
-                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">Ratio</TableHeaderCell>
-                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">Days</TableHeaderCell>
+                  <TableHeaderCell 
+                    className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    onClick={() => handleSort('item_name')}
+                  >
+                    <Flex justifyContent="start" className="gap-1">
+                      SKU Name {sortCol === 'item_name' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                    </Flex>
+                  </TableHeaderCell>
+                  <TableHeaderCell 
+                    className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    onClick={() => handleSort('avg_stock')}
+                  >
+                    <Flex justifyContent="end" className="gap-1">
+                      Median Stock {sortCol === 'avg_stock' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                    </Flex>
+                  </TableHeaderCell>
+                  <TableHeaderCell 
+                    className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    onClick={() => handleSort('current_stock')}
+                  >
+                    <Flex justifyContent="end" className="gap-1">
+                      Current Stock {sortCol === 'current_stock' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                    </Flex>
+                  </TableHeaderCell>
+                  <TableHeaderCell 
+                    className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    onClick={() => handleSort('total_sales')}
+                  >
+                    <Flex justifyContent="end" className="gap-1">
+                      Sales (30d) {sortCol === 'total_sales' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                    </Flex>
+                  </TableHeaderCell>
+                  <TableHeaderCell 
+                    className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    onClick={() => handleSort('turnover_ratio')}
+                  >
+                    <Flex justifyContent="end" className="gap-1">
+                      Ratio {sortCol === 'turnover_ratio' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                    </Flex>
+                  </TableHeaderCell>
+                  <TableHeaderCell 
+                    className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    onClick={() => handleSort('turnover_days')}
+                  >
+                    <Flex justifyContent="end" className="gap-1">
+                      Days {sortCol === 'turnover_days' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                    </Flex>
+                  </TableHeaderCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -307,7 +364,7 @@ export default function InventoryTurnoverPage() {
                       <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : data?.map((item) => (
+                ) : sortedData?.map((item) => (
                   <TableRow key={item.item_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100/50">
                     <TableCell className="text-xs font-bold text-[#0C0C0C] py-4 max-w-[300px] truncate">
                       {item.item_name}
