@@ -12,13 +12,14 @@ const config: Config = {
     extend: {
       colors: {
         // Dashboard brand palette
+        // Dashboard brand palette for Tremor compatibility
+        brand1: { 500: "#8F3F48" },
+        brand2: { 500: "#638994" },
+        brand3: { 500: "#FF843B" },
+        brand4: { 500: "#79783F" },
+        brand5: { 500: "#A68B7A" },
+        brand6: { 500: "#000000" },
         brand: {
-          1: "#8F3F48",
-          2: "#638994",
-          3: "#FF843B",
-          4: "#79783F",
-          5: "#A68B7A",
-          6: "#000000",
           faint: "#eff6ff",
           muted: "#bfdbfe",
           subtle: "#60a5fa",

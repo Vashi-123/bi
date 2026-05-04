@@ -24,12 +24,12 @@ function formatCurrency(val: number) {
 }
 
 // Tailwind Safelist for Tremor dynamic colors:
-// fill-brand-1 bg-brand-1 text-brand-1 ring-brand-1
-// fill-brand-2 bg-brand-2 text-brand-2 ring-brand-2
-// fill-brand-3 bg-brand-3 text-brand-3 ring-brand-3
-// fill-brand-4 bg-brand-4 text-brand-4 ring-brand-4
-// fill-brand-5 bg-brand-5 text-brand-5 ring-brand-5
-// fill-brand-6 bg-brand-6 text-brand-6 ring-brand-6
+// fill-brand1-500 bg-brand1-500 text-brand1-500 ring-brand1-500
+// fill-brand2-500 bg-brand2-500 text-brand2-500 ring-brand2-500
+// fill-brand3-500 bg-brand3-500 text-brand3-500 ring-brand3-500
+// fill-brand4-500 bg-brand4-500 text-brand4-500 ring-brand4-500
+// fill-brand5-500 bg-brand5-500 text-brand5-500 ring-brand5-500
+// fill-brand6-500 bg-brand6-500 text-brand6-500 ring-brand6-500
 
 const CustomTooltip = ({ payload, active }: any) => {
   if (!active || !payload || payload.length === 0) return null;
@@ -349,7 +349,7 @@ export default function InventoryTurnoverPage() {
                   data={distributionData}
                   index="range"
                   categories={['0-1', '1-5', '5-15', '15-30', '30-60', '60+']}
-                  colors={['brand-1', 'brand-2', 'brand-3', 'brand-4', 'brand-5', 'brand-6']}
+                  colors={['brand1', 'brand2', 'brand3', 'brand4', 'brand5', 'brand6']}
                   valueFormatter={(number) => number?.toLocaleString() ?? '0'}
                   showAnimation={true}
                   yAxisWidth={48}
