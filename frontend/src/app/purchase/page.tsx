@@ -522,14 +522,14 @@ export default function PurchaseDashboard() {
 
                 <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
                     <button 
-                        onClick={() => setChartView('grid')}
-                        className={`p-1.5 rounded-lg transition-all ${chartView === 'grid' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
+                        onClick={() => setChartView('combined')}
+                        className={`p-1.5 rounded-lg transition-all ${chartView === 'combined' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         <LayoutGrid className="w-4 h-4" />
                     </button>
                     <button 
-                        onClick={() => setChartView('list')}
-                        className={`p-1.5 rounded-lg transition-all ${chartView === 'list' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
+                        onClick={() => setChartView('multiples')}
+                        className={`p-1.5 rounded-lg transition-all ${chartView === 'multiples' ? 'bg-white shadow-sm text-[#0C0C0C]' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                         <Layout className="w-4 h-4" />
                     </button>
