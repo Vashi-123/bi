@@ -23,8 +23,11 @@ function formatCurrency(val: number) {
   return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-  const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#64748b'];
-  const color = colors[data.index % colors.length];
+const CustomTooltip = ({ payload, active }: any) => {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0].payload;
+  const colors_palette = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#64748b'];
+  const bar_color = colors_palette[data.index % colors_palette.length];
 
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-2xl min-w-[200px]">
@@ -38,7 +41,7 @@ function formatCurrency(val: number) {
             <Text className="text-[10px] font-black text-[#0C0C0C]">{data.SKUs} SKUs</Text>
           </Flex>
           <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
-            <div className="h-full rounded-full opacity-60" style={{ width: `${data['Share count']}%`, backgroundColor: color }} />
+            <div className="h-full rounded-full opacity-60" style={{ width: `${data['Share count']}%`, backgroundColor: bar_color }} />
           </div>
           <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share count']}% share</Text>
         </div>
