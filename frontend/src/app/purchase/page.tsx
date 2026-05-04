@@ -139,7 +139,7 @@ export default function PurchaseDashboard() {
   const totalStockValue = useMemo(() => {
     if (!inventoryData || !Array.isArray(inventoryData)) return 0;
     const seenGroups = new Set();
-    return inventoryData.reduce((acc, item) => {
+    return inventoryData.reduce((acc: number, item: any) => {
       if (item.is_group) {
         if (seenGroups.has(item.group_key)) return acc;
         seenGroups.add(item.group_key);
@@ -161,14 +161,14 @@ export default function PurchaseDashboard() {
     ];
 
     const totalSKUs = inventoryData.length;
-    const totalSales = inventoryData.reduce((acc, i) => acc + (i.total_sales || 0), 0) || 1;
-    const totalStock = inventoryData.reduce((acc, i) => acc + (i.stock_value_usd || 0), 0) || 1;
+    const totalSales = inventoryData.reduce((acc: number, i: any) => acc + (i.total_sales || 0), 0) || 1;
+    const totalStock = inventoryData.reduce((acc: number, i: any) => acc + (i.stock_value_usd || 0), 0) || 1;
 
     return buckets.map((b, idx) => {
       const items = inventoryData.filter(i => i.turnover_days >= b.min && i.turnover_days < b.max);
       const count = items.length;
-      const sales = items.reduce((acc, i) => acc + (i.total_sales || 0), 0);
-      const stockValue = items.reduce((acc, i) => acc + (i.stock_value_usd || 0), 0);
+      const sales = items.reduce((acc: number, i: any) => acc + (i.total_sales || 0), 0);
+      const stockValue = items.reduce((acc: number, i: any) => acc + (i.stock_value_usd || 0), 0);
       
       return { 
         range: b.label, 
