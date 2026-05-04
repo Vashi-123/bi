@@ -120,32 +120,46 @@ def refresh_groups_table():
         try:
             col_res = conn.execute(f"DESCRIBE {raw_name}").fetchall()
             existing_cols = [row[0] for row in col_res]
-        except:
+        except Exception as e:
+            logger.error(f"Error describing {raw_name}: {e}")
             existing_cols = []
 
-        # Find which columns exist to build a safe EXCLUDE clause
-        exclude_cols = []
+        if not existing_cols:
+            continue
+
+        # Find specific columns for grouping (case-insensitive)
         gc_col = next((c for c in existing_cols if c.lower() == 'groupclient'), None)
         cg_col = next((c for c in existing_cols if c.lower() == 'countrygroup'), None)
+        cp_col = next((c for c in existing_cols if c.lower() == 'counterparty'), None)
         
-        if gc_col: exclude_cols.append(f'"{gc_col}"')
-        if cg_col: exclude_cols.append(f'"{cg_col}"')
+        # Build select list excluding the ones we want to override
+        # We also need to handle 'counterparty' carefully as it might be used as fallback
+        base_cols = []
+        for c in existing_cols:
+            cl = c.lower()
+            if cl not in ['groupclient', 'countrygroup']:
+                base_cols.append(f's."{c}"')
         
-        exclude_clause = f"EXCLUDE ({', '.join(exclude_cols)})" if exclude_cols else ""
+        select_list = ", ".join(base_cols)
         
-        # If the column exists in raw, use it as base for COALESCE, else use NULL
+        # Sources for new columns
+        # Use existing column if found, else use NULL
         gc_source = f's."{gc_col}"' if gc_col else "NULL"
         cg_source = f's."{cg_col}"' if cg_col else "NULL"
+        cp_ref = f's."{cp_col}"' if cp_col else "NULL"
         
         query = f"""
             CREATE OR REPLACE VIEW {table_type} AS 
             SELECT 
-                s.* {exclude_clause},
-                COALESCE({gc_source}, s.counterparty) as Groupclient,
+                {select_list},
+                COALESCE({gc_source}, {cp_ref}) as Groupclient,
                 COALESCE({cg_source}, 'Other') as CountryGroup
             FROM {raw_name} s
         """
-        conn.execute(query)
+        try:
+            conn.execute(query)
+        except Exception as e:
+            logger.error(f"Failed to create view {table_type}: {e}")
 
 def refresh_in_memory_data():
     """Forces a reload of parquet files into the in-memory tables."""
