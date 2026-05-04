@@ -736,10 +736,20 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     start_date, end_date = get_current_window(filters, table_name=table_name)
     if not start_date: return []
 
-    metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
-    if table_name == 'purchase':
-        metric_map['profit'] = '0'
-        metric_map['margin'] = '0'
+    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
+    
+    # Dynamically determine metrics
+    try:
+        col_res = cursor.execute(f"PRAGMA table_info('{raw_table}')").fetchall()
+        existing_cols = [row[1].lower() for row in col_res]
+    except:
+        existing_cols = []
+
+    is_purchase = 'purchase' in table_name.lower()
+    
+    metric_map = {'revenue': 'Amount_USD', 'qty': 'Qty'}
+    metric_map['profit'] = 'Profit_USD' if ('profit_usd' in existing_cols and not is_purchase) else '0'
+    metric_map['margin'] = '"Margin_%"' if ('margin_%' in existing_cols and not is_purchase) else '0'
     col = metric_map.get(metric, metric)
     
     date_clause = build_date_filter_clause(filters)
@@ -752,8 +762,12 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
         filter_clause = f"WHERE CAST(date AS DATE) >= '{start_date}' AND CAST(date AS DATE) <= '{end_date}' {extra_filters}"
 
     # 1. Find Top N categories
-    top_n_query = f"SELECT \"{dimension}\" FROM {table_name} {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
-    top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
+    top_n_query = f"SELECT \"{dimension}\" FROM {raw_table} {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
+    try:
+        top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
+    except Exception as e:
+        logger.error(f"Failed top_n_query in get_trends: {e}")
+        top_dims = []
     if not top_dims: return []
 
     # 2. Configure Calendar aggregation
@@ -776,7 +790,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     full_grid AS (SELECT c.d, d.dim_val FROM calendar c, dims d),
     sales_agg AS (
         SELECT CAST({sales_d} AS DATE) as cal_d, {dim_expr} as dim_val, SUM({col}) as val
-        FROM {table_name} {filter_clause} GROUP BY 1, 2
+        FROM {raw_table} {filter_clause} GROUP BY 1, 2
     )
     SELECT f.d as sort_key, f.dim_val as dimension_value, COALESCE(s.val, 0) as value
     FROM full_grid f LEFT JOIN sales_agg s ON f.d = s.cal_d AND f.dim_val = s.dim_val
@@ -816,10 +830,19 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     if cached: return cached
 
     cursor = get_cursor()
-    metric_map = {'revenue': 'Amount_USD', 'profit': 'Profit_USD', 'qty': 'Qty', 'margin': '"Margin_%"'}
-    if table_name == 'purchase':
-        metric_map['profit'] = '0'
-        metric_map['margin'] = '0'
+    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
+    
+    try:
+        col_res = cursor.execute(f"PRAGMA table_info('{raw_table}')").fetchall()
+        existing_cols = [row[1].lower() for row in col_res]
+    except:
+        existing_cols = []
+
+    is_purchase = 'purchase' in table_name.lower()
+    
+    metric_map = {'revenue': 'Amount_USD', 'qty': 'Qty'}
+    metric_map['profit'] = 'Profit_USD' if ('profit_usd' in existing_cols and not is_purchase) else '0'
+    metric_map['margin'] = '"Margin_%"' if ('margin_%' in existing_cols and not is_purchase) else '0'
     col = metric_map.get(metric, metric)
     
     date_clause = build_date_filter_clause(filters)
@@ -831,13 +854,17 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
         s, e = get_current_window(filters, table_name=table_name)
         filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
 
-    top_n_query = f"SELECT \"{dimension}\" FROM {table_name} {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
-    top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
+    top_n_query = f"SELECT \"{dimension}\" FROM {raw_table} {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
+    try:
+        top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
+    except Exception as e:
+        logger.error(f"Failed top_n_query in get_distribution: {e}")
+        top_dims = []
     if not top_dims: return []
 
     top_dims_escaped = [d.replace("'", "''") for d in top_dims]
     dim_expr = f"CASE WHEN \"{dimension}\" IN ({', '.join([f"'{d}'" for d in top_dims_escaped])}) THEN \"{dimension}\" ELSE 'Other' END"
-    query = f"SELECT {dim_expr} as dimension_value, SUM({col}) as value FROM {table_name} {filter_clause} GROUP BY 1 ORDER BY value DESC"
+    query = f"SELECT {dim_expr} as dimension_value, SUM({col}) as value FROM {raw_table} {filter_clause} GROUP BY 1 ORDER BY value DESC"
     
     df = cursor.execute(query).df()
     out = df.to_dict(orient='records')
