@@ -258,6 +258,14 @@ async def add_admin(admin: AdminSetting, x_telegram_init_data: str = Header(None
         return {"status": "success"}
     raise HTTPException(status_code=500, detail="Failed to add admin")
 
+@app.delete("/api/settings/admins/{telegram_id}")
+async def delete_admin(telegram_id: int, x_telegram_init_data: str = Header(None)):
+    await verify_admin(x_telegram_init_data)
+    if db.delete_authorized_user(telegram_id):
+        update_local_settings("authorized_users", "delete", {"id": telegram_id})
+        return {"status": "success"}
+    raise HTTPException(status_code=500, detail="Failed to delete admin")
+
 @app.get("/api/settings/report_recipients")
 async def get_report_recipients(x_telegram_init_data: str = Header(None)):
     await verify_admin(x_telegram_init_data)
