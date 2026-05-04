@@ -8,7 +8,8 @@ import {
   BarChart
 } from '@tremor/react';
 import { 
-  Activity, Package, ArrowLeft, Download, RefreshCcw
+  Activity, Package, ArrowLeft, Download, RefreshCcw,
+  PieChart as PieIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import { API_BASE, fetcher } from '@/lib/constants';
@@ -67,48 +68,31 @@ export default function InventoryTurnoverPage() {
     document.body.removeChild(link);
   };
 
-  const stats = useMemo(() => {
-    if (!data || data.length === 0) return null;
-    const itemsWithSales = data.filter(i => i.total_sales > 0);
-    const turnoverDays = itemsWithSales.map(i => i.turnover_days).sort((a, b) => a - b);
-    let medianDays = 0;
-    if (turnoverDays.length > 0) {
-      const mid = Math.floor(turnoverDays.length / 2);
-      medianDays = turnoverDays.length % 2 !== 0 
-        ? turnoverDays[mid] 
-        : (turnoverDays[mid - 1] + turnoverDays[mid]) / 2;
-    }
-    
-    const bestItem = [...data].sort((a, b) => b.turnover_ratio - a.turnover_ratio)[0];
-    
-    return {
-      medianDays: medianDays.toFixed(1),
-      bestItem: bestItem.item_name,
-      totalItems: data.length,
-      activeItems: itemsWithSales.length
-    };
-  }, [data]);
-
   const categoryData = useMemo(() => {
     if (!data) return [];
-    const categories: Record<string, { name: string, totalSales: number, count: number }> = {};
+    const categories: Record<string, { name: string, daysList: number[] }> = {};
     
-    data.forEach(item => {
+    data.filter(i => i.total_sales > 0).forEach(item => {
       const cat = item.product_name || 'Uncategorized';
       if (!categories[cat]) {
-        categories[cat] = { name: cat, totalSales: 0, count: 0 };
+        categories[cat] = { name: cat, daysList: [] };
       }
-      categories[cat].totalSales += item.total_sales;
-      categories[cat].count += 1;
+      categories[cat].daysList.push(item.turnover_days);
     });
 
     return Object.values(categories)
-      .sort((a, b) => b.totalSales - a.totalSales)
+      .map(cat => {
+        const sorted = [...cat.daysList].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        return { name: cat.name, medianDays: median };
+      })
+      .sort((a, b) => a.medianDays - b.medianDays)
       .slice(0, 15);
   }, [data]);
 
   const distributionData = useMemo(() => {
-    if (!data) return [];
+    if (!data || data.length === 0) return [];
     
     const buckets = [
       { label: '0-1', min: 0, max: 1 },
@@ -119,6 +103,8 @@ export default function InventoryTurnoverPage() {
       { label: '60+', min: 60, max: Infinity }
     ];
 
+    const totalSKUs = data.length;
+
     const result = buckets.map(b => {
       const count = data.filter(i => {
         if (b.min === 0) {
@@ -126,7 +112,14 @@ export default function InventoryTurnoverPage() {
         }
         return i.turnover_days > b.min && i.turnover_days <= b.max;
       }).length;
-      return { range: b.label, 'SKU Count': count };
+      
+      const share = (count / totalSKUs) * 100;
+      
+      return { 
+        range: b.label, 
+        'SKUs': count,
+        'Share %': parseFloat(share.toFixed(1))
+      };
     });
 
     return result;
@@ -195,13 +188,13 @@ export default function InventoryTurnoverPage() {
 
       <main className="relative z-10 max-w-[1600px] mx-auto p-10 space-y-10 pb-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[600px] flex flex-col">
+          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[600px] flex flex-col overflow-hidden">
             <Flex className="mb-8 shrink-0" justifyContent="between" alignItems="center">
               <div>
                 <Title className="text-xl font-bold text-[#0C0C0C]">Leaderboard</Title>
-                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Top Categories by Sales</Text>
+                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Categories by Median Days</Text>
               </div>
-              <Badge color="slate" className="rounded-md font-bold uppercase text-[9px]">By Volume</Badge>
+              <Badge color="orange" className="rounded-md font-bold uppercase text-[9px]">By Days</Badge>
             </Flex>
             
             <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-hide">
@@ -213,8 +206,8 @@ export default function InventoryTurnoverPage() {
                   </div>
                 ))
               ) : categoryData.map((cat, idx) => {
-                const maxVal = categoryData[0].totalSales;
-                const percentage = (cat.totalSales / maxVal) * 100;
+                const maxDaysInTop = Math.max(...categoryData.map(c => c.medianDays));
+                const percentage = (cat.medianDays / maxDaysInTop) * 100;
                 const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A'];
                 const color = colors[idx % colors.length];
 
@@ -222,7 +215,7 @@ export default function InventoryTurnoverPage() {
                   <div key={cat.name} className="space-y-2">
                     <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase tracking-tight">
                       <span className="truncate pr-4">{cat.name}</span>
-                      <span className="text-[#0C0C0C] font-extrabold shrink-0">{formatCompact(cat.totalSales)}</span>
+                      <span className="text-[#0C0C0C] font-extrabold shrink-0">{cat.medianDays.toFixed(1)} days</span>
                     </div>
                     <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
                       <div 
@@ -236,20 +229,38 @@ export default function InventoryTurnoverPage() {
             </div>
           </Card>
 
-          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[600px] flex flex-col">
-            <Title className="text-xl font-bold text-[#0C0C0C] mb-2">Turnover Distribution</Title>
-            <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">SKU Count by Turnover Days</Text>
-            <div className="flex-1">
+          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[600px] flex flex-col overflow-hidden">
+            <Flex className="mb-2 shrink-0" justifyContent="between" alignItems="start">
+              <div>
+                <Title className="text-xl font-bold text-[#0C0C0C]">Inventory Distribution</Title>
+                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Share of SKUs by Turnover Days</Text>
+              </div>
+              <div className="p-2 bg-slate-50 rounded-xl">
+                <PieIcon className="w-5 h-5 text-slate-400" />
+              </div>
+            </Flex>
+            
+            <div className="flex-1 min-h-0 w-full mt-4">
               <BarChart
-                className="h-full mt-4"
+                className="h-[400px]"
                 data={distributionData}
                 index="range"
-                categories={["SKU Count"]}
-                colors={["blue"]}
-                valueFormatter={(number) => number.toLocaleString()}
+                categories={["Share %"]}
+                colors={["orange"]}
+                valueFormatter={(number) => `${number}%`}
                 showAnimation={true}
                 yAxisWidth={48}
+                showLegend={false}
               />
+              <div className="mt-8 grid grid-cols-3 gap-4">
+                {distributionData.slice(0, 3).map((item, idx) => (
+                  <div key={item.range} className="p-4 rounded-2xl bg-slate-50 border border-slate-100/50">
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{item.range} Days</p>
+                    <p className="text-lg font-black text-[#0C0C0C]">{item['Share %']}%</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{item.SKUs} SKUs</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </Card>
         </div>
@@ -261,6 +272,7 @@ export default function InventoryTurnoverPage() {
                 <TableRow className="border-b border-slate-100">
                   <TableHeaderCell className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
                   <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Median Stock</TableHeaderCell>
+                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Current Stock</TableHeaderCell>
                   <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Sales (30d)</TableHeaderCell>
                   <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Ratio</TableHeaderCell>
                   <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Days</TableHeaderCell>
@@ -271,6 +283,7 @@ export default function InventoryTurnoverPage() {
                   Array.from({length: 8}).map((_, i) => (
                     <TableRow key={i} className="animate-pulse border-b border-slate-50">
                       <TableCell><div className="h-4 bg-slate-100 rounded w-48" /></TableCell>
+                      <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
@@ -284,6 +297,7 @@ export default function InventoryTurnoverPage() {
                       <p className="text-[9px] text-slate-400 font-normal uppercase tracking-tight mt-0.5">{item.product_name}</p>
                     </TableCell>
                     <TableCell className="text-right text-xs font-bold text-slate-600">{item.avg_stock.toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-xs font-bold text-blue-600">{item.current_stock.toLocaleString()}</TableCell>
                     <TableCell className="text-right text-xs font-bold text-[#0C0C0C]">{item.total_sales.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
                       <Badge size="xs" color={item.turnover_ratio > 1 ? "emerald" : item.turnover_ratio > 0.5 ? "orange" : "slate"} className="rounded-md font-bold">
