@@ -398,86 +398,91 @@ export default function InventoryTurnoverPage() {
           </Card>
         </div>
 
-        <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-6 bg-white flex flex-col h-[700px] overflow-hidden">
+        <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-0 bg-white flex flex-col h-[700px] overflow-hidden">
+          <div className="p-6 pb-2 border-b border-slate-100 shrink-0">
+            <Title className="text-xl font-bold text-[#0C0C0C]">Inventory Details</Title>
+            <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Full SKU metrics and stock values</Text>
+          </div>
+          
           <div className="flex-1 overflow-y-auto scrollbar-hide relative">
-            <Table className="border-separate border-spacing-0">
-              <TableHead className="relative z-20">
-                <TableRow className="bg-white">
-                  <TableHeaderCell 
-                    className="sticky top-0 z-30 text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
+            <table className="w-full text-left border-separate border-spacing-0">
+              <thead className="sticky top-0 z-30 shadow-sm">
+                <tr className="bg-white">
+                  <th 
+                    className="p-4 sticky top-0 z-30 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('item_name')}
                   >
                     <Flex justifyContent="start" className="gap-1">
                       SKU Name {sortCol === 'item_name' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                     </Flex>
-                  </TableHeaderCell>
-                  <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                  </th>
+                  <th 
+                    className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('avg_stock')}
                   >
                     <Flex justifyContent="end" className="gap-1">
                       Median Stock {sortCol === 'avg_stock' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                     </Flex>
-                  </TableHeaderCell>
-                  <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                  </th>
+                  <th 
+                    className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('current_stock')}
                   >
                     <Flex justifyContent="end" className="gap-1">
                       Current Stock {sortCol === 'current_stock' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                     </Flex>
-                  </TableHeaderCell>
-                  <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                  </th>
+                  <th 
+                    className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('stock_value_usd')}
                   >
                     <Flex justifyContent="end" className="gap-1 text-blue-600">
                       Stock Value {sortCol === 'stock_value_usd' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                     </Flex>
-                  </TableHeaderCell>
-                  <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                  </th>
+                  <th 
+                    className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('target_15d')}
                   >
                     <Flex justifyContent="end" className="gap-1">
                       Stock for 15D {sortCol === 'target_15d' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                     </Flex>
-                  </TableHeaderCell>
-                  <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                  </th>
+                  <th 
+                    className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('total_sales')}
                   >
                     <Flex justifyContent="end" className="gap-1">
                       Sales (30d) {sortCol === 'total_sales' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                     </Flex>
-                  </TableHeaderCell>
-                  <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                  </th>
+                  <th 
+                    className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('turnover_ratio')}
                   >
                     <Flex justifyContent="end" className="gap-1">
                       Ratio {sortCol === 'turnover_ratio' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                     </Flex>
-                  </TableHeaderCell>
-                  <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                  </th>
+                  <th 
+                    className="p-4 sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('turnover_days')}
                   >
                     <Flex justifyContent="end" className="gap-1">
                       Days {sortCol === 'turnover_days' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                     </Flex>
-                  </TableHeaderCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100/50">
                 {isLoading ? (
                   Array.from({length: 8}).map((_, i) => (
-                    <TableRow key={i} className="animate-pulse border-b border-slate-50">
-                      <TableCell><div className="h-4 bg-slate-100 rounded w-48" /></TableCell>
-                      <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
-                      <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
-                      <TableCell><div className="h-4 bg-slate-100 rounded w-20 ml-auto" /></TableCell>
-                      <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
+                    <tr key={i} className="animate-pulse border-b border-slate-50">
+                      <td className="p-4"><div className="h-4 bg-slate-100 rounded w-48" /></td>
+                      <td className="p-4"><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></td>
+                      <td className="p-4"><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></td>
+                      <td className="p-4"><div className="h-4 bg-slate-100 rounded w-20 ml-auto" /></td>
+                      <td className="p-4"><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></td>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
