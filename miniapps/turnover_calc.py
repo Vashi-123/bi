@@ -92,7 +92,7 @@ def calculate_turnover(df, period_days=30):
     agg_dict = {
         'item_name': 'first',
         'product_name': 'first',
-        'quantity': 'mean',      # Average stock
+        'quantity': 'median',    # Median stock (more robust to outliers than mean)
         'daily_sales': 'sum'     # Total sales in period
     }
     

@@ -4,23 +4,21 @@ import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { 
   Card, Title, Text, Table, TableHead, TableRow, 
-  TableHeaderCell, TableBody, TableCell, Badge, Flex, Grid,
-  ProgressBar, AreaChart, BarChart, TextInput
+  TableHeaderCell, TableBody, TableCell, Badge, Flex,
+  BarChart
 } from '@tremor/react';
 import { 
-  TrendingUp, Activity, Package, Search, 
-  ArrowLeft, Download, Filter, RefreshCcw, Zap, Target
+  Activity, Package, ArrowLeft, Download, RefreshCcw
 } from 'lucide-react';
 import Link from 'next/link';
 import { API_BASE, fetcher, getColor } from '@/lib/constants';
-import { useDashboardStore } from '@/store/useDashboardStore';
 
 function formatCompact(val: number) {
   const abs = Math.abs(val);
   const sign = val < 0 ? '-' : '';
-  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1)}K`;
-  return `${sign}${abs.toLocaleString()}`;
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
+  return `${sign}$${abs.toLocaleString()}`;
 }
 
 interface TurnoverItem {
@@ -35,36 +33,14 @@ interface TurnoverItem {
 }
 
 export default function InventoryTurnoverPage() {
-  const { filters, setFilter } = useDashboardStore();
-  const [search, setSearch] = useState('');
-
-  // --- URL Building ---
-  const filterParams = useMemo(() => {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([col, values]) => {
-      if (values && values.length > 0) {
-        params.append(col, JSON.stringify(values));
-      }
-    });
-    return params.toString();
-  }, [filters]);
-
   const { data, isLoading, error, mutate } = useSWR<TurnoverItem[]>(
-    `${API_BASE}/api/inventory/turnover?${filterParams}`, 
+    `${API_BASE}/api/inventory/turnover`, 
     fetcher
   );
 
-  const filteredData = useMemo(() => {
-    if (!data) return [];
-    return data.filter(item => 
-      item.item_name.toLowerCase().includes(search.toLowerCase()) ||
-      item.item_id.includes(search)
-    );
-  }, [data, search]);
-
   const handleExport = () => {
     if (!data || data.length === 0) return;
-    const headers = ['SKU ID', 'SKU Name', 'Product', 'Avg Stock', 'Current Stock', 'Sales (30d)', 'Ratio', 'Days'];
+    const headers = ['SKU ID', 'SKU Name', 'Product', 'Median Stock', 'Current Stock', 'Sales (30d)', 'Ratio', 'Days'];
     const rows = data.map(item => [
       item.item_id,
       `"${item.item_name.replace(/"/g, '""')}"`,
@@ -94,27 +70,84 @@ export default function InventoryTurnoverPage() {
   const stats = useMemo(() => {
     if (!data || data.length === 0) return null;
     const itemsWithSales = data.filter(i => i.total_sales > 0);
-    const avgDays = itemsWithSales.reduce((acc, curr) => acc + curr.turnover_days, 0) / itemsWithSales.length;
+    const turnoverDays = itemsWithSales.map(i => i.turnover_days).sort((a, b) => a - b);
+    let medianDays = 0;
+    if (turnoverDays.length > 0) {
+      const mid = Math.floor(turnoverDays.length / 2);
+      medianDays = turnoverDays.length % 2 !== 0 
+        ? turnoverDays[mid] 
+        : (turnoverDays[mid - 1] + turnoverDays[mid]) / 2;
+    }
+    
     const bestItem = [...data].sort((a, b) => b.turnover_ratio - a.turnover_ratio)[0];
     
     return {
-      avgDays: avgDays.toFixed(1),
+      medianDays: medianDays.toFixed(1),
       bestItem: bestItem.item_name,
       totalItems: data.length,
       activeItems: itemsWithSales.length
     };
   }, [data]);
 
-  const topTurningItems = useMemo(() => {
+  const categoryData = useMemo(() => {
     if (!data) return [];
-    return [...data]
-      .filter(i => i.total_sales > 0)
-      .sort((a, b) => b.turnover_ratio - a.turnover_ratio)
-      .slice(0, 10)
-      .map(i => ({
-        name: i.item_name,
-        'Turnover Ratio': i.turnover_ratio
-      }));
+    const categories: Record<string, { name: string, totalSales: number, count: number }> = {};
+    
+    data.forEach(item => {
+      const cat = item.product_name || 'Uncategorized';
+      if (!categories[cat]) {
+        categories[cat] = { name: cat, totalSales: 0, count: 0 };
+      }
+      categories[cat].totalSales += item.total_sales;
+      categories[cat].count += 1;
+    });
+
+    return Object.values(categories)
+      .sort((a, b) => b.totalSales - a.totalSales)
+      .slice(0, 15);
+  }, [data]);
+
+  const distributionData = useMemo(() => {
+    if (!data) return [];
+    const counts = {
+      '0-1d': 0,
+      '1-5d': 0,
+      '5-15d': 0,
+      '15-30d': 0,
+      '30-60d': 0,
+      '60d+': 0
+    };
+
+    data.forEach(item => {
+      const days = item.turnover_days;
+      if (days <= 1) counts['0-1d']++;
+      else if (days <= 5) counts['1-5d']++;
+      else if (days <= 15) counts['5-15d']++;
+      else if (days <= 30) counts['1-30d']++; // Wait, ranges were 15-30
+      // Fixing logic based on user ranges: 0-1, 1-5, 5-15, 15-30, 30-60, 60+
+    });
+    
+    // Better logic:
+    const buckets = [
+      { label: '0-1', min: 0, max: 1 },
+      { label: '1-5', min: 1, max: 5 },
+      { label: '5-15', min: 5, max: 15 },
+      { label: '15-30', min: 15, max: 30 },
+      { label: '30-60', min: 30, max: 60 },
+      { label: '60+', min: 60, max: Infinity }
+    ];
+
+    const result = buckets.map(b => {
+      const count = data.filter(i => i.turnover_days > b.min && i.turnover_days <= b.max).length;
+      // Special case for 0-1 to include 0
+      if (b.min === 0) {
+        const zeroToOnes = data.filter(i => i.turnover_days >= 0 && i.turnover_days <= 1).length;
+        return { range: b.label, 'SKU Count': zeroToOnes };
+      }
+      return { range: b.label, 'SKU Count': count };
+    });
+
+    return result;
   }, [data]);
 
   if (error) return (
@@ -181,158 +214,77 @@ export default function InventoryTurnoverPage() {
       </nav>
 
       <main className="relative z-10 max-w-[1600px] mx-auto p-10 space-y-10 pb-24">
-        {/* Filter Row */}
-        <div className="flex flex-wrap gap-4 items-center justify-between bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/50 shadow-sm">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
-              <Filter className="w-4 h-4 text-slate-400" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-r border-slate-100 pr-3 mr-1">Category</span>
-              <select 
-                className="bg-transparent border-none text-[11px] font-black text-[#0C0C0C] focus:ring-0 cursor-pointer uppercase tracking-tight"
-                value={filters.Category?.[0] || ''}
-                onChange={(e) => setFilter('Category', e.target.value ? [e.target.value] : [])}
-              >
-                <option value="">All Categories</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Fashion">Fashion</option>
-                <option value="Home">Home</option>
-                {/* Options should ideally be dynamic, but for now we provide common ones or rely on search */}
-              </select>
-            </div>
+        {/* Analysis Visuals */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Category Leaderboard */}
+          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[600px] flex flex-col">
+            <Flex className="mb-8 shrink-0" justifyContent="between" alignItems="center">
+              <div>
+                <Title className="text-xl font-bold text-[#0C0C0C]">Leaderboard</Title>
+                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Top Categories by Sales</Text>
+              </div>
+              <Badge color="slate" className="rounded-md font-bold uppercase text-[9px]">By Volume</Badge>
+            </Flex>
+            
+            <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-hide">
+              {isLoading ? (
+                Array.from({length: 6}).map((_, i) => (
+                  <div key={i} className="space-y-2 animate-pulse">
+                    <div className="flex justify-between h-4 bg-slate-50 rounded w-full" />
+                    <div className="h-2 bg-slate-50 rounded-full" />
+                  </div>
+                ))
+              ) : categoryData.map((cat, idx) => {
+                const maxVal = categoryData[0].totalSales;
+                const percentage = (cat.totalSales / maxVal) * 100;
+                const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A'];
+                const color = colors[idx % colors.length];
 
-            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
-              <Target className="w-4 h-4 text-slate-400" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-r border-slate-100 pr-3 mr-1">Country</span>
-              <select 
-                className="bg-transparent border-none text-[11px] font-black text-[#0C0C0C] focus:ring-0 cursor-pointer uppercase tracking-tight"
-                value={filters['Product country']?.[0] || ''}
-                onChange={(e) => setFilter('Product country', e.target.value ? [e.target.value] : [])}
-              >
-                <option value="">All Countries</option>
-                <option value="USA">USA</option>
-                <option value="China">China</option>
-                <option value="Germany">Germany</option>
-              </select>
+                return (
+                  <div key={cat.name} className="space-y-2">
+                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+                      <span className="truncate pr-4">{cat.name}</span>
+                      <span className="text-[#0C0C0C] font-extrabold shrink-0">{formatCompact(cat.totalSales)}</span>
+                    </div>
+                    <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-1000 ease-out shadow-sm" 
+                        style={{ width: `${percentage}%`, backgroundColor: color }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-
-            {Object.keys(filters).some(k => filters[k]?.length > 0) && (
-              <button 
-                onClick={() => {
-                  setFilter('Category', []);
-                  setFilter('Product country', []);
-                  setFilter('counterparty', []);
-                }}
-                className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors ml-2"
-              >
-                Clear Filters
-              </button>
-            )}
-          </div>
-
-          <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] opacity-60">
-            Analysis Period: 30 Days
-          </div>
-        </div>
-
-        {/* KPI Grid */}
-        <Grid numItemsSm={2} numItemsLg={4} className="gap-6">
-          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/40 p-6 bg-white overflow-hidden relative group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <Activity className="w-16 h-16 text-[#0C0C0C]" />
-            </div>
-            <Text className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Avg Turnover Days</Text>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-[#0C0C0C]">{isLoading ? '...' : stats?.avgDays}</span>
-              <span className="text-xs font-bold text-slate-400 uppercase">days</span>
-            </div>
-            <ProgressBar 
-              value={isLoading ? 0 : Math.min(100, Math.max(0, (60 - (parseFloat(stats?.avgDays || '0'))) / 60 * 100))} 
-              color={parseFloat(stats?.avgDays || '0') > 45 ? "rose" : "emerald"} 
-              className="mt-4" 
-            />
           </Card>
 
-          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/40 p-6 bg-white overflow-hidden relative group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <Zap className="w-16 h-16 text-[#DDFF55]" />
-            </div>
-            <Text className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Best Performing</Text>
-            <div className="text-lg font-bold text-[#0C0C0C] truncate mt-1">
-              {isLoading ? '...' : stats?.bestItem || 'No data'}
-            </div>
-            <Badge color="emerald" className="mt-4 rounded-lg uppercase text-[9px] font-black">Top Velocity</Badge>
-          </Card>
-
-          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/40 p-6 bg-white overflow-hidden relative group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <Package className="w-16 h-16 text-[#638994]" />
-            </div>
-            <Text className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Items Analyzed</Text>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-black text-[#0C0C0C]">{isLoading ? '...' : stats?.totalItems}</span>
-              <span className="text-xs font-bold text-slate-400 uppercase">SKUs</span>
-            </div>
-            <Text className="text-[10px] font-bold text-slate-400 mt-4 uppercase">{stats?.activeItems} items with sales</Text>
-          </Card>
-
-          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/40 p-6 bg-white overflow-hidden relative group">
-             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <Target className="w-16 h-16 text-[#FF843B]" />
-            </div>
-            <Text className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Data Recency</Text>
-            <div className="text-xl font-bold text-[#0C0C0C] mt-1">Last 30 Days</div>
-            <div className="mt-4 flex items-center gap-2">
-               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-               <span className="text-[10px] font-black uppercase text-slate-400">Live Analytics</span>
-            </div>
-          </Card>
-        </Grid>
-
-        {/* Charts & Table */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Velocity Chart */}
-          <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[600px] flex flex-col">
-            <Title className="text-xl font-bold text-[#0C0C0C] mb-6">Velocity Leaders</Title>
-            <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">Top 10 Fast Moving SKUs (Ratio)</Text>
+          {/* SKU Distribution Chart */}
+          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[600px] flex flex-col">
+            <Title className="text-xl font-bold text-[#0C0C0C] mb-2">Turnover Distribution</Title>
+            <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-8">SKU Count by Turnover Days</Text>
             <div className="flex-1">
               <BarChart
                 className="h-full mt-4"
-                data={topTurningItems}
-                index="name"
-                categories={["Turnover Ratio"]}
-                colors={["orange"]}
-                valueFormatter={(number) => `${number.toFixed(2)}x`}
-                yAxisWidth={48}
+                data={distributionData}
+                index="range"
+                categories={["SKU Count"]}
+                colors={["blue"]}
+                valueFormatter={(number) => number.toLocaleString()}
                 showAnimation={true}
-                layout="vertical"
+                yAxisWidth={48}
               />
             </div>
           </Card>
+        </div>
 
-          {/* Detailed Table */}
-          <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white flex flex-col h-[600px]">
-            <Flex className="mb-8" justifyContent="between" alignItems="center">
-              <div>
-                <Title className="text-xl font-bold text-[#0C0C0C]">Detailed Metrics</Title>
-                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Full Inventory Breakdown</Text>
-              </div>
-              <div className="flex gap-4">
-                <TextInput 
-                  icon={Search} 
-                  placeholder="Search SKU..." 
-                  className="rounded-xl w-64" 
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </Flex>
-
-            <div className="flex-1 overflow-auto scrollbar-hide">
+        {/* Detailed Table */}
+        <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white flex flex-col min-h-[500px]">
+          <div className="flex-1 overflow-auto scrollbar-hide">
               <Table>
                 <TableHead>
                   <TableRow className="border-b border-slate-100">
                     <TableHeaderCell className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
-                    <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Avg Stock</TableHeaderCell>
+                    <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Median Stock</TableHeaderCell>
                     <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Sales (30d)</TableHeaderCell>
                     <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Ratio</TableHeaderCell>
                     <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Days</TableHeaderCell>
@@ -349,7 +301,7 @@ export default function InventoryTurnoverPage() {
                         <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
                       </TableRow>
                     ))
-                  ) : filteredData.slice(0, 100).map((item) => (
+                  ) : data.slice(0, 100).map((item) => (
                     <TableRow key={item.item_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100/50">
                       <TableCell className="text-xs font-bold text-[#0C0C0C] py-4 max-w-[300px] truncate">
                         {item.item_name}
