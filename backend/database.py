@@ -425,10 +425,12 @@ def get_kpi_data(filters=None, table_name='sales'):
     qty_col = "Qty" if 'qty' in existing_cols else "0"
 
     # 1. Base query depends on mode
+    max_date_str = max_d.strftime('%Y-%m-%d') if max_d else None
+    
     if mode == 'all':
         # Truly all data, no date filter
         curr_query = f"SELECT SUM({revenue_col}), SUM({profit_col}), AVG({margin_col}), SUM({qty_col}) FROM {raw_table} WHERE 1=1 {extra_filters}"
-        curr_label = "All Time"
+        curr_label = f"Until {max_d.strftime('%d %b %Y')}" if max_d else "All Time"
         p_res = [0, 0, 0, 0]
         prev_label = None
     else:
