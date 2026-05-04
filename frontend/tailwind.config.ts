@@ -11,16 +11,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Tremor-specific colors if needed
-        tremor: {
-          brand: {
-            faint: "#eff6ff",
-            muted: "#bfdbfe",
-            subtle: "#60a5fa",
-            DEFAULT: "#3b82f6",
-            emphasis: "#1d4ed8",
-            inverted: "#ffffff",
-          },
+        // Dashboard brand palette
+        brand: {
+          1: "#8F3F48",
+          2: "#638994",
+          3: "#FF843B",
+          4: "#79783F",
+          5: "#A68B7A",
+          6: "#000000",
+          faint: "#eff6ff",
+          muted: "#bfdbfe",
+          subtle: "#60a5fa",
+          DEFAULT: "#3b82f6",
+          emphasis: "#1d4ed8",
+          inverted: "#ffffff",
         },
       },
     },
