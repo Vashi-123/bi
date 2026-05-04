@@ -117,6 +117,13 @@ def refresh_groups_table():
     # 3. Create Enriched Views dynamically
     for table_type in ['sales', 'purchase']:
         raw_name = f"{table_type}_raw"
+        
+        # Explicitly drop the view first to clear any stale binding
+        try:
+            conn.execute(f"DROP VIEW IF EXISTS {table_type}")
+        except:
+            pass
+
         try:
             col_res = conn.execute(f"DESCRIBE {raw_name}").fetchall()
             existing_cols = [row[0] for row in col_res]
@@ -125,6 +132,7 @@ def refresh_groups_table():
             existing_cols = []
 
         if not existing_cols:
+            logger.warning(f"No columns found for {raw_name}, skipping view creation.")
             continue
 
         # Find specific columns for grouping (case-insensitive)
@@ -133,7 +141,6 @@ def refresh_groups_table():
         cp_col = next((c for c in existing_cols if c.lower() == 'counterparty'), None)
         
         # Build select list excluding the ones we want to override
-        # We also need to handle 'counterparty' carefully as it might be used as fallback
         base_cols = []
         for c in existing_cols:
             cl = c.lower()
@@ -143,13 +150,12 @@ def refresh_groups_table():
         select_list = ", ".join(base_cols)
         
         # Sources for new columns
-        # Use existing column if found, else use NULL
         gc_source = f's."{gc_col}"' if gc_col else "NULL"
         cg_source = f's."{cg_col}"' if cg_col else "NULL"
         cp_ref = f's."{cp_col}"' if cp_col else "NULL"
         
         query = f"""
-            CREATE OR REPLACE VIEW {table_type} AS 
+            CREATE VIEW {table_type} AS 
             SELECT 
                 {select_list},
                 COALESCE({gc_source}, {cp_ref}) as Groupclient,
@@ -158,8 +164,14 @@ def refresh_groups_table():
         """
         try:
             conn.execute(query)
+            logger.info(f"Successfully created view {table_type} with {len(existing_cols)} columns.")
         except Exception as e:
             logger.error(f"Failed to create view {table_type}: {e}")
+            # Fallback: simple view
+            try:
+                conn.execute(f"CREATE VIEW {table_type} AS SELECT * FROM {raw_name}")
+            except:
+                pass
 
 def refresh_in_memory_data():
     """Forces a reload of parquet files into the in-memory tables."""
