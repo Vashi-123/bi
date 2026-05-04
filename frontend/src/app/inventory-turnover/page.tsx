@@ -483,14 +483,14 @@ export default function InventoryTurnoverPage() {
                       <td className="p-4"><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></td>
                       <td className="p-4"><div className="h-4 bg-slate-100 rounded w-20 ml-auto" /></td>
                       <td className="p-4"><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></td>
-                      <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
-                      <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
-                      <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
-                    </TableRow>
+                      <td className="p-4"><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></td>
+                      <td className="p-4"><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></td>
+                      <td className="p-4"><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></td>
+                    </tr>
                   ))
                 ) : sortedData?.map((item) => (
-                  <TableRow key={item.item_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100/50">
-                    <TableCell className="text-xs font-bold text-[#0C0C0C] py-4 max-w-[300px]">
+                  <tr key={item.item_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100/50">
+                    <td className="p-4 text-xs font-bold text-[#0C0C0C] max-w-[300px]">
                       <Flex justifyContent="start" alignItems="center" className="gap-2">
                         <span className="truncate">{item.item_name}</span>
                         {item.is_group && (
@@ -500,30 +500,30 @@ export default function InventoryTurnoverPage() {
                         )}
                       </Flex>
                       <p className="text-[9px] text-slate-400 font-normal uppercase tracking-tight mt-0.5">{item.product_name}</p>
-                    </TableCell>
-                    <TableCell className="text-right text-xs font-bold text-slate-600">{item.avg_stock.toLocaleString()}</TableCell>
-                    <TableCell className="text-right text-xs font-bold text-[#0C0C0C]">{item.current_stock.toLocaleString()}</TableCell>
-                    <TableCell className="text-right text-xs font-black text-blue-600">
+                    </td>
+                    <td className="p-4 text-right text-xs font-bold text-slate-600">{item.avg_stock.toLocaleString()}</td>
+                    <td className="p-4 text-right text-xs font-bold text-[#0C0C0C]">{item.current_stock.toLocaleString()}</td>
+                    <td className="p-4 text-right text-xs font-black text-blue-600">
                       {formatCurrency(item.stock_value_usd)}
-                    </TableCell>
-                    <TableCell className="text-right text-xs font-bold text-slate-400">
+                    </td>
+                    <td className="p-4 text-right text-xs font-bold text-slate-400">
                       {item.target_15d ? item.target_15d.toLocaleString() : '-'}
-                    </TableCell>
-                    <TableCell className="text-right text-xs font-bold text-[#0C0C0C]">{item.total_sales.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">
+                    </td>
+                    <td className="p-4 text-right text-xs font-bold text-[#0C0C0C]">{item.total_sales.toLocaleString()}</td>
+                    <td className="p-4 text-right">
                       <span className="inline-flex items-center bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-500/20 px-2.5 py-0.5 rounded-md font-bold text-[10px]">
                         {item.turnover_ratio.toFixed(2)}x
                       </span>
-                    </TableCell>
-                    <TableCell className="text-right">
+                    </td>
+                    <td className="p-4 text-right">
                       <span className={`text-xs font-black ${item.turnover_days < 7 ? 'text-emerald-600' : item.turnover_days > 60 ? 'text-rose-600' : 'text-[#0C0C0C]'}`}>
                         {item.turnover_days === 999 ? '∞' : item.turnover_days}
                       </span>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
         </Card>
       </main>
