@@ -712,15 +712,15 @@ def get_filter_options(dimension, search=None, table_name='sales'):
         return out
     except Exception as e:
         logger.error(f"Error getting filter options for {dimension}: {e}")
-        return []
-
 _OVERALL_DATE_RANGE = None
 
 def get_overall_date_range(table_name='sales'):
-    """Returns the absolute min and max dates in the dataset. Cached after first call."""
-    cursor = get_cursor()
-    res = cursor.execute(f"SELECT MIN(CAST(date AS DATE)), MAX(CAST(date AS DATE)) FROM {table_name}").fetchone()
-    return {"min": str(res[0]) if res[0] else None, "max": str(res[1]) if res[1] else None}
+    """Returns the absolute min and max dates in the dataset."""
+    cursor = get_connection().cursor()
+    # Query raw table to avoid view binding issues during reloads
+    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
+    res = cursor.execute(f"SELECT MIN(CAST(date AS DATE)), MAX(CAST(date AS DATE)) FROM {raw_table}").fetchone()
+    return {"min": str(res[0]) if res and res[0] else None, "max": str(res[1]) if res and res[1] else None}
 
 def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', filters=None, table_name='sales'):
     if not filters: filters = {}
