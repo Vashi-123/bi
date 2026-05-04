@@ -88,14 +88,26 @@ def calculate_turnover(df, period_days=30):
     print(f"📊 Calculating turnover metrics for {period_days} days...")
     
     # Group by item
-    stats = df.groupby('item_id').agg({
+    # Determine columns to keep (if they exist in the dataframe)
+    agg_dict = {
         'item_name': 'first',
         'product_name': 'first',
         'quantity': 'mean',      # Average stock
         'daily_sales': 'sum'     # Total sales in period
-    }).reset_index()
+    }
     
-    stats.columns = ['item_id', 'item_name', 'product_name', 'avg_inventory', 'total_sales']
+    # Add optional filter columns
+    for col in ['category', 'Category', 'country', 'Country', 'counterparty', 'Groupclient']:
+        if col in df.columns:
+            agg_dict[col] = 'first'
+
+    stats = df.groupby('item_id').agg(agg_dict).reset_index()
+    
+    # Rename for consistency
+    stats = stats.rename(columns={
+        'quantity': 'avg_inventory',
+        'daily_sales': 'total_sales'
+    })
     
     # Calculate Ratios
     # Turnover Ratio = Total Sales / Average Inventory

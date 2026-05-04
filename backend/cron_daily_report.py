@@ -67,6 +67,9 @@ def generate_daily_report():
 
     except Exception as e:
         logger.error(f"Cron execution failed: {str(e)}")
+    finally:
+        # Crucial: Release memory after heavy calculation
+        database.close_connection()
 
 import time
 
@@ -99,4 +102,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--now":
         generate_daily_report()
     else:
-        run_scheduler("06:00")
+        run_scheduler("01:00")

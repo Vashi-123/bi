@@ -111,6 +111,18 @@ def get_connection():
             _CONN.execute("CREATE TABLE IF NOT EXISTS custom_country_groups (country_code VARCHAR, group_name VARCHAR)")
     return _CONN
 
+def close_connection():
+    """Closes the global DuckDB connection and releases memory."""
+    global _CONN
+    if _CONN is not None:
+        try:
+            _CONN.close()
+            logger.info("Database connection closed and memory released.")
+        except Exception as e:
+            logger.error(f"Error closing database connection: {e}")
+        finally:
+            _CONN = None
+
 def refresh_groups_table():
     """Loads groups from JSON and refreshes the DuckDB 'groups' table and 'sales' view."""
     conn = get_connection()
