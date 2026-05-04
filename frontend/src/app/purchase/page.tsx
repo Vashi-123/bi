@@ -463,45 +463,69 @@ export default function PurchaseDashboard() {
 
         <Flex className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/20" justifyContent="between" alignItems="center">
             {activeMetric === 'stock' ? (
-              <div className="flex-1 flex items-center gap-4">
-                <div className="relative flex-1 max-w-md group">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+              <div className="w-full flex items-center justify-between gap-6">
+                {/* Selected SKUs on the LEFT */}
+                <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+                  {selectedSkus.length > 0 ? (
+                    <>
+                      {selectedSkus.map((sku: string) => (
+                        <Badge 
+                          key={sku} 
+                          color="blue" 
+                          className="rounded-lg px-2.5 py-1 flex items-center gap-1.5 group cursor-pointer hover:bg-rose-50 hover:text-rose-600 transition-all border-none shadow-sm bg-blue-50/50 text-blue-700" 
+                          onClick={() => toggleSkuSelection(sku)}
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-tight">{sku}</span>
+                          <X className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100" />
+                        </Badge>
+                      ))}
+                      <button 
+                        onClick={() => setFilter('Item name', [])} 
+                        className="text-[9px] font-black text-rose-500 uppercase tracking-widest px-3 py-1 hover:bg-rose-50 rounded-lg transition-all"
+                      >
+                        Clear All
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 text-slate-300 ml-2">
+                      <Activity className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Select SKUs to analyze specific stock</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Search SKU on the RIGHT */}
+                <div className="relative w-full max-w-sm group shrink-0">
+                  <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
                     <FilterIcon className="w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                   </div>
                   <input
                     type="text"
                     placeholder="Search SKU..."
-                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-xl text-sm font-bold text-[#0C0C0C] placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-transparent rounded-xl text-sm font-bold text-[#0C0C0C] placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:bg-white focus:border-blue-100 transition-all shadow-inner"
                     value={skuSearchQuery}
                     onChange={(e) => setSkuSearchQuery(e.target.value)}
                   />
                   {skuSearchResults?.results && skuSearchQuery.length > 1 && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-[100] max-h-60 overflow-y-auto scrollbar-hide">
+                    <div className="absolute top-full right-0 left-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-[100] max-h-60 overflow-y-auto scrollbar-hide ring-1 ring-black/5">
                       {skuSearchResults.results.map((res: any) => {
                         const isSelected = selectedSkus.includes(res.name);
                         return (
                           <div 
                             key={res.sku_id}
                             onClick={() => toggleSkuSelection(res.name)}
-                            className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${isSelected ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}
+                            className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all mb-1 last:mb-0 ${isSelected ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}
                           >
-                            <span className="text-[11px] font-bold truncate max-w-[80%]">{res.name}</span>
-                            {isSelected && <X className="w-3 h-3" />}
+                            <span className="text-[11px] font-bold truncate max-w-[85%]">{res.name}</span>
+                            {isSelected ? (
+                              <XCircle className="w-3.5 h-3.5 text-blue-400" />
+                            ) : (
+                              <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-200 group-hover:border-blue-200" />
+                            )}
                           </div>
                         );
                       })}
                     </div>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2 flex-1">
-                  {selectedSkus.map((sku: string) => (
-                    <Badge key={sku} color="blue" className="rounded-lg px-2 py-1 flex items-center gap-1 group cursor-pointer hover:bg-rose-50 hover:text-rose-600 transition-all border-none shadow-sm" onClick={() => toggleSkuSelection(sku)}>
-                      <span className="text-[9px] font-bold uppercase tracking-tight">{sku}</span>
-                      <X className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100" />
-                    </Badge>
-                  ))}
-                  {selectedSkus.length > 0 && (
-                    <button onClick={() => setFilter('Item name', [])} className="text-[9px] font-bold text-rose-500 uppercase tracking-widest px-2 hover:underline">Clear</button>
                   )}
                 </div>
               </div>
