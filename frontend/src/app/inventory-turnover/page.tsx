@@ -260,7 +260,14 @@ export default function InventoryTurnoverPage() {
                 return (
                   <div key={item.item_id} className="space-y-2">
                     <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-                      <span className="truncate pr-4">{item.item_name}</span>
+                      <Flex justifyContent="start" alignItems="center" className="gap-2 truncate pr-4">
+                        <span className="truncate">{item.item_name}</span>
+                        {item.is_group && (
+                          <span className="px-1 py-0.5 rounded-md bg-amber-50 text-amber-600 ring-1 ring-amber-500/10 text-[7px] font-black shrink-0">
+                            #{item.group_key?.replace('g_', '')}
+                          </span>
+                        )}
+                      </Flex>
                       <span className="text-[#0C0C0C] font-extrabold shrink-0">{formatCurrency(item.stock_value_usd)}</span>
                     </div>
                     <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
@@ -405,8 +412,8 @@ export default function InventoryTurnoverPage() {
                       <Flex justifyContent="start" alignItems="center" className="gap-2">
                         <span className="truncate">{item.item_name}</span>
                         {item.is_group && (
-                          <Badge size="xs" color="amber" className="px-1 py-0 rounded text-[8px] font-black uppercase tracking-tighter shrink-0 ring-1 ring-amber-500/20 bg-amber-50 text-amber-600">
-                            Group
+                          <Badge size="xs" color="amber" className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter shrink-0 ring-1 ring-amber-500/20 bg-amber-50 text-amber-600">
+                            Group {item.group_key?.replace('g_', '#')}
                           </Badge>
                         )}
                       </Flex>
