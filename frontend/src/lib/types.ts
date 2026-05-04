@@ -50,8 +50,8 @@ export interface KPICardProps {
   period?: string;
   baselinePeriod?: string;
   value: number;
-  baseline: number | null;
-  growth: number;
+  baseline?: number | null;
+  growth?: number;
   active: boolean;
   onClick: () => void;
   isPercent?: boolean;
