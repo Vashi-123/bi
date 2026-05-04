@@ -55,7 +55,9 @@ def get_inventory_turnover(filters=None):
 
         # Find a column for stock value in USD (prioritize current stock value)
         usd_col = next((c for c in existing_cols if 'current_stock_usd' in c.lower() or 'amount_usd' in c.lower()), None)
-        
+        query_val_expr = f'ROUND("{usd_col}", 2)' if usd_col else '0'
+        order_col = usd_col if usd_col else 'total_sales'
+
         # Check if is_group column exists
         is_group_expr = 'is_group' if 'is_group' in existing_cols else 'FALSE'
         group_key_expr = 'group_key' if 'group_key' in existing_cols else 'NULL'
