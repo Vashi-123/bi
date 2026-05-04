@@ -335,14 +335,17 @@ def set_cached_data(key: str, val: any):
         _CACHE[key] = (val, time.time())
 
 def get_current_window(filters, table_name='sales'):
-    cursor = get_cursor()
-    max_res = cursor.execute(f"SELECT MAX(date) FROM {table_name}").fetchone()
+    cursor = get_connection().cursor()
+    # Use raw table to avoid view binding issues
+    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
+    
+    mode = filters.get('dateMode', 'all')
+    max_res = cursor.execute(f"SELECT MAX(date) FROM {raw_table}").fetchone()
     if not max_res or not max_res[0]: return None, None
     max_d = max_res[0]
 
-    mode = filters.get('dateMode', 'all')
     if mode == 'all':
-        min_d = cursor.execute(f"SELECT MIN(date) FROM {table_name}").fetchone()[0]
+        min_d = cursor.execute(f"SELECT MIN(date) FROM {raw_table}").fetchone()[0]
         return min_d.strftime('%Y-%m-%d'), max_d.strftime('%Y-%m-%d')
     
     if mode == 'between':
