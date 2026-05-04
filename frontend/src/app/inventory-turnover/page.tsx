@@ -9,17 +9,18 @@ import {
 } from '@tremor/react';
 import { 
   Activity, Package, ArrowLeft, Download, RefreshCcw,
-  PieChart as PieIcon, ChevronUp, ChevronDown, Target
+  PieChart as PieIcon, ChevronUp, ChevronDown, DollarSign
 } from 'lucide-react';
 import Link from 'next/link';
 import { API_BASE, fetcher } from '@/lib/constants';
 
-function formatCompact(val: number) {
+function formatCurrency(val: number) {
+  if (val === 0) return '$0';
   const abs = Math.abs(val);
   const sign = val < 0 ? '-' : '';
   if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
   if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
-  return `${sign}$${abs.toLocaleString()}`;
+  return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 const CustomTooltip = ({ payload, active }: any) => {
@@ -48,12 +49,13 @@ interface TurnoverItem {
   product_name: string;
   avg_stock: number;
   current_stock: number;
+  stock_value_usd: number;
   total_sales: number;
   turnover_ratio: number;
   turnover_days: number;
 }
 
-type SortCol = 'item_name' | 'avg_stock' | 'current_stock' | 'total_sales' | 'turnover_ratio' | 'turnover_days' | 'target_15d';
+type SortCol = 'item_name' | 'avg_stock' | 'current_stock' | 'stock_value_usd' | 'total_sales' | 'turnover_ratio' | 'turnover_days' | 'target_15d';
 
 export default function InventoryTurnoverPage() {
   const { data, isLoading, error, mutate } = useSWR<TurnoverItem[]>(
@@ -61,8 +63,8 @@ export default function InventoryTurnoverPage() {
     fetcher
   );
 
-  const [sortCol, setSortCol] = useState<SortCol>('total_sales');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [sortCol, setSortCol] = useState<SortCol>('stock_value_usd');
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
 
   const handleSort = (col: SortCol) => {
     if (sortCol === col) {
@@ -98,13 +100,14 @@ export default function InventoryTurnoverPage() {
 
   const handleExport = () => {
     if (!data || data.length === 0) return;
-    const headers = ['SKU ID', 'SKU Name', 'Product', 'Median Stock', 'Current Stock', 'Sales (30d)', 'Ratio', 'Days', 'Target Stock (15d)'];
+    const headers = ['SKU ID', 'SKU Name', 'Product', 'Median Stock', 'Current Stock', 'Stock Value (USD)', 'Sales (30d)', 'Ratio', 'Days', 'Target Stock (15d)'];
     const rows = processedData.map(item => [
       item.item_id,
       `"${item.item_name.replace(/"/g, '""')}"`,
       `"${item.product_name.replace(/"/g, '""')}"`,
       item.avg_stock,
       item.current_stock,
+      item.stock_value_usd,
       item.total_sales,
       item.turnover_ratio,
       item.turnover_days,
@@ -129,7 +132,7 @@ export default function InventoryTurnoverPage() {
   const skuLeaderboard = useMemo(() => {
     if (!data) return [];
     return [...data]
-      .sort((a, b) => b.turnover_ratio - a.turnover_ratio);
+      .sort((a, b) => b.stock_value_usd - a.stock_value_usd);
   }, [data]);
 
   const distributionData = useMemo(() => {
@@ -232,10 +235,10 @@ export default function InventoryTurnoverPage() {
           <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[650px] flex flex-col overflow-hidden">
             <Flex className="mb-8 shrink-0" justifyContent="between" alignItems="center">
               <div>
-                <Title className="text-xl font-bold text-[#0C0C0C]">SKU Leaderboard</Title>
-                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Top SKUs by Turnover Ratio</Text>
+                <Title className="text-xl font-bold text-[#0C0C0C]">SKU Value Leaderboard</Title>
+                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Top SKUs by Stock Value (USD)</Text>
               </div>
-              <Badge className="rounded-md font-bold uppercase text-[9px] bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-500/20">Ratio</Badge>
+              <Badge className="rounded-md font-bold uppercase text-[9px] bg-blue-50 text-blue-600 ring-1 ring-inset ring-blue-500/20">Capital</Badge>
             </Flex>
             
             <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-hide">
@@ -247,8 +250,8 @@ export default function InventoryTurnoverPage() {
                   </div>
                 ))
               ) : skuLeaderboard.map((item, idx) => {
-                const maxRatio = skuLeaderboard[0].turnover_ratio;
-                const percentage = (item.turnover_ratio / maxRatio) * 100;
+                const maxValue = skuLeaderboard[0].stock_value_usd || 1;
+                const percentage = ((item.stock_value_usd || 0) / maxValue) * 100;
                 const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A'];
                 const color = colors[idx % colors.length];
 
@@ -256,7 +259,7 @@ export default function InventoryTurnoverPage() {
                   <div key={item.item_id} className="space-y-2">
                     <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase tracking-tight">
                       <span className="truncate pr-4">{item.item_name}</span>
-                      <span className="text-[#0C0C0C] font-extrabold shrink-0">{item.turnover_ratio.toFixed(2)}x</span>
+                      <span className="text-[#0C0C0C] font-extrabold shrink-0">{formatCurrency(item.stock_value_usd)}</span>
                     </div>
                     <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
                       <div 
@@ -340,6 +343,14 @@ export default function InventoryTurnoverPage() {
                   </TableHeaderCell>
                   <TableHeaderCell 
                     className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    onClick={() => handleSort('stock_value_usd')}
+                  >
+                    <Flex justifyContent="end" className="gap-1 text-blue-600">
+                      Stock Value {sortCol === 'stock_value_usd' && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                    </Flex>
+                  </TableHeaderCell>
+                  <TableHeaderCell 
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('target_15d')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -379,6 +390,7 @@ export default function InventoryTurnoverPage() {
                       <TableCell><div className="h-4 bg-slate-100 rounded w-48" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
+                      <TableCell><div className="h-4 bg-slate-100 rounded w-20 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-16 ml-auto" /></TableCell>
                       <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
@@ -392,7 +404,10 @@ export default function InventoryTurnoverPage() {
                       <p className="text-[9px] text-slate-400 font-normal uppercase tracking-tight mt-0.5">{item.product_name}</p>
                     </TableCell>
                     <TableCell className="text-right text-xs font-bold text-slate-600">{item.avg_stock.toLocaleString()}</TableCell>
-                    <TableCell className="text-right text-xs font-bold text-blue-600">{item.current_stock.toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-xs font-bold text-[#0C0C0C]">{item.current_stock.toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-xs font-black text-blue-600">
+                      {formatCurrency(item.stock_value_usd)}
+                    </TableCell>
                     <TableCell className="text-right text-xs font-bold text-slate-400">
                       {item.target_15d ? item.target_15d.toLocaleString() : '-'}
                     </TableCell>

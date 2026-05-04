@@ -53,6 +53,9 @@ def get_inventory_turnover(filters=None):
             if clauses:
                 filter_clause = " AND ".join(clauses)
 
+        # Find a column for stock value in USD
+        usd_col = next((c for c in existing_cols if 'amount_usd' in c.lower() or 'stock_usd' in c.lower()), 'total_sales')
+        
         query = f"""
             SELECT 
                 item_id,
@@ -60,18 +63,19 @@ def get_inventory_turnover(filters=None):
                 product_name,
                 ROUND(avg_inventory, 2) as avg_stock,
                 ROUND(current_stock, 2) as current_stock,
+                ROUND("{usd_col}", 2) as stock_value_usd,
                 total_sales,
                 turnover_ratio,
                 turnover_days
             FROM read_parquet('{latest_report}')
             WHERE {filter_clause}
-            ORDER BY total_sales DESC
+            ORDER BY "{usd_col}" DESC
             LIMIT 1000
         """
         res = cursor.execute(query).fetchall()
         
         # Convert to list of dicts
-        columns = ['item_id', 'item_name', 'product_name', 'avg_stock', 'current_stock', 'total_sales', 'turnover_ratio', 'turnover_days']
+        columns = ['item_id', 'item_name', 'product_name', 'avg_stock', 'current_stock', 'stock_value_usd', 'total_sales', 'turnover_ratio', 'turnover_days']
         return [dict(zip(columns, row)) for row in res]
         
     except Exception as e:
