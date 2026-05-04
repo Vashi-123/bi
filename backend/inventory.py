@@ -53,9 +53,12 @@ def get_inventory_turnover(filters=None):
             if clauses:
                 filter_clause = " AND ".join(clauses)
 
-        # Find a column for stock value in USD
-        usd_col = next((c for c in existing_cols if 'amount_usd' in c.lower() or 'stock_usd' in c.lower()), 'total_sales')
+        # Find a column for stock value in USD (prioritize current stock value)
+        usd_col = next((c for c in existing_cols if 'current_stock_usd' in c.lower() or 'amount_usd' in c.lower()), None)
         
+        query_val_expr = f'ROUND("{usd_col}", 2)' if usd_col else '0'
+        order_col = usd_col if usd_col else 'total_sales'
+
         query = f"""
             SELECT 
                 item_id,
@@ -63,13 +66,13 @@ def get_inventory_turnover(filters=None):
                 product_name,
                 ROUND(avg_inventory, 2) as avg_stock,
                 ROUND(current_stock, 2) as current_stock,
-                ROUND("{usd_col}", 2) as stock_value_usd,
+                {query_val_expr} as stock_value_usd,
                 total_sales,
                 turnover_ratio,
                 turnover_days
             FROM read_parquet('{latest_report}')
             WHERE {filter_clause}
-            ORDER BY "{usd_col}" DESC
+            ORDER BY "{order_col}" DESC
             LIMIT 1000
         """
         res = cursor.execute(query).fetchall()

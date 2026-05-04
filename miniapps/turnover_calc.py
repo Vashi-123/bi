@@ -96,6 +96,10 @@ def calculate_turnover(df, period_days=30):
         'daily_sales': 'sum'     # Total sales in period
     }
     
+    # Add stock value if available
+    if 'amount_usd' in df.columns:
+        agg_dict['amount_usd'] = 'median'
+    
     # Add optional filter columns
     for col in ['category', 'Category', 'country', 'Country', 'counterparty', 'Groupclient']:
         if col in df.columns:
@@ -106,28 +110,33 @@ def calculate_turnover(df, period_days=30):
     # Rename for consistency
     stats = stats.rename(columns={
         'quantity': 'avg_inventory',
-        'daily_sales': 'total_sales'
+        'daily_sales': 'total_sales',
+        'amount_usd': 'avg_stock_value_usd'
     })
     
     # Calculate Ratios
     # Turnover Ratio = Total Sales / Average Inventory
-    # We use a small epsilon to avoid division by zero or handle zero stock/sales cases
     stats['turnover_ratio'] = stats['total_sales'] / stats['avg_inventory'].replace(0, np.nan)
     
-    # Turnover in Days = Period / Turnover Ratio
-    # Or: (Avg Inventory / Total Sales) * Period
+    # Turnover in Days = (Avg Inventory / Total Sales) * Period
     stats['turnover_days'] = (stats['avg_inventory'] / stats['total_sales'].replace(0, np.nan)) * period_days
     
-    # Handle NaNs (e.g., zero sales or zero inventory)
+    # Handle NaNs
     stats['turnover_ratio'] = stats['turnover_ratio'].fillna(0)
-    # If sales are 0, turnover_days is practically infinite. We'll use 999 as a cap.
     stats['turnover_days'] = stats['turnover_days'].fillna(999).replace([np.inf, -np.inf], 999).round(1)
     
-    # Add current status (latest quantity)
-    latest_qty = df.sort_values('date').groupby('item_id')['quantity'].last().reset_index()
-    latest_qty.columns = ['item_id', 'current_stock']
+    # Add current status (latest quantity AND latest value)
+    cols_to_fetch = ['item_id', 'quantity']
+    if 'amount_usd' in df.columns: cols_to_fetch.append('amount_usd')
     
-    stats = stats.merge(latest_qty, on='item_id', how='left')
+    latest_data = df.sort_values('date').groupby('item_id')[cols_to_fetch].last().reset_index()
+    
+    rename_map = {'quantity': 'current_stock'}
+    if 'amount_usd' in df.columns: rename_map['amount_usd'] = 'current_stock_usd'
+    
+    latest_data = latest_data.rename(columns=rename_map)
+    
+    stats = stats.merge(latest_data, on='item_id', how='left')
     
     return stats
 
