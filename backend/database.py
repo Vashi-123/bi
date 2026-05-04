@@ -425,6 +425,9 @@ def get_kpi_data(filters=None, table_name='sales'):
     qty_col = "Qty" if 'qty' in existing_cols else "0"
 
     # 1. Base query depends on mode
+    # Get the latest date for labels
+    max_res = cursor.execute(f"SELECT MAX(date) FROM {raw_table}").fetchone()
+    max_d = max_res[0] if max_res and max_res[0] else None
     max_date_str = max_d.strftime('%Y-%m-%d') if max_d else None
     
     if mode == 'all':
