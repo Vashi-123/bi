@@ -23,6 +23,14 @@ function formatCurrency(val: number) {
   return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
+// Tailwind Safelist for Tremor dynamic colors:
+// fill-rose-500 bg-rose-500 text-rose-500 ring-rose-500
+// fill-cyan-500 bg-cyan-500 text-cyan-500 ring-cyan-500
+// fill-orange-500 bg-orange-500 text-orange-500 ring-orange-500
+// fill-emerald-500 bg-emerald-500 text-emerald-500 ring-emerald-500
+// fill-indigo-500 bg-indigo-500 text-indigo-500 ring-indigo-500
+// fill-slate-500 bg-slate-500 text-slate-500 ring-slate-500
+
 const CustomTooltip = ({ payload, active }: any) => {
   if (!active || !payload || payload.length === 0) return null;
   // In a multi-category chart, find the payload item that has a value
