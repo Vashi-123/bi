@@ -456,43 +456,29 @@ export default function PurchaseDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <KPICard title="Total Spending" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.revenue.value} baseline={kpiData?.revenue.prev} growth={kpiData?.revenue.growth} active={activeMetric === 'revenue'} onClick={() => setActiveMetric('revenue')} isCurrency={true} hasComparison={canCompare} />
+            <KPICard title="Quantity" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.qty.value} baseline={kpiData?.qty.prev} growth={kpiData?.qty.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} hasComparison={canCompare} />
             <KPICard title="Stock Value" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.stock.value} baseline={kpiData?.stock.prev} growth={kpiData?.stock.growth} active={activeMetric === 'stock'} onClick={() => setActiveMetric('stock')} isCurrency={true} hasComparison={canCompare} />
             <KPICard title="Margin" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.margin.value} baseline={kpiData?.margin.prev} growth={kpiData?.margin.growth} active={activeMetric === 'margin'} onClick={() => setActiveMetric('margin')} isPercent={true} hasComparison={canCompare} />
-            <KPICard title="Quantity" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.qty.value} baseline={kpiData?.qty.prev} growth={kpiData?.qty.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} hasComparison={canCompare} />
         </div>
 
-        <Flex className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/20" justifyContent="between" alignItems="center">
+        <Flex className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/20" justifyContent="end" alignItems="center">
             {activeMetric === 'stock' ? (
-              <div className="w-full flex items-center justify-between gap-6">
-                {/* Selected SKUs on the LEFT */}
-                <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
-                  {selectedSkus.length > 0 ? (
-                    <>
-                      {selectedSkus.map((sku: string) => (
-                        <Badge 
-                          key={sku} 
-                          color="blue" 
-                          className="rounded-lg px-2.5 py-1 flex items-center gap-1.5 group cursor-pointer hover:bg-rose-50 hover:text-rose-600 transition-all border-none shadow-sm bg-blue-50/50 text-blue-700" 
-                          onClick={() => toggleSkuSelection(sku)}
-                        >
-                          <span className="text-[10px] font-black uppercase tracking-tight">{sku}</span>
-                          <X className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100" />
-                        </Badge>
-                      ))}
-                      <button 
-                        onClick={() => setFilter('Item name', [])} 
-                        className="text-[9px] font-black text-rose-500 uppercase tracking-widest px-3 py-1 hover:bg-rose-50 rounded-lg transition-all"
-                      >
-                        Clear All
-                      </button>
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-2 text-slate-300 ml-2">
-                      <Activity className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Select SKUs to analyze specific stock</span>
-                    </div>
-                  )}
-                </div>
+              <div className="flex items-center gap-4">
+                {/* Minimal Selected Counter */}
+                {selectedSkus.length > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100/50">
+                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">
+                      {selectedSkus.length} SKU Selected
+                    </span>
+                    <button 
+                      onClick={() => setFilter('Item name', [])}
+                      className="p-1 hover:bg-blue-100 rounded-md transition-colors"
+                      title="Clear All"
+                    >
+                      <X className="w-3 h-3 text-blue-400" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Search SKU on the RIGHT */}
                 <div className="relative w-full max-w-sm group shrink-0">
@@ -506,9 +492,10 @@ export default function PurchaseDashboard() {
                     value={skuSearchQuery}
                     onChange={(e) => setSkuSearchQuery(e.target.value)}
                   />
-                  {skuSearchResults?.results && skuSearchQuery.length > 1 && (
-                    <div className="absolute top-full right-0 left-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-[100] max-h-60 overflow-y-auto scrollbar-hide ring-1 ring-black/5">
-                      {skuSearchResults.results.map((res: any) => {
+                  {/* Dropdown shows search results OR selected items if query is empty but focused */}
+                  {(skuSearchResults?.results || selectedSkus.length > 0) && skuSearchQuery.length > 1 && (
+                    <div className="absolute top-full right-0 left-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-[100] max-h-80 overflow-y-auto scrollbar-hide ring-1 ring-black/5">
+                      {skuSearchResults?.results?.map((res: any) => {
                         const isSelected = selectedSkus.includes(res.name);
                         return (
                           <div 
