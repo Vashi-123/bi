@@ -56,14 +56,17 @@ def get_inventory_turnover(filters=None):
         # Find a column for stock value in USD (prioritize current stock value)
         usd_col = next((c for c in existing_cols if 'current_stock_usd' in c.lower() or 'amount_usd' in c.lower()), None)
         
-        query_val_expr = f'ROUND("{usd_col}", 2)' if usd_col else '0'
-        order_col = usd_col if usd_col else 'total_sales'
+        # Check if is_group column exists
+        is_group_expr = 'is_group' if 'is_group' in existing_cols else 'FALSE'
+        group_key_expr = 'group_key' if 'group_key' in existing_cols else 'NULL'
 
         query = f"""
             SELECT 
                 item_id,
                 item_name,
                 product_name,
+                {group_key_expr} as group_key,
+                CAST({is_group_expr} AS BOOLEAN) as is_group,
                 ROUND(avg_inventory, 2) as avg_stock,
                 ROUND(current_stock, 2) as current_stock,
                 {query_val_expr} as stock_value_usd,
@@ -78,7 +81,7 @@ def get_inventory_turnover(filters=None):
         res = cursor.execute(query).fetchall()
         
         # Convert to list of dicts
-        columns = ['item_id', 'item_name', 'product_name', 'avg_stock', 'current_stock', 'stock_value_usd', 'total_sales', 'turnover_ratio', 'turnover_days']
+        columns = ['item_id', 'item_name', 'product_name', 'group_key', 'is_group', 'avg_stock', 'current_stock', 'stock_value_usd', 'total_sales', 'turnover_ratio', 'turnover_days']
         return [dict(zip(columns, row)) for row in res]
         
     except Exception as e:

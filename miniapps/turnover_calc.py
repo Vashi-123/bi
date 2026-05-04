@@ -58,6 +58,11 @@ def normalize_data(df_stock, df_sales):
     
     # Clean Stock
     df_stock['item_id'] = df_stock['item_id'].astype(str).str.strip()
+    if 'group_key' in df_stock.columns:
+        df_stock['group_key'] = df_stock['group_key'].astype(str).str.strip()
+    else:
+        df_stock['group_key'] = 'i_' + df_stock['item_id']
+        
     df_stock['date'] = pd.to_datetime(df_stock['date']).dt.strftime('%Y-%m-%d')
     
     # Clean Sales
@@ -65,12 +70,17 @@ def normalize_data(df_stock, df_sales):
     df_sales_filtered['item_id'] = df_sales_filtered['item_id'].astype(str).str.strip()
     df_sales_filtered['date'] = pd.to_datetime(df_sales_filtered['created_at_ymd']).dt.strftime('%Y-%m-%d')
     
-    # Group sales by item and date
-    sales_daily = df_sales_filtered.groupby(['item_id', 'date'])['qty'].sum().reset_index()
+    # Mapping item_id to group_key (using latest stock state to be safe)
+    mapping = df_stock[['item_id', 'group_key']].drop_duplicates('item_id')
+    df_sales_filtered = df_sales_filtered.merge(mapping, on='item_id', how='left')
+    df_sales_filtered['group_key'] = df_sales_filtered['group_key'].fillna('i_' + df_sales_filtered['item_id'])
+
+    # Group sales by group_key and date
+    sales_daily = df_sales_filtered.groupby(['group_key', 'date'])['qty'].sum().reset_index()
     sales_daily = sales_daily.rename(columns={'qty': 'daily_sales'})
     
-    # Merge sales into stock
-    df = df_stock.merge(sales_daily, on=['item_id', 'date'], how='left')
+    # Merge sales into stock by group_key and date
+    df = df_stock.merge(sales_daily, on=['group_key', 'date'], how='left')
     df['daily_sales'] = df['daily_sales'].fillna(0)
     
     return df
@@ -93,7 +103,8 @@ def calculate_turnover(df, period_days=30):
         'item_name': 'first',
         'product_name': 'first',
         'quantity': 'median',    # Median stock (more robust to outliers than mean)
-        'daily_sales': 'sum'     # Total sales in period
+        'daily_sales': 'sum',    # Total sales in period (already aggregated by group_key in normalize_data)
+        'group_key': 'first'
     }
     
     # Add stock value if available
@@ -106,6 +117,9 @@ def calculate_turnover(df, period_days=30):
             agg_dict[col] = 'first'
 
     stats = df.groupby('item_id').agg(agg_dict).reset_index()
+    
+    # Identify groups (those with g_ prefix)
+    stats['is_group'] = stats['group_key'].astype(str).str.startswith('g_')
     
     # Rename for consistency
     stats = stats.rename(columns={

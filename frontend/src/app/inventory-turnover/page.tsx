@@ -47,6 +47,8 @@ interface TurnoverItem {
   item_id: string;
   item_name: string;
   product_name: string;
+  group_key: string | null;
+  is_group: boolean;
   avg_stock: number;
   current_stock: number;
   stock_value_usd: number;
@@ -399,8 +401,15 @@ export default function InventoryTurnoverPage() {
                   ))
                 ) : sortedData?.map((item) => (
                   <TableRow key={item.item_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100/50">
-                    <TableCell className="text-xs font-bold text-[#0C0C0C] py-4 max-w-[300px] truncate">
-                      {item.item_name}
+                    <TableCell className="text-xs font-bold text-[#0C0C0C] py-4 max-w-[300px]">
+                      <Flex justifyContent="start" alignItems="center" className="gap-2">
+                        <span className="truncate">{item.item_name}</span>
+                        {item.is_group && (
+                          <Badge size="xs" color="amber" className="px-1 py-0 rounded text-[8px] font-black uppercase tracking-tighter shrink-0 ring-1 ring-amber-500/20 bg-amber-50 text-amber-600">
+                            Group
+                          </Badge>
+                        )}
+                      </Flex>
                       <p className="text-[9px] text-slate-400 font-normal uppercase tracking-tight mt-0.5">{item.product_name}</p>
                     </TableCell>
                     <TableCell className="text-right text-xs font-bold text-slate-600">{item.avg_stock.toLocaleString()}</TableCell>
