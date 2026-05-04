@@ -343,13 +343,21 @@ export default function InventoryTurnoverPage() {
             </Flex>
             
             <div className="flex-1 min-h-0 w-full mt-4 flex flex-col overflow-hidden">
-              <div className="flex-1">
+              <div className="flex-1 distribution-chart-container relative">
+                <style>{`
+                  .distribution-chart-container .recharts-bar:nth-child(1) path { fill: #8F3F48 !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(2) path { fill: #638994 !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(3) path { fill: #FF843B !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(4) path { fill: #79783F !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(5) path { fill: #A68B7A !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #000000 !important; }
+                `}</style>
                 <BarChart
                   className="h-full"
                   data={distributionData}
                   index="range"
                   categories={['0-1', '1-5', '5-15', '15-30', '30-60', '60+']}
-                  colors={['brand1', 'brand2', 'brand3', 'brand4', 'brand5', 'brand6']}
+                  colors={['rose', 'cyan', 'orange', 'emerald', 'indigo', 'slate']}
                   valueFormatter={(number) => number?.toLocaleString() ?? '0'}
                   showAnimation={true}
                   yAxisWidth={48}
