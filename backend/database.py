@@ -44,71 +44,16 @@ def get_connection():
     if _CONN is None:
         # Initialize one global connection
         _CONN = duckdb.connect(database=':memory:')
-        try:
-            # Load into actual TABLE for speed (uses RAM)
-            logger.info("Loading sales data into memory...")
-            start_load = time.time()
-            
-            # Load SALES data
-            # Optimization: Instead of scanning all files for MAX(date), 
-            # we just load the last 6 months relative to CURRENT_DATE.
-            _CONN.execute(f"""
-                CREATE OR REPLACE TABLE sales_raw AS 
-                SELECT * FROM read_parquet('{DATA_PATH}') 
-                WHERE CAST(date AS DATE) >= CURRENT_DATE - INTERVAL '6 month'
-            """)
-            logger.info("Loaded sales data into RAM (Last 6 months window)")
-
-            # Load PURCHASE data
-            if os.path.exists(PURCHASE_DATA_PATH):
-                try:
-                    max_row_p = _CONN.execute(f"SELECT MAX(date) FROM read_parquet('{PURCHASE_DATA_PATH}')").fetchone()
-                    if max_row_p and max_row_p[0]:
-                        max_date_p = max_row_p[0]
-                        _CONN.execute(f"""
-                            CREATE OR REPLACE TABLE purchase_raw AS 
-                            SELECT * FROM read_parquet('{PURCHASE_DATA_PATH}') 
-                            WHERE CAST(date AS DATE) >= CAST('{max_date_p}' AS DATE) - INTERVAL '6 month'
-                        """)
-                        logger.info(f"Loaded purchase data into RAM. Window: 6 months from {max_date_p}")
-                    else:
-                        _CONN.execute(f"CREATE OR REPLACE TABLE purchase_raw AS SELECT * FROM read_parquet('{PURCHASE_DATA_PATH}')")
-                except Exception as p_err:
-                    logger.warning(f"Could not load purchase data: {p_err}")
-                    _CONN.execute("CREATE TABLE IF NOT EXISTS purchase_raw AS SELECT * FROM sales_raw LIMIT 0")
-            else:
-                # Empty table if path doesn't exist
-                _CONN.execute("CREATE TABLE IF NOT EXISTS purchase_raw AS SELECT * FROM sales_raw LIMIT 0")
-            
-            # Load STOCK data into RAM
-            try:
-                _CONN.execute(f"""
-                    CREATE OR REPLACE TABLE stock_raw AS 
-                    SELECT * FROM read_parquet('{STOCK_RAW_PATH}') 
-                    WHERE CAST(date AS DATE) >= CURRENT_DATE - INTERVAL '6 month'
-                """)
-                logger.info("Loaded stock data into RAM")
-            except Exception as st_err:
-                logger.warning(f"Could not load stock data into RAM: {st_err}")
-                _CONN.execute("CREATE TABLE IF NOT EXISTS stock_raw (item_id VARCHAR, item_name VARCHAR, product_name VARCHAR, quantity DOUBLE, date DATE)")
-            
-            # Load custom groups
-            refresh_groups_table()
-
-            # Create an in-memory TABLE for statuses
-            if os.path.exists(STATUS_PATH):
-                _CONN.execute(f"CREATE OR REPLACE TABLE statuses_view AS SELECT * FROM read_parquet('{STATUS_PATH}')")
-            elif os.path.exists("unified_status.parquet"):
-                _CONN.execute("CREATE OR REPLACE TABLE statuses_view AS SELECT * FROM read_parquet('unified_status.parquet')")
-            
-            logger.info("Database initialized with in-memory tables.")
-
-        except Exception as e:
-            logger.error(f"Critical error during DB initialization: {e}")
-            # Fallback: create tables as views if memory load failed
-            _CONN.execute(f"CREATE TABLE IF NOT EXISTS sales_raw AS SELECT * FROM read_parquet('{DATA_PATH}') LIMIT 0")
-            _CONN.execute("CREATE TABLE IF NOT EXISTS custom_groups (counterparty VARCHAR, group_name VARCHAR)")
-            _CONN.execute("CREATE TABLE IF NOT EXISTS custom_country_groups (country_code VARCHAR, group_name VARCHAR)")
+        # Create empty tables immediately so queries don't fail before data is loaded
+        _CONN.execute("CREATE TABLE IF NOT EXISTS sales_raw (date DATE, Amount_USD DOUBLE, Profit_USD DOUBLE, Qty DOUBLE, counterparty VARCHAR, \"Product country\" VARCHAR, Category VARCHAR, \"Product name\" VARCHAR, \"Margin_%\" DOUBLE, Groupclient VARCHAR, CountryGroup VARCHAR)")
+        _CONN.execute("CREATE TABLE IF NOT EXISTS purchase_raw AS SELECT * FROM sales_raw LIMIT 0")
+        _CONN.execute("CREATE TABLE IF NOT EXISTS stock_raw (item_id VARCHAR, item_name VARCHAR, product_name VARCHAR, quantity DOUBLE, date DATE)")
+        _CONN.execute("CREATE TABLE IF NOT EXISTS custom_groups (counterparty VARCHAR, group_name VARCHAR)")
+        _CONN.execute("CREATE TABLE IF NOT EXISTS custom_country_groups (country_code VARCHAR, group_name VARCHAR)")
+        _CONN.execute("CREATE TABLE IF NOT EXISTS statuses_view (name VARCHAR, status VARCHAR, status_owner VARCHAR, type VARCHAR)")
+        
+        # Initialize views
+        refresh_groups_table()
     return _CONN
 
 def close_connection():

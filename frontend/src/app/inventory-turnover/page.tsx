@@ -9,7 +9,7 @@ import {
 } from '@tremor/react';
 import { 
   Activity, Package, ArrowLeft, Download, RefreshCcw,
-  PieChart as PieIcon
+  PieChart as PieIcon, TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
 import { API_BASE, fetcher } from '@/lib/constants';
@@ -21,6 +21,26 @@ function formatCompact(val: number) {
   if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
   return `${sign}$${abs.toLocaleString()}`;
 }
+
+const CustomTooltip = ({ payload, active }: any) => {
+  if (!active || !payload || payload.length === 0) return null;
+  const data = payload[0].payload;
+  return (
+    <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-xl">
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{data.range} Days</p>
+      <div className="space-y-1">
+        <Flex className="gap-4">
+          <Text className="text-xs font-bold text-slate-600">Count:</Text>
+          <Text className="text-xs font-black text-[#0C0C0C]">{data.SKUs} SKUs</Text>
+        </Flex>
+        <Flex className="gap-4">
+          <Text className="text-xs font-bold text-slate-600">Share:</Text>
+          <Text className="text-xs font-black text-blue-600">{data['Share %']}%</Text>
+        </Flex>
+      </div>
+    </div>
+  );
+};
 
 interface TurnoverItem {
   item_id: string;
@@ -68,26 +88,10 @@ export default function InventoryTurnoverPage() {
     document.body.removeChild(link);
   };
 
-  const categoryData = useMemo(() => {
+  const skuLeaderboard = useMemo(() => {
     if (!data) return [];
-    const categories: Record<string, { name: string, daysList: number[] }> = {};
-    
-    data.filter(i => i.total_sales > 0).forEach(item => {
-      const cat = item.product_name || 'Uncategorized';
-      if (!categories[cat]) {
-        categories[cat] = { name: cat, daysList: [] };
-      }
-      categories[cat].daysList.push(item.turnover_days);
-    });
-
-    return Object.values(categories)
-      .map(cat => {
-        const sorted = [...cat.daysList].sort((a, b) => a - b);
-        const mid = Math.floor(sorted.length / 2);
-        const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-        return { name: cat.name, medianDays: median };
-      })
-      .sort((a, b) => a.medianDays - b.medianDays)
+    return [...data]
+      .sort((a, b) => b.turnover_ratio - a.turnover_ratio)
       .slice(0, 15);
   }, [data]);
 
@@ -188,13 +192,13 @@ export default function InventoryTurnoverPage() {
 
       <main className="relative z-10 max-w-[1600px] mx-auto p-10 space-y-10 pb-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[600px] flex flex-col overflow-hidden">
+          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[650px] flex flex-col overflow-hidden">
             <Flex className="mb-8 shrink-0" justifyContent="between" alignItems="center">
               <div>
-                <Title className="text-xl font-bold text-[#0C0C0C]">Leaderboard</Title>
-                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Categories by Median Days</Text>
+                <Title className="text-xl font-bold text-[#0C0C0C]">SKU Leaderboard</Title>
+                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Top SKUs by Turnover Ratio</Text>
               </div>
-              <Badge color="orange" className="rounded-md font-bold uppercase text-[9px]">By Days</Badge>
+              <Badge color="emerald" className="rounded-md font-bold uppercase text-[9px]">Velocity</Badge>
             </Flex>
             
             <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-hide">
@@ -205,17 +209,17 @@ export default function InventoryTurnoverPage() {
                     <div className="h-2 bg-slate-50 rounded-full" />
                   </div>
                 ))
-              ) : categoryData.map((cat, idx) => {
-                const maxDaysInTop = Math.max(...categoryData.map(c => c.medianDays));
-                const percentage = (cat.medianDays / maxDaysInTop) * 100;
+              ) : skuLeaderboard.map((item, idx) => {
+                const maxRatio = skuLeaderboard[0].turnover_ratio;
+                const percentage = (item.turnover_ratio / maxRatio) * 100;
                 const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A'];
                 const color = colors[idx % colors.length];
 
                 return (
-                  <div key={cat.name} className="space-y-2">
+                  <div key={item.item_id} className="space-y-2">
                     <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase tracking-tight">
-                      <span className="truncate pr-4">{cat.name}</span>
-                      <span className="text-[#0C0C0C] font-extrabold shrink-0">{cat.medianDays.toFixed(1)} days</span>
+                      <span className="truncate pr-4">{item.item_name}</span>
+                      <span className="text-[#0C0C0C] font-extrabold shrink-0">{item.turnover_ratio.toFixed(2)}x</span>
                     </div>
                     <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
                       <div 
@@ -229,35 +233,38 @@ export default function InventoryTurnoverPage() {
             </div>
           </Card>
 
-          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[600px] flex flex-col overflow-hidden">
+          <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[650px] flex flex-col overflow-hidden">
             <Flex className="mb-2 shrink-0" justifyContent="between" alignItems="start">
               <div>
                 <Title className="text-xl font-bold text-[#0C0C0C]">Inventory Distribution</Title>
-                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Share of SKUs by Turnover Days</Text>
+                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">SKU Count & Share by Turnover Days</Text>
               </div>
               <div className="p-2 bg-slate-50 rounded-xl">
                 <PieIcon className="w-5 h-5 text-slate-400" />
               </div>
             </Flex>
             
-            <div className="flex-1 min-h-0 w-full mt-4">
-              <BarChart
-                className="h-[400px]"
-                data={distributionData}
-                index="range"
-                categories={["Share %"]}
-                colors={["orange"]}
-                valueFormatter={(number) => `${number}%`}
-                showAnimation={true}
-                yAxisWidth={48}
-                showLegend={false}
-              />
-              <div className="mt-8 grid grid-cols-3 gap-4">
+            <div className="flex-1 min-h-0 w-full mt-4 flex flex-col">
+              <div className="flex-1">
+                <BarChart
+                  className="h-full"
+                  data={distributionData}
+                  index="range"
+                  categories={["SKUs"]}
+                  colors={["blue"]}
+                  valueFormatter={(number) => number.toLocaleString()}
+                  showAnimation={true}
+                  yAxisWidth={48}
+                  showLegend={false}
+                  customTooltip={CustomTooltip}
+                />
+              </div>
+              <div className="mt-6 grid grid-cols-3 gap-3 shrink-0">
                 {distributionData.slice(0, 3).map((item, idx) => (
-                  <div key={item.range} className="p-4 rounded-2xl bg-slate-50 border border-slate-100/50">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">{item.range} Days</p>
-                    <p className="text-lg font-black text-[#0C0C0C]">{item['Share %']}%</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{item.SKUs} SKUs</p>
+                  <div key={item.range} className="p-3 rounded-2xl bg-slate-50 border border-slate-100/50">
+                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1 truncate">{item.range} Days</p>
+                    <p className="text-base font-black text-[#0C0C0C]">{item['Share %']}%</p>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">{item.SKUs} SKUs</p>
                   </div>
                 ))}
               </div>
@@ -265,17 +272,27 @@ export default function InventoryTurnoverPage() {
           </Card>
         </div>
 
-        <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white flex flex-col min-h-[500px]">
+        <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white flex flex-col h-[700px]">
+          <Flex className="mb-6 shrink-0" justifyContent="between" alignItems="center">
+            <div>
+              <Title className="text-xl font-bold text-[#0C0C0C]">Inventory Details</Title>
+              <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Comprehensive SKU performance list</Text>
+            </div>
+            <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
+               <TrendingUp className="w-5 h-5 text-slate-400" />
+            </div>
+          </Flex>
+          
           <div className="flex-1 overflow-auto scrollbar-hide">
             <Table>
-              <TableHead>
+              <TableHead className="sticky top-0 bg-white z-20">
                 <TableRow className="border-b border-slate-100">
-                  <TableHeaderCell className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
-                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Median Stock</TableHeaderCell>
-                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Current Stock</TableHeaderCell>
-                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Sales (30d)</TableHeaderCell>
-                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Ratio</TableHeaderCell>
-                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4">Days</TableHeaderCell>
+                  <TableHeaderCell className="text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">SKU Name</TableHeaderCell>
+                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">Median Stock</TableHeaderCell>
+                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">Current Stock</TableHeaderCell>
+                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">Sales (30d)</TableHeaderCell>
+                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">Ratio</TableHeaderCell>
+                  <TableHeaderCell className="text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white">Days</TableHeaderCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -290,7 +307,7 @@ export default function InventoryTurnoverPage() {
                       <TableCell><div className="h-4 bg-slate-100 rounded w-12 ml-auto" /></TableCell>
                     </TableRow>
                   ))
-                ) : data?.slice(0, 100).map((item) => (
+                ) : data?.map((item) => (
                   <TableRow key={item.item_id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100/50">
                     <TableCell className="text-xs font-bold text-[#0C0C0C] py-4 max-w-[300px] truncate">
                       {item.item_name}

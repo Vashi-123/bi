@@ -9,6 +9,7 @@ from enum import Enum
 import os
 import sys
 from dotenv import load_dotenv
+import asyncio
 
 # Load environment variables from .env file
 load_dotenv()
@@ -91,12 +92,16 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("🚀 Starting up: Initializing database tables...")
+    logger.info("🚀 Starting up: Initializing database connection...")
     try:
-        # refresh_in_memory_data will internally call get_connection, 
-        # which now handles groups and views creation automatically.
-        database.refresh_in_memory_data()
-        logger.info("✅ Database tables initialized successfully.")
+        # Initial connection is now fast (no data load)
+        database.get_connection()
+        
+        # Trigger heavy data load in background so server can start immediately
+        logger.info("⏳ Starting background data load into RAM (Sales/Stock)...")
+        asyncio.create_task(asyncio.to_thread(database.refresh_in_memory_data))
+        
+        logger.info("✅ Server online and accepting requests.")
     except Exception as e:
         logger.error(f"❌ Failed to initialize database on startup: {e}", exc_info=True)
 
