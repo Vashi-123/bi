@@ -379,7 +379,8 @@ def get_kpi_data(filters=None, table_name='sales'):
     # Determine columns based on table
     if table_name == 'purchase':
         revenue_col = "Amount_USD"
-        profit_col = "0"
+        # We will replace profit with stock_value calculation
+        profit_col = "0" 
         margin_col = "0"
         qty_col = "Qty"
     else:
@@ -412,6 +413,23 @@ def get_kpi_data(filters=None, table_name='sales'):
     
     c_res = cursor.execute(curr_query).fetchone()
     
+    # Custom Stock Value for Purchase dashboard
+    if table_name == 'purchase':
+        try:
+            from inventory import get_inventory_turnover
+            # For KPI we sum all items from the turnover report
+            stock_data = get_inventory_turnover(filters=filters)
+            stock_value = sum(item.get('stock_value_usd', 0) for item in stock_data)
+            # We also need previous value for growth, but since we only have the "latest" report, 
+            # we'll use 0 or a placeholder for now.
+            stock_prev = 0 
+        except:
+            stock_value = 0
+            stock_prev = 0
+    else:
+        stock_value = 0
+        stock_prev = 0
+
     def calc_growth(curr, prev):
         if not prev or prev == 0: return 0
         return ((curr - prev) / prev) * 100
@@ -421,6 +439,7 @@ def get_kpi_data(filters=None, table_name='sales'):
         "profit": {"value": c_res[1] or 0, "prev": p_res[1] or 0, "growth": calc_growth(c_res[1] or 0, p_res[1] or 0)},
         "margin": {"value": c_res[2] or 0, "prev": p_res[2] or 0, "growth": calc_growth(c_res[2] or 0, p_res[2] or 0)},
         "qty": {"value": c_res[3] or 0, "prev": p_res[3] or 0, "growth": calc_growth(c_res[3] or 0, p_res[3] or 0)},
+        "stock": {"value": stock_value, "prev": stock_prev, "growth": 0},
         "meta": {
             "current_period": curr_label,
             "prev_period": prev_label

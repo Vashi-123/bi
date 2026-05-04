@@ -44,4 +44,5 @@ export const METRIC_DB_MAP: Record<string, string> = {
     profit: 'Profit_USD',
     margin: 'Margin_%',
     qty: 'Qty',
+    stock: 'stock_value_usd',
 };

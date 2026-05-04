@@ -1,8 +1,8 @@
 'use client';
 
 import { useDashboardStore } from '@/store/useDashboardStore';
-import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex } from '@tremor/react';
-import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus, Layout, LayoutGrid, Package, XCircle, TrendingUp, TrendingDown, Zap, Target, Lightbulb } from 'lucide-react';
+import { Card, Title, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Badge, Flex, BarChart, Text } from '@tremor/react';
+import { FilterIcon, UserIcon, Maximize2, Minimize2, Expand, X, ChevronsRight, ChevronsLeft, Download, UserPlus, Layout, LayoutGrid, Package, XCircle, TrendingUp, TrendingDown, Zap, Target, Lightbulb, Activity, RefreshCcw, ChevronUp, ChevronDown } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Sector, Tooltip as ReTooltip } from 'recharts';
 import useSWR from 'swr';
 import { useEffect, useState, useMemo, Fragment } from 'react';
@@ -16,6 +16,63 @@ import { ChartSection } from '@/components/ChartSection';
 import { FilterSidebar } from '@/components/FilterSidebar';
 import { KPICardSkeleton, ChartSkeleton, DistributionSkeleton, TableSkeleton } from '@/components/Skeletons';
 import { AISidebar } from '@/components/AISidebar';
+
+function formatCurrency(val: number) {
+  if (val === 0) return '$0';
+  const abs = Math.abs(val);
+  const sign = val < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
+  return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+const InventoryTooltip = ({ payload, active }: any) => {
+  if (!active || !payload || payload.length === 0) return null;
+  const activePayload = payload.find((p: any) => p.value !== undefined && p.value !== null) || payload[0];
+  const data = activePayload.payload;
+  const colors_palette = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#000000'];
+  const bar_color = colors_palette[data.index % colors_palette.length];
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-2xl min-w-[200px]">
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-50 pb-2">
+        {data.range} Days Turnover
+      </p>
+      <div className="space-y-3">
+        <div>
+          <Flex justifyContent="between">
+            <Text className="text-[9px] font-bold text-slate-500 uppercase">Count</Text>
+            <Text className="text-[10px] font-black text-[#0C0C0C]">{data.SKUs} SKUs</Text>
+          </Flex>
+          <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
+            <div className="h-full rounded-full opacity-60" style={{ width: `${data['Share count']}%`, backgroundColor: bar_color }} />
+          </div>
+          <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share count']}% share</Text>
+        </div>
+        <div>
+          <Flex justifyContent="between">
+            <Text className="text-[9px] font-bold text-slate-500 uppercase">Sales (Qty)</Text>
+            <Text className="text-[10px] font-black text-emerald-600">{data.Sales.toLocaleString()}</Text>
+          </Flex>
+          <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
+            <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${data['Share sales']}%` }} />
+          </div>
+          <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share sales']}% share</Text>
+        </div>
+        <div>
+          <Flex justifyContent="between">
+            <Text className="text-[9px] font-bold text-slate-500 uppercase">Stock Value</Text>
+            <Text className="text-[10px] font-black text-blue-600">{formatCurrency(data.Stock)}</Text>
+          </Flex>
+          <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
+            <div className="h-full bg-blue-400 rounded-full" style={{ width: `${data['Share stock']}%` }} />
+          </div>
+          <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share stock']}% share</Text>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function PurchaseDashboard() {
   const { 
@@ -85,13 +142,67 @@ export default function PurchaseDashboard() {
     errorRetryCount: 20, 
     errorRetryInterval: 3000 
   };
-  const { data: kpiData, isLoading: kpiLoading, error: kpiError } = useSWR(kpiUrl, fetcher, swrConfig);
+  const { data: kpiData, isLoading: kpiLoading, error: kpiError, mutate: mutateKpi } = useSWR(kpiUrl, fetcher, swrConfig);
   const { data: weeklyRaw, isLoading: weeklyLoading } = useSWR(trendsUrl('week'), fetcher, swrConfig);
   const { data: monthlyRaw, isLoading: monthlyLoading } = useSWR(trendsUrl('month'), fetcher, swrConfig);
   const { data: dailyRaw, isLoading: dailyLoading } = useSWR(trendsUrl('day'), fetcher, swrConfig);
   const { data: fullDistData, isLoading: distLoading } = useSWR(fullDistUrl, fetcher, swrConfig);
   const { data: masterData, isLoading: masterLoading } = useSWR(masterUrl, fetcher, swrConfig);
   const { data: detailData, isLoading: detailLoading } = useSWR(detailUrl, fetcher, swrConfig);
+
+  // --- Turnover Data Fetching ---
+  const { data: turnoverRaw, isLoading: turnoverLoading, mutate: mutateTurnover } = useSWR(
+    activeMetric === 'stock' ? `${API_BASE}/api/inventory/turnover?${filterParams}` : null, 
+    fetcher
+  );
+
+  const [sortCol, setSortCol] = useState<any>('stock_value_usd');
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+
+  const turnoverData = useMemo(() => {
+    if (!turnoverRaw) return [];
+    return turnoverRaw.map((item: any) => ({
+      ...item,
+      target_15d: item.turnover_days >= 15 ? Math.round((item.total_sales / 30) * 15) : null
+    }));
+  }, [turnoverRaw]);
+
+  const sortedTurnover = useMemo(() => {
+    return [...turnoverData].sort((a, b) => {
+      const aVal = a[sortCol];
+      const bVal = b[sortCol];
+      if (aVal === null || aVal === undefined) return sortDir === 'asc' ? -1 : 1;
+      if (bVal === null || bVal === undefined) return sortDir === 'asc' ? 1 : -1;
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sortDir === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+    });
+  }, [turnoverData, sortCol, sortDir]);
+
+  const distributionData = useMemo(() => {
+    if (!turnoverRaw || turnoverRaw.length === 0) return [];
+    const buckets = [
+      { label: '0-1', min: 0, max: 1 }, { label: '1-5', min: 1, max: 5 }, { label: '5-15', min: 5, max: 15 },
+      { label: '15-30', min: 15, max: 30 }, { label: '30-60', min: 30, max: 60 }, { label: '60+', min: 60, max: Infinity }
+    ];
+    const totalSKUs = turnoverRaw.length;
+    const totalSales = turnoverRaw.reduce((sum: number, item: any) => sum + (item.total_sales || 0), 0) || 1;
+    const totalStock = turnoverRaw.reduce((sum: number, item: any) => sum + (item.stock_value_usd || 0), 0) || 1;
+    return buckets.map((b, idx) => {
+      const filtered = turnoverRaw.filter((i: any) => b.min === 0 ? (i.turnover_days >= 0 && i.turnover_days <= 1) : (i.turnover_days > b.min && i.turnover_days <= b.max));
+      const count = filtered.length;
+      const sales = filtered.reduce((sum: number, item: any) => sum + (item.total_sales || 0), 0);
+      const stockValue = filtered.reduce((sum: number, item: any) => sum + (item.stock_value_usd || 0), 0);
+      return { 
+        range: b.label, [b.label]: count, 'SKUs': count, 'Sales': sales, 'Stock': stockValue,
+        'Share count': parseFloat(((count / totalSKUs) * 100).toFixed(1)),
+        'Share sales': parseFloat(((sales / totalSales) * 100).toFixed(1)),
+        'Share stock': parseFloat(((stockValue / totalStock) * 100).toFixed(1)),
+        'index': idx
+      };
+    });
+  }, [turnoverRaw]);
 
   // Check if server is potentially restarting (connection refused or 5xx)
   const isServerInitializing = kpiError && !kpiData;
@@ -321,7 +432,7 @@ export default function PurchaseDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <KPICard title="Total Spending" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.revenue.value} baseline={kpiData?.revenue.prev} growth={kpiData?.revenue.growth} active={activeMetric === 'revenue'} onClick={() => setActiveMetric('revenue')} isCurrency={true} hasComparison={canCompare} />
-            <KPICard title="Net Profit" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.profit.value} baseline={kpiData?.profit.prev} growth={kpiData?.profit.growth} active={activeMetric === 'profit'} onClick={() => setActiveMetric('profit')} isCurrency={true} hasComparison={canCompare} />
+            <KPICard title="Stock Value" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.stock.value} baseline={kpiData?.stock.prev} growth={kpiData?.stock.growth} active={activeMetric === 'stock'} onClick={() => setActiveMetric('stock')} isCurrency={true} hasComparison={canCompare} />
             <KPICard title="Margin" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.margin.value} baseline={kpiData?.margin.prev} growth={kpiData?.margin.growth} active={activeMetric === 'margin'} onClick={() => setActiveMetric('margin')} isPercent={true} hasComparison={canCompare} />
             <KPICard title="Quantity" period={kpiData?.meta.current_period} baselinePeriod={kpiData?.meta.prev_period} value={kpiData?.qty.value} baseline={kpiData?.qty.prev} growth={kpiData?.qty.growth} active={activeMetric === 'qty'} onClick={() => setActiveMetric('qty')} isCurrency={false} hasComparison={canCompare} />
         </div>
@@ -352,99 +463,212 @@ export default function PurchaseDashboard() {
             </div>
         </Flex>
 
-        <section className="space-y-12">
-            <ChartSection title="Weekly Trend" data={weeklyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="week" />} />
-            <ChartSection title="Monthly Trend" data={monthlyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="month" />} />
-            <ChartSection title="Daily Trend" data={dailyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="day" />} />
-        </section>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
-                <Title className="text-xl font-bold mb-8">Supplier Leaderboard</Title>
-                <div className="flex-1 overflow-y-auto space-y-6 pr-4 scrollbar-thin">
-                    {ratingData?.filter((d: any) => d.dimension_value !== 'Other').map((d: any, i: number) => (
-                        <div key={d.dimension_value} className="space-y-2">
-                            <div className="flex justify-between text-[11px] font-bold text-slate-500 uppercase">
-                                <span>{d.dimension_value}</span>
-                                <span>{formatValue(d.value)}</span>
-                            </div>
-                            <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
-                                <div className="h-full transition-all duration-1000" style={{ width: `${(d.value / ratingData[0].value) * 100}%`, backgroundColor: getColor(i, 10) }} />
-                            </div>
+        {activeMetric === 'stock' ? (
+          <div className="space-y-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[650px] flex flex-col overflow-hidden">
+                <Flex className="mb-8 shrink-0" justifyContent="between" alignItems="center">
+                  <div>
+                    <Title className="text-xl font-bold text-[#0C0C0C]">SKU Value Leaderboard</Title>
+                    <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Top SKUs by Stock Value (USD)</Text>
+                  </div>
+                  <Badge className="rounded-md font-bold uppercase text-[9px] bg-blue-50 text-blue-600 ring-1 ring-inset ring-blue-500/20">Capital</Badge>
+                </Flex>
+                <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-hide">
+                  {turnoverLoading ? (
+                    Array.from({length: 6}).map((_, i) => (
+                      <div key={i} className="space-y-2 animate-pulse">
+                        <div className="flex justify-between h-4 bg-slate-50 rounded w-full" />
+                        <div className="h-2 bg-slate-50 rounded-full" />
+                      </div>
+                    ))
+                  ) : turnoverData.slice(0, 50).map((item: any, idx: number) => {
+                    const maxValue = turnoverData[0]?.stock_value_usd || 1;
+                    const percentage = ((item.stock_value_usd || 0) / maxValue) * 100;
+                    const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A'];
+                    const color = colors[idx % colors.length];
+                    return (
+                      <div key={item.item_id} className="space-y-2">
+                        <div className="flex justify-between items-center text-[11px] font-bold text-slate-500 uppercase tracking-tight">
+                          <Flex justifyContent="start" alignItems="center" className="gap-2 truncate pr-4">
+                            <span className="truncate">{item.item_name}</span>
+                          </Flex>
+                          <span className="text-[#0C0C0C] font-extrabold shrink-0">{formatCurrency(item.stock_value_usd)}</span>
                         </div>
+                        <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-1000 ease-out shadow-sm" style={{ width: `${percentage}%`, backgroundColor: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+
+              <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white h-[650px] flex flex-col overflow-hidden">
+                <Flex className="mb-2 shrink-0" justifyContent="between" alignItems="start">
+                  <div>
+                    <Title className="text-xl font-bold text-[#0C0C0C]">Inventory Distribution</Title>
+                    <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">SKU Count & Share by Turnover Days</Text>
+                  </div>
+                </Flex>
+                <div className="flex-1 min-h-0 w-full mt-4 flex flex-col overflow-hidden">
+                  <div className="flex-1 distribution-chart-container relative">
+                    <style>{`
+                      .distribution-chart-container .recharts-bar:nth-child(1) path { fill: #8F3F48 !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(2) path { fill: #638994 !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(3) path { fill: #FF843B !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(4) path { fill: #79783F !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(5) path { fill: #A68B7A !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #000000 !important; }
+                    `}</style>
+                    <BarChart
+                      className="h-full"
+                      data={distributionData}
+                      index="range"
+                      categories={['0-1', '1-5', '5-15', '15-30', '30-60', '60+']}
+                      colors={['rose', 'cyan', 'orange', 'emerald', 'indigo', 'slate']}
+                      valueFormatter={(number) => number?.toLocaleString() ?? '0'}
+                      showAnimation={true}
+                      yAxisWidth={48}
+                      showLegend={false}
+                      stack={true}
+                      customTooltip={InventoryTooltip}
+                    />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-0 bg-white flex flex-col h-[700px] overflow-hidden">
+              <div className="p-6 pb-2 border-b border-slate-100 shrink-0">
+                <Title className="text-xl font-bold text-[#0C0C0C]">Inventory Details</Title>
+                <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Full SKU metrics and stock values</Text>
+              </div>
+              <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                <table className="w-full text-left border-separate border-spacing-0">
+                  <thead className="sticky top-0 z-30 shadow-sm">
+                    <tr className="bg-white">
+                      {['item_name', 'avg_stock', 'current_stock', 'stock_value_usd', 'total_sales', 'turnover_ratio', 'turnover_days'].map((col) => (
+                        <th key={col} className="p-4 sticky top-0 z-30 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C]" onClick={() => { setSortCol(col); setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }}>
+                          {col.replace(/_/g, ' ')} {sortCol === col && (sortDir === 'asc' ? <ChevronUp className="w-3 h-3 inline" /> : <ChevronDown className="w-3 h-3 inline" />)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedTurnover.map((item: any) => (
+                      <tr key={item.item_id} className="hover:bg-slate-50/50 border-b border-slate-100/50">
+                        <td className="p-4 text-xs font-bold">{item.item_name}</td>
+                        <td className="p-4 text-right text-xs">{item.avg_stock.toLocaleString()}</td>
+                        <td className="p-4 text-right text-xs">{item.current_stock.toLocaleString()}</td>
+                        <td className="p-4 text-right text-xs font-black text-blue-600">{formatCurrency(item.stock_value_usd)}</td>
+                        <td className="p-4 text-right text-xs">{item.total_sales.toLocaleString()}</td>
+                        <td className="p-4 text-right text-xs">{item.turnover_ratio.toFixed(2)}x</td>
+                        <td className="p-4 text-right text-xs font-black">{item.turnover_days}</td>
+                      </tr>
                     ))}
-                </div>
+                  </tbody>
+                </table>
+              </div>
             </Card>
-            <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
-                <Title className="text-xl font-bold mb-8">Supply Structure</Title>
-                <div className="flex-1 flex flex-col items-center justify-center">
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie data={distData} innerRadius={80} outerRadius={120} paddingAngle={5} dataKey="value" nameKey="dimension_value">
-                                {distData.map((item: any, index: number) => <Cell key={index} fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)} />)}
-                            </Pie>
-                            <ReTooltip />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
-            </Card>
-        </div>
+          </div>
+        ) : (
+          <>
+            <section className="space-y-12">
+                <ChartSection title="Weekly Trend" data={weeklyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="week" />} />
+                <ChartSection title="Monthly Trend" data={monthlyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="month" />} />
+                <ChartSection title="Daily Trend" data={dailyData} categories={sharedCategories} statuses={allStatuses} isCurrency={isCurrencyMetric} view={chartView} legendDimension={legendDimension} activeFilters={filters} customTooltip={<CustomTooltip interval="day" />} />
+            </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500 ${expandedTable === 'master' ? 'lg:col-span-2' : expandedTable === 'detail' ? 'hidden' : ''}`}>
-                <div className="absolute top-1 right-6 flex items-center gap-1 z-20">
-                    <button onClick={() => setFullscreenTable('master')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"><Expand className="w-4 h-4" /></button>
-                    <button onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]">{expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}</button>
-                </div>
-                <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
-                    <Table className="min-w-[600px]">
-                        <TableHead className="bg-slate-50/80 sticky top-0 z-10">
-                            <TableRow className="border-b border-slate-100">
-                                <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Group Name</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Spending</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {masterData?.map((item: any) => (
-                                <TableRow key={item.name} className={`cursor-pointer transition-all border-b border-slate-100/50 border-l-4 ${selectedGroup === item.name ? 'bg-slate-50/50 border-l-slate-400' : 'hover:bg-slate-50/30 border-l-transparent'}`} onClick={() => setSelectedGroup(item.name === selectedGroup ? null : item.name)}>
-                                    <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
-                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
-                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
+                    <Title className="text-xl font-bold mb-8">Supplier Leaderboard</Title>
+                    <div className="flex-1 overflow-y-auto space-y-6 pr-4 scrollbar-thin">
+                        {ratingData?.filter((d: any) => d.dimension_value !== 'Other').map((d: any, i: number) => (
+                            <div key={d.dimension_value} className="space-y-2">
+                                <div className="flex justify-between text-[11px] font-bold text-slate-500 uppercase">
+                                    <span>{d.dimension_value}</span>
+                                    <span>{formatValue(d.value)}</span>
+                                </div>
+                                <div className="h-2 bg-slate-50 rounded-full overflow-hidden">
+                                    <div className="h-full transition-all duration-1000" style={{ width: `${(d.value / ratingData[0].value) * 100}%`, backgroundColor: getColor(i, 10) }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+                <Card className="rounded-3xl p-8 bg-white h-[580px] flex flex-col shadow-xl shadow-slate-200/50">
+                    <Title className="text-xl font-bold mb-8">Supply Structure</Title>
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                        <ResponsiveContainer width="100%" height={300}>
+                            <PieChart>
+                                <Pie data={distData} innerRadius={80} outerRadius={120} paddingAngle={5} dataKey="value" nameKey="dimension_value">
+                                    {distData.map((item: any, index: number) => <Cell key={index} fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)} />)}
+                                </Pie>
+                                <ReTooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+            </div>
 
-            <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500 ${expandedTable === 'detail' ? 'lg:col-span-2' : expandedTable === 'master' ? 'hidden' : ''}`}>
-                <div className="absolute top-1 right-6 flex items-center gap-1 z-20">
-                    <button onClick={() => setFullscreenTable('detail')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"><Expand className="w-4 h-4" /></button>
-                    <button onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]">{expandedTable === 'detail' ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}</button>
-                </div>
-                <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
-                    <Table className="min-w-[600px]">
-                        <TableHead className="bg-slate-50/80 sticky top-0 z-10">
-                            <TableRow className="border-b border-slate-100">
-                                <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Spending</TableHeaderCell>
-                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {detailData?.map((item: any) => (
-                                <TableRow key={item.name} className="border-b border-slate-100/50 hover:bg-slate-50/30 transition-all">
-                                    <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
-                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
-                                    <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500 ${expandedTable === 'master' ? 'lg:col-span-2' : expandedTable === 'detail' ? 'hidden' : ''}`}>
+                    <div className="absolute top-1 right-6 flex items-center gap-1 z-20">
+                        <button onClick={() => setFullscreenTable('master')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"><Expand className="w-4 h-4" /></button>
+                        <button onClick={() => setExpandedTable(expandedTable === 'master' ? null : 'master')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]">{expandedTable === 'master' ? <ChevronsLeft className="w-4 h-4" /> : <ChevronsRight className="w-4 h-4" />}</button>
+                    </div>
+                    <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
+                        <Table className="min-w-[600px]">
+                            <TableHead className="bg-slate-50/80 sticky top-0 z-10">
+                                <TableRow className="border-b border-slate-100">
+                                    <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Group Name</TableHeaderCell>
+                                    <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Spending</TableHeaderCell>
+                                    <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </Card>
-        </div>
+                            </TableHead>
+                            <TableBody>
+                                {masterData?.map((item: any) => (
+                                    <TableRow key={item.name} className={`cursor-pointer transition-all border-b border-slate-100/50 border-l-4 ${selectedGroup === item.name ? 'bg-slate-50/50 border-l-slate-400' : 'hover:bg-slate-50/30 border-l-transparent'}`} onClick={() => setSelectedGroup(item.name === selectedGroup ? null : item.name)}>
+                                        <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
+                                        <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
+                                        <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </Card>
+
+                <Card className={`rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-8 bg-white overflow-hidden relative transition-all duration-500 ${expandedTable === 'detail' ? 'lg:col-span-2' : expandedTable === 'master' ? 'hidden' : ''}`}>
+                    <div className="absolute top-1 right-6 flex items-center gap-1 z-20">
+                        <button onClick={() => setFullscreenTable('detail')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]"><Expand className="w-4 h-4" /></button>
+                        <button onClick={() => setExpandedTable(expandedTable === 'detail' ? null : 'detail')} className="p-2 hover:bg-slate-50 rounded-xl transition-all text-slate-400 hover:text-[#0C0C0C]">{expandedTable === 'detail' ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}</button>
+                    </div>
+                    <div className="max-h-[500px] overflow-y-auto overflow-x-auto pr-2 scrollbar-hide">
+                        <Table className="min-w-[600px]">
+                            <TableHead className="bg-slate-50/80 sticky top-0 z-10">
+                                <TableRow className="border-b border-slate-100">
+                                    <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">SKU Name</TableHeaderCell>
+                                    <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Spending</TableHeaderCell>
+                                    <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Qty</TableHeaderCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {detailData?.map((item: any) => (
+                                    <TableRow key={item.name} className="border-b border-slate-100/50 hover:bg-slate-50/30 transition-all">
+                                        <TableCell className="text-sm !text-[#0C0C0C] py-4 font-bold max-w-[220px] truncate" title={item.name}>{item.name}</TableCell>
+                                        <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{formatValue(item.revenue)}</TableCell>
+                                        <TableCell className="text-right text-sm !text-[#0C0C0C] py-4">{Math.round(item.qty).toLocaleString()}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </Card>
+            </div>
+          </>
+        )}
       </main>
 
       {/* Overlays */}
