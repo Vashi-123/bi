@@ -164,8 +164,8 @@ export default function PurchaseDashboard() {
     const totalSales = inventoryData.reduce((acc: number, i: any) => acc + (i.total_sales || 0), 0) || 1;
     const totalStock = inventoryData.reduce((acc: number, i: any) => acc + (i.stock_value_usd || 0), 0) || 1;
 
-    return buckets.map((b, idx) => {
-      const items = inventoryData.filter(i => i.turnover_days >= b.min && i.turnover_days < b.max);
+    return buckets.map((b: any, idx: number) => {
+      const items = inventoryData.filter((i: any) => i.turnover_days >= b.min && i.turnover_days < b.max);
       const count = items.length;
       const sales = items.reduce((acc: number, i: any) => acc + (i.total_sales || 0), 0);
       const stockValue = items.reduce((acc: number, i: any) => acc + (i.stock_value_usd || 0), 0);
@@ -186,7 +186,7 @@ export default function PurchaseDashboard() {
 
   const sortedInventoryData = useMemo(() => {
     if (!inventoryData) return [];
-    return [...inventoryData].sort((a, b) => {
+    return [...inventoryData].sort((a: any, b: any) => {
       const aVal = a[sortCol as keyof any] ?? 0;
       const bVal = b[sortCol as keyof any] ?? 0;
       if (typeof aVal === 'string' && typeof bVal === 'string') {
@@ -199,7 +199,7 @@ export default function PurchaseDashboard() {
   const inventoryLeaderboard = useMemo(() => {
     if (!inventoryData) return [];
     return [...inventoryData]
-      .sort((a, b) => (b.stock_value_usd || 0) - (a.stock_value_usd || 0))
+      .sort((a: any, b: any) => (b.stock_value_usd || 0) - (a.stock_value_usd || 0))
       .slice(0, 10);
   }, [inventoryData]);
 
