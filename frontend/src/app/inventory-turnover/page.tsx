@@ -23,16 +23,13 @@ function formatCurrency(val: number) {
   return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
-const CustomTooltip = ({ payload, active }: any) => {
-  if (!active || !payload || payload.length === 0) return null;
-  // In a multi-category chart, find the payload item that has a value
-  const activePayload = payload.find((p: any) => p.value !== undefined && p.value !== null) || payload[0];
-  const data = activePayload.payload;
+const CustomTooltip = ({ active, data }: { active: boolean, data: any }) => {
+  if (!active || !data) return null;
   const colors_palette = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#64748b'];
   const bar_color = colors_palette[data.index % colors_palette.length];
 
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-2xl min-w-[200px]">
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-2xl min-w-[220px] animate-in fade-in zoom-in duration-200">
       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-50 pb-2">
         {data.range} Days Turnover
       </p>
@@ -43,7 +40,7 @@ const CustomTooltip = ({ payload, active }: any) => {
             <Text className="text-[10px] font-black text-[#0C0C0C]">{data.SKUs} SKUs</Text>
           </Flex>
           <div className="h-1 bg-slate-50 rounded-full mt-1 overflow-hidden">
-            <div className="h-full rounded-full opacity-60" style={{ width: `${data['Share count']}%`, backgroundColor: bar_color }} />
+            <div className="h-full rounded-full" style={{ width: `${data['Share count']}%`, backgroundColor: bar_color }} />
           </div>
           <Text className="text-[9px] font-bold text-slate-400 mt-0.5">{data['Share count']}% share</Text>
         </div>
@@ -98,6 +95,13 @@ export default function InventoryTurnoverPage() {
 
   const [sortCol, setSortCol] = useState<SortCol>('stock_value_usd');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+  const [hoveredBucket, setHoveredBucket] = useState<any>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
+  const handleBarHover = (e: React.MouseEvent, bucket: any) => {
+    setHoveredBucket(bucket);
+    setTooltipPos({ x: e.clientX, y: e.clientY });
+  };
 
   const handleSort = (col: SortCol) => {
     if (sortCol === col) {
@@ -334,22 +338,55 @@ export default function InventoryTurnoverPage() {
               </div>
             </Flex>
             
-            <div className="flex-1 min-h-0 w-full mt-4 flex flex-col overflow-hidden">
-              <div className="flex-1">
-                <BarChart
-                  className="h-full"
-                  data={distributionData}
-                  index="range"
-                  categories={['0-1', '1-5', '5-15', '15-30', '30-60', '60+']}
-                  colors={['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#64748b']}
-                  valueFormatter={(number) => number?.toLocaleString() ?? '0'}
-                  showAnimation={true}
-                  yAxisWidth={48}
-                  showLegend={false}
-                  stack={true}
-                  customTooltip={CustomTooltip}
-                />
+            <div className="flex-1 min-h-0 w-full mt-6 flex flex-col overflow-hidden relative">
+              <div className="flex-1 flex items-end justify-between gap-2 px-2 pb-6 border-b border-slate-100">
+                {distributionData.map((bucket, idx) => {
+                  const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#64748b'];
+                  const color = colors[idx % colors.length];
+                  const maxSKUs = Math.max(...distributionData.map(d => d.SKUs)) || 1;
+                  const heightPercent = (bucket.SKUs / maxSKUs) * 100;
+                  
+                  return (
+                    <div 
+                      key={bucket.range}
+                      className="flex-1 flex flex-col items-center group cursor-pointer"
+                      onMouseMove={(e) => handleBarHover(e, bucket)}
+                      onMouseLeave={() => setHoveredBucket(null)}
+                    >
+                      <div className="w-full relative flex items-end justify-center min-h-[150px]">
+                        <div 
+                          className="w-[80%] rounded-t-lg transition-all duration-500 group-hover:brightness-110 group-hover:shadow-lg relative overflow-hidden"
+                          style={{ 
+                            height: `${heightPercent}%`, 
+                            backgroundColor: color,
+                            boxShadow: hoveredBucket?.range === bucket.range ? `0 0 20px ${color}40` : 'none'
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        {hoveredBucket?.range === bucket.range && (
+                           <div className="absolute -top-8 bg-[#0C0C0C] text-white text-[9px] font-black px-2 py-1 rounded shadow-xl animate-in fade-in slide-in-from-bottom-1">
+                             {bucket.SKUs}
+                           </div>
+                        )}
+                      </div>
+                      <p className="mt-3 text-[9px] font-bold text-slate-400 uppercase tracking-tighter group-hover:text-[#0C0C0C] transition-colors">{bucket.range}</p>
+                    </div>
+                  );
+                })}
               </div>
+
+              {hoveredBucket && (
+                <div 
+                  className="fixed z-[100] pointer-events-none"
+                  style={{ 
+                    left: tooltipPos.x + 20, 
+                    top: tooltipPos.y - 100
+                  }}
+                >
+                  <CustomTooltip active={true} data={hoveredBucket} />
+                </div>
+              )}
               <div className="mt-4 grid grid-cols-3 gap-2 shrink-0">
                 {distributionData.slice(0, 3).map((item, idx) => {
                   const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A'];
