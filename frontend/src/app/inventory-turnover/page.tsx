@@ -341,7 +341,7 @@ export default function InventoryTurnoverPage() {
                   data={distributionData}
                   index="range"
                   categories={['0-1', '1-5', '5-15', '15-30', '30-60', '60+']}
-                  colors={['rose', 'cyan', 'orange', 'emerald', 'indigo', 'slate']}
+                  colors={['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#64748b']}
                   valueFormatter={(number) => number?.toLocaleString() ?? '0'}
                   showAnimation={true}
                   yAxisWidth={48}
