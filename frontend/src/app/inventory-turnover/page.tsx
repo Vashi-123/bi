@@ -322,12 +322,12 @@ export default function InventoryTurnoverPage() {
         </div>
 
         <Card className="rounded-3xl border-slate-100 shadow-xl shadow-slate-200/50 p-6 bg-white flex flex-col h-[700px] overflow-hidden">
-          <div className="flex-1 overflow-auto scrollbar-hide relative">
-            <Table>
-              <TableHead className="sticky top-0 bg-white z-20">
-                <TableRow className="border-b border-slate-100 bg-white">
+          <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+            <Table className="border-separate border-spacing-0">
+              <TableHead className="relative z-20">
+                <TableRow className="bg-white">
                   <TableHeaderCell 
-                    className="sticky top-0 z-30 text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('item_name')}
                   >
                     <Flex justifyContent="start" className="gap-1">
@@ -335,7 +335,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('avg_stock')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -343,7 +343,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('current_stock')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -351,7 +351,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('stock_value_usd')}
                   >
                     <Flex justifyContent="end" className="gap-1 text-blue-600">
@@ -359,7 +359,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('target_15d')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -367,7 +367,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('total_sales')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -375,7 +375,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('turnover_ratio')}
                   >
                     <Flex justifyContent="end" className="gap-1">
@@ -383,7 +383,7 @@ export default function InventoryTurnoverPage() {
                     </Flex>
                   </TableHeaderCell>
                   <TableHeaderCell 
-                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white cursor-pointer hover:text-[#0C0C0C] transition-colors"
+                    className="sticky top-0 z-30 text-right text-[10px] font-bold text-slate-500 uppercase tracking-widest py-4 bg-white/95 backdrop-blur-sm border-b border-slate-100 cursor-pointer hover:text-[#0C0C0C] transition-colors"
                     onClick={() => handleSort('turnover_days')}
                   >
                     <Flex justifyContent="end" className="gap-1">
