@@ -865,26 +865,31 @@ def get_master_table(dimension='Category', filters=None, table_name='sales'):
         else:
             prev_filter = "WHERE 1=0"
     
+    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
+    
     # Dynamically determine columns based on table
     try:
-        col_res = cursor.execute(f"PRAGMA table_info('{table_name}')").fetchall()
+        col_res = cursor.execute(f"PRAGMA table_info('{raw_table}')").fetchall()
         existing_cols = [row[1].lower() for row in col_res]
     except:
         existing_cols = []
 
+    # Double layer of protection: dynamic check + explicit purchase check
+    is_purchase = 'purchase' in table_name.lower()
+    
     revenue_col = "Amount_USD" if 'amount_usd' in existing_cols else "0"
-    profit_col = "Profit_USD" if 'profit_usd' in existing_cols else "0"
-    margin_col = "\"Margin_%\"" if 'margin_%' in existing_cols else "0"
+    profit_col = "Profit_USD" if ('profit_usd' in existing_cols and not is_purchase) else "0"
+    margin_col = "\"Margin_%\"" if ('margin_%' in existing_cols and not is_purchase) else "0"
     qty_col = "Qty" if 'qty' in existing_cols else "0"
 
     query = f"""
     WITH curr AS (
         SELECT "{dimension}" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
-        FROM {table_name} {curr_filter} GROUP BY 1
+        FROM {raw_table} {curr_filter} GROUP BY 1
     ),
     prev AS (
         SELECT "{dimension}" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
-        FROM {table_name} {prev_filter} GROUP BY 1
+        FROM {raw_table} {prev_filter} GROUP BY 1
     )
     SELECT 
         c.name, 
@@ -933,26 +938,31 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
         else:
             prev_filter = "WHERE 1=0"
     
+    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
+    
     # Dynamically determine columns based on table
     try:
-        col_res = cursor.execute(f"PRAGMA table_info('{table_name}')").fetchall()
+        col_res = cursor.execute(f"PRAGMA table_info('{raw_table}')").fetchall()
         existing_cols = [row[1].lower() for row in col_res]
     except:
         existing_cols = []
 
+    # Double layer of protection: dynamic check + explicit purchase check
+    is_purchase = 'purchase' in table_name.lower()
+    
     revenue_col = "Amount_USD" if 'amount_usd' in existing_cols else "0"
-    profit_col = "Profit_USD" if 'profit_usd' in existing_cols else "0"
-    margin_col = "\"Margin_%\"" if 'margin_%' in existing_cols else "0"
+    profit_col = "Profit_USD" if ('profit_usd' in existing_cols and not is_purchase) else "0"
+    margin_col = "\"Margin_%\"" if ('margin_%' in existing_cols and not is_purchase) else "0"
     qty_col = "Qty" if 'qty' in existing_cols else "0"
 
     query = f"""
     WITH curr AS (
         SELECT "Product name" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
-        FROM {table_name} {curr_filter} GROUP BY 1
+        FROM {raw_table} {curr_filter} GROUP BY 1
     ),
     prev AS (
         SELECT "Product name" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
-        FROM {table_name} {prev_filter} GROUP BY 1
+        FROM {raw_table} {prev_filter} GROUP BY 1
     )
     SELECT 
         c.name, 
