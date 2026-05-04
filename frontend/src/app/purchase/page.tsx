@@ -463,11 +463,11 @@ export default function PurchaseDashboard() {
 
         <Flex className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm shadow-slate-200/20" justifyContent="end" alignItems="center">
             {activeMetric === 'stock' ? (
-              <div className="flex items-center gap-4">
+              <div className="w-full flex flex-wrap-reverse items-center justify-end gap-3 sm:gap-4">
                 {/* Minimal Selected Counter */}
                 {selectedSkus.length > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100/50">
-                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100/50 shrink-0">
+                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest whitespace-nowrap">
                       {selectedSkus.length} SKU Selected
                     </span>
                     <button 
@@ -481,7 +481,7 @@ export default function PurchaseDashboard() {
                 )}
 
                 {/* Search SKU on the RIGHT */}
-                <div className="relative w-full max-w-sm group shrink-0">
+                <div className="relative flex-1 min-w-[200px] max-w-sm group">
                   <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
                     <FilterIcon className="w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                   </div>
