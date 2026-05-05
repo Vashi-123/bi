@@ -28,6 +28,8 @@ export default function LoginPage() {
 
             if (res.ok) {
                 localStorage.setItem('auth_token', data.token);
+                // Сессия истекает через 24 часа
+                localStorage.setItem('auth_expiry', (Date.now() + 24 * 60 * 60 * 1000).toString());
                 router.push('/access');
             } else {
                 setError(data.message || 'Invalid credentials');

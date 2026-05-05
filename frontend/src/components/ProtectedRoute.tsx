@@ -9,7 +9,12 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
     useEffect(() => {
         const token = localStorage.getItem('auth_token');
-        if (token !== 'authenticated_session_token_2024') {
+        const expiry = localStorage.getItem('auth_expiry');
+        
+        // Check if token exists and hasn't expired
+        if (token !== 'authenticated_session_token_2024' || !expiry || Date.now() > parseInt(expiry)) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_expiry');
             router.push('/login');
         } else {
             setIsAuthorized(true);
