@@ -129,7 +129,7 @@ async def login(request: Request):
         password = data.get("password")
         
         admin_user = os.getenv("ADMIN_USER", "admin")
-        admin_pass = os.getenv("ADMIN_PASS", "admin")
+        admin_pass = os.getenv("ADMIN_PASS", "giftery123")
         
         if username == admin_user and password == admin_pass:
             # In a real app, this would be a JWT or session cookie
