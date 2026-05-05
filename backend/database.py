@@ -432,16 +432,15 @@ def get_kpi_data(filters=None, table_name='sales'):
     curr_s, curr_e = get_current_window(filters, table_name=table_name)
     prev_s, prev_e = get_prev_window(filters, table_name=table_name)
     
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND")
-    
     raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
-    
-    # Dynamically determine columns based on table
     try:
         col_res = cursor.execute(f"PRAGMA table_info('{raw_table}')").fetchall()
         existing_cols = [row[1].lower() for row in col_res]
     except:
         existing_cols = []
+
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", available_columns=existing_cols)
+
 
     is_purchase = 'purchase' in table_name.lower()
 
@@ -567,10 +566,13 @@ def get_status_owner(filters):
             owner = f_product
     return owner
 
-def build_filter_clause(filters, prefix="WHERE", dimension=None):
+def build_filter_clause(filters, prefix="WHERE", dimension=None, available_columns=None):
     """Dynamically builds a WHERE clause based on the provided filters dictionary."""
     if not filters:
         return ""
+    
+    if available_columns is not None:
+        available_columns = [c.lower() for c in available_columns]
     
     clauses = []
     status_owner = get_status_owner(filters)
@@ -632,24 +634,38 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
         if col == 'Groupclient':
             clean_vals = [str(v).replace("'", "''") for v in values]
             list_str = ', '.join([f"'{v}'" for v in clean_vals])
+            
+            # Only include the direct column match if it exists in the table
+            col_match = f"OR \"{col}\" IN ({list_str})" if (available_columns is None or col.lower() in available_columns) else ""
+            
             clauses.append(f"""
                 AND (
                     LOWER(TRIM(counterparty)) IN (SELECT counterparty FROM custom_groups WHERE group_name IN ({list_str}))
-                    OR "{col}" IN ({list_str})
+                    {col_match}
                 )
             """)
             continue
+
 
         # Handle custom CountryGroup filtering via subquery
         if col == 'CountryGroup':
             clean_vals = [str(v).replace("'", "''") for v in values]
             list_str = ', '.join([f"'{v}'" for v in clean_vals])
+            
+            # Only include the direct column match if it exists in the table
+            col_match = f"OR \"{col}\" IN ({list_str})" if (available_columns is None or col.lower() in available_columns) else ""
+            
             clauses.append(f"""
                 AND (
                     UPPER(TRIM("Product country")) IN (SELECT country_code FROM custom_country_groups WHERE group_name IN ({list_str}))
-                    OR "{col}" IN ({list_str})
+                    {col_match}
                 )
             """)
+            continue
+
+
+        if available_columns is not None and col.lower() not in available_columns:
+            logger.debug(f"Skipping filter for missing column: {col}")
             continue
 
         if isinstance(values, list):
@@ -658,6 +674,7 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
         else:
             clean_value = str(values).replace("'", "''")
             clauses.append(f"AND \"{col}\" = '{clean_value}'")
+
     
     if not clauses:
         return ""
@@ -804,7 +821,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     col = metric_map.get(metric, metric)
     
     date_clause = build_date_filter_clause(filters)
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension=dimension)
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension=dimension, available_columns=existing_cols)
     
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
@@ -899,7 +916,7 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     col = metric_map.get(metric, metric)
     
     date_clause = build_date_filter_clause(filters)
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension=dimension)
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension=dimension, available_columns=existing_cols)
     
     if date_clause:
         filter_clause = f"WHERE 1=1 {date_clause} {extra_filters}"
@@ -931,7 +948,16 @@ def get_master_table(dimension='Category', filters=None, table_name='sales'):
     if cached: return cached
 
     cursor = get_cursor()
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension=dimension)
+    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
+    # Dynamically determine columns based on table
+    try:
+        col_res = cursor.execute(f"PRAGMA table_info('{raw_table}')").fetchall()
+        existing_cols = [row[1].lower() for row in col_res]
+    except:
+        existing_cols = []
+
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension=dimension, available_columns=existing_cols)
+
     mode = filters.get('dateMode', 'all') if filters else 'all'
     
     if mode == 'all':
@@ -945,15 +971,8 @@ def get_master_table(dimension='Category', filters=None, table_name='sales'):
             prev_filter = f"WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters}"
         else:
             prev_filter = "WHERE 1=0"
-    
-    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
-    
-    # Dynamically determine columns based on table
-    try:
-        col_res = cursor.execute(f"PRAGMA table_info('{raw_table}')").fetchall()
-        existing_cols = [row[1].lower() for row in col_res]
-    except:
-        existing_cols = []
+
+
 
     # Double layer of protection: dynamic check + explicit purchase check
     is_purchase = 'purchase' in table_name.lower()
@@ -1001,7 +1020,7 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
 
     cursor = get_cursor()
     # In detail table, we filter based on 'Product name' for statuses
-    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension='Product name')
+    extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension='Product name', available_columns=existing_cols)
     mode = filters.get('dateMode', 'all') if filters else 'all'
     
     group_filter = ""
