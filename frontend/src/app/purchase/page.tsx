@@ -9,7 +9,7 @@ import { useEffect, useState, useMemo, Fragment } from 'react';
 
 // --- Modular Imports ---
 import Link from 'next/link';
-import { API_BASE, fetcher, getColor, METRIC_DB_MAP } from '@/lib/constants';
+import { API_BASE, fetcher, getColor, METRIC_DB_MAP, MIN_COLOR } from '@/lib/constants';
 import { formatValue, formatTrend } from '@/lib/formatters';
 import { KPICard } from '@/components/KPICard';
 import { ChartSection } from '@/components/ChartSection';
@@ -625,7 +625,7 @@ export default function PurchaseDashboard() {
                       .distribution-chart-container .recharts-bar:nth-child(3) path { fill: #7B8147 !important; }
                       .distribution-chart-container .recharts-bar:nth-child(4) path { fill: #FA823A !important; }
                       .distribution-chart-container .recharts-bar:nth-child(5) path { fill: #658D9C !important; }
-                      .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #111111 !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(6) path { fill: ${MIN_COLOR} !important; }
                     `}</style>
                     <BarChart
                       className="h-full"

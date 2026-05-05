@@ -9,7 +9,7 @@ import { useEffect, useState, useMemo, Fragment } from 'react';
 
 // --- Modular Imports ---
 import Link from 'next/link';
-import { API_BASE, fetcher, getColor, METRIC_DB_MAP } from '@/lib/constants';
+import { API_BASE, fetcher, getColor, METRIC_DB_MAP, MIN_COLOR } from '@/lib/constants';
 import { formatValue, formatTrend } from '@/lib/formatters';
 import { KPICard } from '@/components/KPICard';
 import { ChartSection } from '@/components/ChartSection';

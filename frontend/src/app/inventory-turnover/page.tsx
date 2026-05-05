@@ -12,7 +12,7 @@ import {
   PieChart as PieIcon, ChevronUp, ChevronDown, DollarSign
 } from 'lucide-react';
 import Link from 'next/link';
-import { API_BASE, fetcher, getColor } from '../../lib/constants';
+import { API_BASE, fetcher, getColor, MIN_COLOR } from '../../lib/constants';
 
 function formatCurrency(val: number) {
   if (val === 0) return '$0';
@@ -348,7 +348,7 @@ export default function InventoryTurnoverPage() {
                   .distribution-chart-container .recharts-bar:nth-child(3) path { fill: #7B8147 !important; }
                   .distribution-chart-container .recharts-bar:nth-child(4) path { fill: #FA823A !important; }
                   .distribution-chart-container .recharts-bar:nth-child(5) path { fill: #658D9C !important; }
-                  .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #111111 !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(6) path { fill: ${MIN_COLOR} !important; }
                 `}</style>
                 <BarChart
                   className="h-full"
