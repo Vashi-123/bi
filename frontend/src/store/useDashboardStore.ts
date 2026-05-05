@@ -18,12 +18,14 @@ interface DashboardState {
   selectedGroup: string | null;
   filters: Record<string, string[]>;
   dateFilter: DateFilter;
+  groupByClient: boolean;
   setActiveMetric: (metric: Metric) => void;
   setLegendDimension: (dim: Dimension) => void;
   setTopN: (n: number) => void;
   setSelectedGroup: (group: string | null) => void;
   setFilter: (column: string, values: string[]) => void;
   setDateFilter: (filter: DateFilter) => void;
+  setGroupByClient: (v: boolean) => void;
   clearFilters: () => void;
 }
 
@@ -38,6 +40,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   selectedGroup: null,
   filters: {},
   dateFilter: DEFAULT_DATE_FILTER,
+  groupByClient: false,
   setActiveMetric: (activeMetric) => set({ activeMetric }),
   setLegendDimension: (legendDimension) => set({ legendDimension, selectedGroup: null }),
   setTopN: (topN) => set({ topN }),
@@ -46,5 +49,6 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     filters: { ...state.filters, [column]: values }
   })),
   setDateFilter: (dateFilter) => set({ dateFilter }),
-  clearFilters: () => set({ filters: {}, dateFilter: DEFAULT_DATE_FILTER }),
+  setGroupByClient: (groupByClient) => set({ groupByClient }),
+  clearFilters: () => set({ filters: {}, dateFilter: DEFAULT_DATE_FILTER, groupByClient: false }),
 }));

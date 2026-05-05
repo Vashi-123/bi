@@ -800,6 +800,8 @@ def get_overall_date_range(table_name='sales'):
 
 def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', filters=None, table_name='sales'):
     if not filters: filters = {}
+    if filters.get('groupByClient') and dimension == 'counterparty' and table_name != 'purchase':
+        dimension = 'Groupclient'
     logger.debug(f"Trends request filters: {filters}")
     cache_key = f"trends_{table_name}_{metric}_{dimension}_{top_n}_{interval}_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
@@ -900,6 +902,9 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
     return final_output
 
 def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=None, table_name='sales'):
+    if not filters: filters = {}
+    if filters.get('groupByClient') and dimension == 'counterparty' and table_name != 'purchase':
+        dimension = 'Groupclient'
     cache_key = f"dist_{table_name}_{metric}_{dimension}_{top_n}_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached
@@ -948,6 +953,9 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     return out
 
 def get_master_table(dimension='Category', filters=None, table_name='sales'):
+    if not filters: filters = {}
+    if filters.get('groupByClient') and dimension == 'counterparty' and table_name != 'purchase':
+        dimension = 'Groupclient'
     cache_key = f"master_{table_name}_{dimension}_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached
@@ -1019,6 +1027,9 @@ def get_master_table(dimension='Category', filters=None, table_name='sales'):
     return result_data
 
 def get_detail_table(dimension='Category', selected_group=None, top_n=10, filters=None, table_name='sales'):
+    if not filters: filters = {}
+    if filters.get('groupByClient') and dimension == 'counterparty' and table_name != 'purchase':
+        dimension = 'Groupclient'
     cache_key = f"detail_{table_name}_{dimension}_{selected_group}_{top_n}_{hash(str(filters))}"
     cached = get_cached_data(cache_key)
     if cached: return cached

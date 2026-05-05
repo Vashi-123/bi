@@ -68,7 +68,7 @@ except ImportError:
 
 ALLOWED_DIMENSIONS = {
     'type', 'Category', 'Currency', 'counterparty', 'Groupclient',
-    'Product country', 'CountryGroup', 'Product name'
+    'Product country', 'CountryGroup', 'Product name', 'Item name'
 }
 
 ALLOWED_METRICS = {'Amount_USD', 'Profit_USD', 'Qty', 'Margin_%'}
@@ -143,6 +143,7 @@ def parse_filters(request_params):
     filters['endDate'] = request_params.get('endDate')
     filters['relativeValue'] = request_params.get('relativeValue')
     filters['relativeUnit'] = request_params.get('relativeUnit', 'day')
+    filters['groupByClient'] = request_params.get('groupByClient') == 'true'
     
     # Status filter
     status = request_params.get('status')

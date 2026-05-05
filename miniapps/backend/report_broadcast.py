@@ -108,4 +108,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--now":
         broadcast_report()
     else:
-        run_scheduler("08:00")
+        run_scheduler("10:00")

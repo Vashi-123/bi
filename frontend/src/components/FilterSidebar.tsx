@@ -181,7 +181,7 @@ function DateFilterGroup() {
 // --- Main Sidebar ---
 
 export function FilterSidebar({ isOpen, onClose, source = 'sales' }: { isOpen?: boolean, onClose: () => void, source?: string }) {
-    const { filters, setFilter, clearFilters } = useDashboardStore();
+    const { filters, setFilter, clearFilters, groupByClient, setGroupByClient } = useDashboardStore();
     return (
         <div className="fixed inset-y-0 right-0 z-[100] w-full max-w-md bg-white h-screen shadow-2xl flex flex-col animate-in slide-in-from-right duration-500 border-l border-slate-100">
             <div className="p-8 border-b border-slate-100 flex justify-between items-center text-[#0C0C0C]">
@@ -197,12 +197,30 @@ export function FilterSidebar({ isOpen, onClose, source = 'sales' }: { isOpen?: 
                 <FilterGroup title="SKU" column="Item name" current={filters['Item name']} onChange={vals => setFilter('Item name', vals)} source={source} />
                 <FilterGroup title="Country" column="Product country" current={filters['Product country']} onChange={vals => setFilter('Product country', vals)} source={source} />
                 <FilterGroup title={source === 'purchase' ? "Supplier" : "Client"} column="counterparty" current={filters['counterparty']} onChange={vals => setFilter('counterparty', vals)} source={source} />
-                <FilterGroup title="Sales Type" column="type" current={filters['type']} onChange={vals => setFilter('type', vals)} source={source} />
-                <div className="h-px bg-slate-50 mx-[-32px]" />
-                <FilterGroup title="Client Group" column="Groupclient" current={filters['Groupclient']} onChange={vals => setFilter('Groupclient', vals)} source={source} />
-                <FilterGroup title="Country Group" column="CountryGroup" current={filters['CountryGroup']} onChange={vals => setFilter('CountryGroup', vals)} source={source} />
-                
-                <div className="h-px bg-slate-50 mx-[-32px]" />
+                {source !== 'purchase' && (
+                    <>
+                        <FilterGroup title="Sales Type" column="type" current={filters['type']} onChange={vals => setFilter('type', vals)} source={source} />
+                        <FilterGroup title="Client Group" column="Groupclient" current={filters['Groupclient']} onChange={vals => setFilter('Groupclient', vals)} source={source} />
+                        <FilterGroup title="Country Group" column="CountryGroup" current={filters['CountryGroup']} onChange={vals => setFilter('CountryGroup', vals)} source={source} />
+                        
+                        <div className="h-px bg-slate-50 mx-[-32px]" />
+                        
+                        {/* Global Client Grouping Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-orange-50/50 rounded-2xl border border-orange-100/50">
+                            <div className="space-y-0.5">
+                                <h3 className="text-[10px] font-bold text-orange-900 uppercase tracking-widest">Group Clients</h3>
+                                <p className="text-[9px] font-bold text-orange-700/60 uppercase">Always merge grouped clients</p>
+                            </div>
+                            <button 
+                                onClick={() => setGroupByClient(!groupByClient)}
+                                className={`w-12 h-6 rounded-full transition-all relative ${groupByClient ? 'bg-[#FF843B]' : 'bg-slate-200'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${groupByClient ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+                        <div className="h-px bg-slate-50 mx-[-32px]" />
+                    </>
+                )}
                 <DateFilterGroup />
             </div>
             <div className="p-8 border-t border-slate-100 flex gap-4 bg-slate-50">

@@ -24,7 +24,8 @@ export default function Dashboard() {
     topN, setTopN, 
     selectedGroup, setSelectedGroup,
     dateFilter, setDateFilter,
-    filters, setFilter
+    filters, setFilter,
+    groupByClient
   } = useDashboardStore();
 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -50,6 +51,9 @@ export default function Dashboard() {
     });
 
     params.append('dateMode', dateFilter.mode);
+    if (groupByClient) {
+      params.append('groupByClient', 'true');
+    }
     if (dateFilter.mode === 'between' && dateFilter.value?.start && dateFilter.value?.end) {
       params.append('startDate', dateFilter.value.start);
       params.append('endDate', dateFilter.value.end);
