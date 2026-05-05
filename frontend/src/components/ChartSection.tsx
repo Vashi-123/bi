@@ -148,7 +148,7 @@ export function ChartSection({
                     <div className="w-12 h-1 bg-slate-300 rounded-full group-hover/resizer:bg-slate-500 transition-colors" />
                 </div>
 
-                <div ref={containerRef} className="overflow-y-auto overflow-x-auto scrollbar-hide relative" style={{ height: view === 'combined' ? `${chartHeight}px` : 'auto' }}>
+                <div ref={containerRef} className="overflow-y-auto overflow-x-auto scrollbar-hide relative" style={{ height: `${chartHeight}px` }}>
                     {view === 'combined' ? (
                         Array.isArray(data) && data.length > 0 && (
                             <div className="flex min-h-full w-max min-w-full">
@@ -311,7 +311,7 @@ export function ChartSection({
                                             {category}
                                         </h3>
                                     </div>
-                                    <div className="flex w-max min-w-full" style={{ height: `${chartHeight}px` }}>
+                                    <div className="flex w-max min-w-full" style={{ height: '200px' }}>
                                         {/* Sticky Y-Axis */}
                                         <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[8px_0_12px_-6px_rgba(0,0,0,0.03)] flex-shrink-0 h-full" style={{ width: '80px' }}>
                                             <ResponsiveContainer width="100%" height="100%">
