@@ -59,10 +59,13 @@ def generate_daily_report():
             return
 
         # 4. Upsert to Supabase
-        success = sb_manager.upsert_analytical_report("daily_analytics", payload)
+        # We save both to 'daily_analytics' (latest) and a date-specific ID for history
+        report_date_str = yesterday.strftime('%Y-%m-%d')
+        sb_manager.upsert_analytical_report("daily_analytics", payload)
+        success = sb_manager.upsert_analytical_report(f"daily_analytics_{report_date_str}", payload)
         
         if success:
-            logger.info("✅ Daily report successfully synced to Supabase.")
+            logger.info(f"✅ Daily report for {report_date_str} successfully synced to Supabase (latest and history).")
         else:
             logger.error("❌ Failed to sync report to Supabase.")
 

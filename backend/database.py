@@ -604,7 +604,7 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None, available_colum
                 # Subquery for Products (Using in-memory statuses_view)
                 prod_owner = status_owner
                 prod_subquery = f"""
-                    SELECT DISTINCT name FROM statuses_view
+                    SELECT DISTINCT TRIM(UPPER(name)) FROM statuses_view
                     WHERE status IN ({st_list_str})
                     AND status_owner = '{prod_owner.replace("'", "''")}'
                     AND type = 'PRODUCT'
@@ -612,7 +612,7 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None, available_colum
                 
                 # Subquery for Clients (Using in-memory statuses_view)
                 client_subquery = f"""
-                    SELECT DISTINCT name FROM statuses_view
+                    SELECT DISTINCT TRIM(UPPER(name)) FROM statuses_view
                     WHERE status IN ({st_list_str})
                     AND status_owner = 'all'
                     AND type = 'CLIENT'
