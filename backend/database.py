@@ -1024,6 +1024,15 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     if cached: return cached
 
     cursor = get_cursor()
+    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
+    
+    # Dynamically determine columns based on table
+    try:
+        col_res = cursor.execute(f"PRAGMA table_info('{raw_table}')").fetchall()
+        existing_cols = [row[1].lower() for row in col_res]
+    except:
+        existing_cols = []
+
     # In detail table, we filter based on 'Product name' for statuses
     extra_filters = build_filter_clause(extract_column_filters(filters), prefix="AND", dimension='Product name', available_columns=existing_cols)
     mode = filters.get('dateMode', 'all') if filters else 'all'
@@ -1032,9 +1041,11 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     if selected_group:
         clean_group = str(selected_group).replace("'", "''")
         if dimension == 'Groupclient':
-            group_filter = f" AND (LOWER(TRIM(counterparty)) IN (SELECT counterparty FROM custom_groups WHERE group_name = '{clean_group}') OR \"Groupclient\" = '{clean_group}')"
+            groupclient_col = f"OR \"Groupclient\" = '{clean_group}'" if 'groupclient' in existing_cols else ""
+            group_filter = f" AND (LOWER(TRIM(counterparty)) IN (SELECT counterparty FROM custom_groups WHERE group_name = '{clean_group}') {groupclient_col})"
         elif dimension == 'CountryGroup':
-            group_filter = f" AND (UPPER(TRIM(\"Product country\")) IN (SELECT country_code FROM custom_country_groups WHERE group_name = '{clean_group}') OR \"CountryGroup\" = '{clean_group}')"
+            countrygroup_col = f"OR \"CountryGroup\" = '{clean_group}'" if 'countrygroup' in existing_cols else ""
+            group_filter = f" AND (UPPER(TRIM(\"Product country\")) IN (SELECT country_code FROM custom_country_groups WHERE group_name = '{clean_group}') {countrygroup_col})"
         else:
             group_filter = f" AND \"{dimension}\" = '{clean_group}'"
         
@@ -1049,15 +1060,6 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
             prev_filter = f"WHERE CAST(date AS DATE) >= '{prev_s}' AND CAST(date AS DATE) <= '{prev_e}' {extra_filters} {group_filter}"
         else:
             prev_filter = "WHERE 1=0"
-    
-    raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
-    
-    # Dynamically determine columns based on table
-    try:
-        col_res = cursor.execute(f"PRAGMA table_info('{raw_table}')").fetchall()
-        existing_cols = [row[1].lower() for row in col_res]
-    except:
-        existing_cols = []
 
     # Double layer of protection: dynamic check + explicit purchase check
     is_purchase = 'purchase' in table_name.lower()
