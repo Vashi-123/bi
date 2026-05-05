@@ -1174,13 +1174,16 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
         def get_detailed_products(client_name, client_delta):
             p_query = f"""
                 SELECT 
-                    "Product name" as product,
-                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_rev_a,
-                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as p_rev_b,
-                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) -
-                    SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as p_delta
-                FROM {table_name}
-                WHERE counterparty = '{client_name.replace("'", "''")}'
+                    t."Product name" as product,
+                    SUM(CASE WHEN CAST(t.date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN t.Amount_USD ELSE 0 END) as p_rev_a,
+                    SUM(CASE WHEN CAST(t.date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN t.Amount_USD ELSE 0 END) as p_rev_b,
+                    SUM(CASE WHEN CAST(t.date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN t.Amount_USD ELSE 0 END) -
+                    SUM(CASE WHEN CAST(t.date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN t.Amount_USD ELSE 0 END) as p_delta
+                FROM {table_name} t
+                WHERE COALESCE(
+                    (SELECT group_name FROM custom_groups cg WHERE cg.counterparty = LOWER(TRIM(t."counterparty")) LIMIT 1),
+                    t."counterparty"
+                ) = '{client_name.replace("'", "''")}'
                 GROUP BY 1
                 HAVING p_delta != 0
                 ORDER BY ABS(p_delta) DESC
