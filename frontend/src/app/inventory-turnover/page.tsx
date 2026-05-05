@@ -343,12 +343,12 @@ export default function InventoryTurnoverPage() {
             <div className="flex-1 min-h-0 w-full mt-4 flex flex-col overflow-hidden">
               <div className="flex-1 distribution-chart-container relative">
                 <style>{`
-                  .distribution-chart-container .recharts-bar:nth-child(1) path { fill: #111111 !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(1) path { fill: #8C3E4A !important; }
                   .distribution-chart-container .recharts-bar:nth-child(2) path { fill: #A18B7D !important; }
                   .distribution-chart-container .recharts-bar:nth-child(3) path { fill: #7B8147 !important; }
                   .distribution-chart-container .recharts-bar:nth-child(4) path { fill: #FA823A !important; }
                   .distribution-chart-container .recharts-bar:nth-child(5) path { fill: #658D9C !important; }
-                  .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #8C3E4A !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #111111 !important; }
                 `}</style>
                 <BarChart
                   className="h-full"

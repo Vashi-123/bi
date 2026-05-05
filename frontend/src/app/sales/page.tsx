@@ -290,7 +290,7 @@ export default function Dashboard() {
             {payload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
               const catGrowth = entry.payload.categoryGrowth?.[entry.name];
               const actualIndex = sharedCategories.indexOf(entry.name);
-              const color = entry.name === 'Other' ? '#0C0C0C' : getColor(actualIndex, sharedCategories.length);
+              const color = entry.name === 'Other' ? MIN_COLOR : getColor(actualIndex, sharedCategories.length);
               
               return (
                 <div key={entry.name} className="flex justify-between items-center gap-6">
@@ -706,7 +706,7 @@ export default function Dashboard() {
                                         {Array.isArray(distData) && distData.map((item: any, index: number) => (
                                             <Cell 
                                               key={`cell-${index}`} 
-                                              fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)}
+                                              fill={item.dimension_value === 'Other' ? MIN_COLOR : getColor(index, distData.length)}
                                             />
                                         ))}
                                     </Pie>
@@ -720,7 +720,7 @@ export default function Dashboard() {
                     </div>
                     <div className="w-full md:w-1/2 flex-1 overflow-y-auto pr-2 scrollbar-thin space-y-3">
                         {Array.isArray(distData) && distData.map((item: any, i: number) => {
-                            const color = item.dimension_value === 'Other' ? '#0C0C0C' : getColor(i, distData.length);
+                            const color = item.dimension_value === 'Other' ? MIN_COLOR : getColor(i, distData.length);
                             return (
                                 <div key={item.dimension_value} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all border border-transparent group">
                                     <div className="w-3.5 h-3.5 rounded-full shadow-md border-2 border-white" style={{ backgroundColor: color }} />

@@ -4,18 +4,19 @@ export const SETTINGS_API_BASE = process.env.NEXT_PUBLIC_SETTINGS_API_URL || (ty
 
 // --- Color Palette (Rank-based) ---
 export const RANK_COLORS = [
-    "#111111", // Черный
+    "#8C3E4A", // Бордовый (Самый большой)
     "#A18B7D", // Тауп
     "#7B8147", // Оливковый
     "#FA823A", // Апельсиновый
     "#658D9C", // Приглушенный бирюзовый
-    "#8C3E4A", // Бордовый
-    "#E6E2D8", // Грейдж (Подложки)
-    "#FDE1D3", // Нежно-персиковый
-    "#C3CCAF", // Светло-шалфейный
-    "#1E2C3A"  // Глубокий синий
+    "#B34A34", // Терракотовый
+    "#D49A36", // Пряная горчица
+    "#4A2531", // Сливовый
+    "#36453B", // Хвойный
+    "#2C3E50", // Глубокий индиго
+    "#2A2725"  // Тёмный шоколад
 ];
-export const MIN_COLOR = "#0C0C0C";
+export const MIN_COLOR = "#111111"; // Черный (Всегда для Other)
 
 export const getColor = (index: number, total: number): string => {
     return RANK_COLORS[index % RANK_COLORS.length];

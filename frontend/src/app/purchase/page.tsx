@@ -350,7 +350,7 @@ export default function PurchaseDashboard() {
             </div>
             <div className="space-y-4">
               {payload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
-                const color = entry.name === 'Other' ? '#0C0C0C' : getColor(sharedCategories.indexOf(entry.name), sharedCategories.length);
+                const color = entry.name === 'Other' ? MIN_COLOR : getColor(sharedCategories.indexOf(entry.name), sharedCategories.length);
                 return (
                   <div key={entry.name} className="flex justify-between items-center gap-6">
                     <div className="flex-1 flex items-center gap-3 min-w-0">
@@ -620,12 +620,12 @@ export default function PurchaseDashboard() {
                 <div className="flex-1 min-h-0 w-full mt-4 flex flex-col overflow-hidden">
                   <div className="flex-1 distribution-chart-container relative">
                     <style>{`
-                      .distribution-chart-container .recharts-bar:nth-child(1) path { fill: #111111 !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(1) path { fill: #8C3E4A !important; }
                       .distribution-chart-container .recharts-bar:nth-child(2) path { fill: #A18B7D !important; }
                       .distribution-chart-container .recharts-bar:nth-child(3) path { fill: #7B8147 !important; }
                       .distribution-chart-container .recharts-bar:nth-child(4) path { fill: #FA823A !important; }
                       .distribution-chart-container .recharts-bar:nth-child(5) path { fill: #658D9C !important; }
-                      .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #8C3E4A !important; }
+                      .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #111111 !important; }
                     `}</style>
                     <BarChart
                       className="h-full"
@@ -709,7 +709,7 @@ export default function PurchaseDashboard() {
                         <ResponsiveContainer width="100%" height={300}>
                             <PieChart>
                                 <Pie data={distData} innerRadius={80} outerRadius={120} paddingAngle={5} dataKey="value" nameKey="dimension_value">
-                                    {distData.map((item: any, index: number) => <Cell key={index} fill={item.dimension_value === 'Other' ? '#0C0C0C' : getColor(index, distData.length)} />)}
+                                    {distData.map((item: any, index: number) => <Cell key={index} fill={item.dimension_value === 'Other' ? MIN_COLOR : getColor(index, distData.length)} />)}
                                 </Pie>
                                 <ReTooltip />
                             </PieChart>

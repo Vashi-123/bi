@@ -7,7 +7,7 @@ import {
     ResponsiveContainer, CartesianGrid, LabelList
 } from 'recharts';
 import type { ChartSectionProps } from '@/lib/types';
-import { getColor } from '@/lib/constants';
+import { getColor, MIN_COLOR } from '@/lib/constants';
 import { formatValue } from '@/lib/formatters';
 
 
@@ -128,7 +128,7 @@ export function ChartSection({
                     <div className="hidden md:flex gap-6 items-center bg-white px-4 py-1.5 rounded-lg border border-slate-100 shadow-sm">
                         {Array.isArray(categories) && categories.map((cat: string, i: number) => (
                             <div key={cat} className="flex items-center gap-2 group cursor-default">
-                                <div className="w-3 h-3 rounded-sm shadow-sm border border-white" style={{ backgroundColor: cat === 'Other' ? '#0C0C0C' : getColor(i, categories.length) }} />
+                                <div className="w-3 h-3 rounded-sm shadow-sm border border-white" style={{ backgroundColor: cat === 'Other' ? MIN_COLOR : getColor(i, categories.length) }} />
                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight group-hover:text-[#0C0C0C] transition-colors">{cat}</span>
                             </div>
                         ))}
@@ -228,7 +228,7 @@ export function ChartSection({
                                                                 {displayPayload.filter((p: any) => p.dataKey !== 'total' && p.dataKey !== 'growth').sort((a: any, b: any) => Number(b.value) - Number(a.value)).map((entry: any) => {
                                                                     const catGrowth = entry.payload.categoryGrowth?.[entry.name];
                                                                     const actualIndex = categories.indexOf(entry.name);
-                                                                    const color = entry.name === 'Other' ? '#0C0C0C' : getColor(actualIndex, categories.length);
+                                                                    const color = entry.name === 'Other' ? MIN_COLOR : getColor(actualIndex, categories.length);
                                                                     return (
                                                                         <div key={entry.name} className="flex justify-between items-center gap-6">
                                                                             <div className="flex-1 flex items-center gap-3 min-w-0">
@@ -264,7 +264,7 @@ export function ChartSection({
                                                     key={category} 
                                                     dataKey={category} 
                                                     stackId="a" 
-                                                    fill={category === 'Other' ? '#0C0C0C' : getColor(i, categories.length)} 
+                                                    fill={category === 'Other' ? MIN_COLOR : getColor(i, categories.length)} 
                                                     radius={i === categories.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]} 
                                                     isAnimationActive={true}
                                                     stroke="#fff"
@@ -306,7 +306,7 @@ export function ChartSection({
                             {categories.map((category: string, i: number) => (
                                 <div key={category} className="space-y-4 relative">
                                     <div className="flex items-center gap-3 sticky left-0 z-30 bg-white/50 backdrop-blur-sm w-fit pr-4 rounded-r-lg">
-                                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: category === 'Other' ? '#0C0C0C' : getColor(i, categories.length) }} />
+                                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: category === 'Other' ? MIN_COLOR : getColor(i, categories.length) }} />
                                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                             {category}
                                         </h3>
@@ -372,7 +372,7 @@ export function ChartSection({
                                                             const entry = displayPayload.find((p: any) => p.dataKey === category);
                                                             if (!entry) return null;
                                                             const catGrowth = entry.payload.categoryGrowth?.[category];
-                                                            const color = category === 'Other' ? '#0C0C0C' : getColor(i, categories.length);
+                                                            const color = category === 'Other' ? MIN_COLOR : getColor(i, categories.length);
                                                             return (
                                                                 <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-slate-100 min-w-[280px] z-[100] relative">
                                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-50 pb-3">{displayLabel}</p>
@@ -396,7 +396,7 @@ export function ChartSection({
                                                     />
                                                     <Bar 
                                                         dataKey={category} 
-                                                        fill={category === 'Other' ? '#0C0C0C' : getColor(i, categories.length)} 
+                                                        fill={category === 'Other' ? MIN_COLOR : getColor(i, categories.length)} 
                                                         radius={[4, 4, 0, 0]} 
                                                         isAnimationActive={true}
                                                         style={{ cursor: 'pointer' }}
