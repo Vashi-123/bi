@@ -311,7 +311,7 @@ export function ChartSection({
                                             {category}
                                         </h3>
                                     </div>
-                                    <div className="flex w-max min-w-full" style={{ height: `${Math.max(150, chartHeight / 2)}px` }}>
+                                    <div className="flex w-max min-w-full" style={{ height: `${chartHeight}px` }}>
                                         {/* Sticky Y-Axis */}
                                         <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[8px_0_12px_-6px_rgba(0,0,0,0.03)] flex-shrink-0 h-full" style={{ width: '80px' }}>
                                             <ResponsiveContainer width="100%" height="100%">
