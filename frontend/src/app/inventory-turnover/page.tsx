@@ -12,7 +12,7 @@ import {
   PieChart as PieIcon, ChevronUp, ChevronDown, DollarSign
 } from 'lucide-react';
 import Link from 'next/link';
-import { API_BASE, fetcher } from '@/lib/constants';
+import { API_BASE, fetcher, getColor } from '../../lib/constants';
 
 function formatCurrency(val: number) {
   if (val === 0) return '$0';
