@@ -773,11 +773,12 @@ def get_filter_options(dimension, search=None, table_name='sales'):
             return []
 
     else:
+        raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
         where_clause = f"WHERE \"{dimension}\" IS NOT NULL"
         if search:
             clean_search = str(search).replace("'", "''")
             where_clause += f" AND \"{dimension}\" ILIKE '%{clean_search}%'"
-        query = f"SELECT DISTINCT \"{dimension}\" FROM {table_name} {where_clause} ORDER BY 1 ASC LIMIT 5000"
+        query = f"SELECT DISTINCT \"{dimension}\" FROM {raw_table} {where_clause} ORDER BY 1 ASC LIMIT 5000"
 
     try:
         res = cursor.execute(query).fetchall()
