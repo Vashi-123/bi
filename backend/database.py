@@ -118,9 +118,6 @@ def refresh_groups_table():
         df_cp = pandas.DataFrame(cp_flattened)
         conn.execute("INSERT INTO custom_groups SELECT * FROM df_cp")
     
-    logger.info(f"Loaded {len(cp_groups)} counterparty groups and {len(country_groups)} country groups.")
-
-
     # 2. Country Groups
     country_groups = data.get('countries', {})
     country_flattened = []
@@ -133,6 +130,8 @@ def refresh_groups_table():
     if country_flattened:
         df_c = pandas.DataFrame(country_flattened)
         conn.execute("INSERT INTO custom_country_groups SELECT * FROM df_c")
+        
+    logger.info(f"Loaded {len(cp_groups)} counterparty groups and {len(country_groups)} country groups.")
     
     # 3. Create Enriched Views dynamically
     for table_type in ['sales', 'purchase']:
