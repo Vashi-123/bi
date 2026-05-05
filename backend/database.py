@@ -24,6 +24,23 @@ def extract_column_filters(filters: dict) -> dict:
     """Separates column filters from date filter parameters."""
     return {k: v for k, v in filters.items() if k not in DATE_FILTER_KEYS}
 
+def get_dimension_expr(dimension):
+    """Returns the SQL expression for a dimension, mapping custom groups if necessary."""
+    if dimension == 'Groupclient':
+        return """COALESCE(
+            (SELECT group_name FROM custom_groups cg WHERE cg.counterparty = LOWER(TRIM("counterparty")) LIMIT 1),
+            "Groupclient", 
+            "counterparty"
+        )"""
+    elif dimension == 'CountryGroup':
+        return """COALESCE(
+            (SELECT group_name FROM custom_country_groups ccg WHERE ccg.country_code = UPPER(TRIM("Product country")) LIMIT 1),
+            "CountryGroup",
+            'Other'
+        )"""
+    return f'"{dimension}"'
+
+
 # Path to the partitioned parquet dataset
 # Use environment variable DATA_PATH if available, else default to absolute path on server
 DATA_PATH = os.getenv("DATA_PATH", "/home/usman/project_data/processed/final_df/**/*.parquet")
@@ -689,23 +706,25 @@ def get_filter_options(dimension, search=None, table_name='sales'):
     
     # Handle custom group dimensions
     if dimension == 'Groupclient':
+        raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
         query = "SELECT DISTINCT group_name FROM custom_groups"
         if search:
             s_val = str(search).replace("'", "''")
             query += f" WHERE group_name ILIKE '%{s_val}%'"
         
-        query += f" UNION SELECT DISTINCT Groupclient FROM {table_name} WHERE Groupclient IS NOT NULL"
+        query += f" UNION SELECT DISTINCT Groupclient FROM {raw_table} WHERE Groupclient IS NOT NULL"
         if search:
             s_val = str(search).replace("'", "''")
             query += f" AND Groupclient ILIKE '%{s_val}%'"
 
     elif dimension == 'CountryGroup':
+        raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
         query = "SELECT DISTINCT group_name FROM custom_country_groups"
         if search:
             s_val = str(search).replace("'", "''")
             query += f" WHERE group_name ILIKE '%{s_val}%'"
         
-        query += f" UNION SELECT DISTINCT CountryGroup FROM {table_name} WHERE CountryGroup IS NOT NULL"
+        query += f" UNION SELECT DISTINCT CountryGroup FROM {raw_table} WHERE CountryGroup IS NOT NULL"
         if search:
             s_val = str(search).replace("'", "''")
             query += f" AND CountryGroup ILIKE '%{s_val}%'"
@@ -769,8 +788,10 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
         # Fallback to current window window if no filter (already restricted by START/END above)
         filter_clause = f"WHERE CAST(date AS DATE) >= '{start_date}' AND CAST(date AS DATE) <= '{end_date}' {extra_filters}"
 
+    dim_col = get_dimension_expr(dimension)
+    
     # 1. Find Top N categories
-    top_n_query = f"SELECT \"{dimension}\" FROM {raw_table} {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
+    top_n_query = f"SELECT {dim_col} FROM {raw_table} {filter_clause} AND {dim_col} IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
     try:
         top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
     except Exception as e:
@@ -790,7 +811,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
         sales_d = "date_trunc('month', CAST(date AS DATE))"
 
     top_dims_escaped = [d.replace("'", "''") for d in top_dims]
-    dim_expr = f"CASE WHEN \"{dimension}\" IN ({', '.join([f"'{d}'" for d in top_dims_escaped])}) THEN \"{dimension}\" ELSE 'Other' END"
+    dim_expr = f"CASE WHEN {dim_col} IN ({', '.join([f"'{d}'" for d in top_dims_escaped])}) THEN {dim_col} ELSE 'Other' END"
     
     query = f"""
     WITH calendar AS ({cal_gen}),
@@ -862,7 +883,8 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
         s, e = get_current_window(filters, table_name=table_name)
         filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
 
-    top_n_query = f"SELECT \"{dimension}\" FROM {raw_table} {filter_clause} AND \"{dimension}\" IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
+    dim_col = get_dimension_expr(dimension)
+    top_n_query = f"SELECT {dim_col} FROM {raw_table} {filter_clause} AND {dim_col} IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
     try:
         top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
     except Exception as e:
@@ -871,7 +893,7 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
     if not top_dims: return []
 
     top_dims_escaped = [d.replace("'", "''") for d in top_dims]
-    dim_expr = f"CASE WHEN \"{dimension}\" IN ({', '.join([f"'{d}'" for d in top_dims_escaped])}) THEN \"{dimension}\" ELSE 'Other' END"
+    dim_expr = f"CASE WHEN {dim_col} IN ({', '.join([f"'{d}'" for d in top_dims_escaped])}) THEN {dim_col} ELSE 'Other' END"
     query = f"SELECT {dim_expr} as dimension_value, SUM({col}) as value FROM {raw_table} {filter_clause} GROUP BY 1 ORDER BY value DESC"
     
     df = cursor.execute(query).df()
@@ -917,13 +939,15 @@ def get_master_table(dimension='Category', filters=None, table_name='sales'):
     margin_col = "\"Margin_%\"" if ('margin_%' in existing_cols and not is_purchase) else "0"
     qty_col = "Qty" if 'qty' in existing_cols else "0"
 
+    dim_col = get_dimension_expr(dimension)
+
     query = f"""
     WITH curr AS (
-        SELECT "{dimension}" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
+        SELECT {dim_col} as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
         FROM {raw_table} {curr_filter} GROUP BY 1
     ),
     prev AS (
-        SELECT "{dimension}" as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
+        SELECT {dim_col} as name, SUM({revenue_col}) as revenue, SUM({profit_col}) as profit, AVG({margin_col}) as margin, SUM({qty_col}) as qty 
         FROM {raw_table} {prev_filter} GROUP BY 1
     )
     SELECT 
@@ -959,7 +983,12 @@ def get_detail_table(dimension='Category', selected_group=None, top_n=10, filter
     group_filter = ""
     if selected_group:
         clean_group = str(selected_group).replace("'", "''")
-        group_filter = f" AND \"{dimension}\" = '{clean_group}'"
+        if dimension == 'Groupclient':
+            group_filter = f" AND (LOWER(TRIM(counterparty)) IN (SELECT counterparty FROM custom_groups WHERE group_name = '{clean_group}') OR \"Groupclient\" = '{clean_group}')"
+        elif dimension == 'CountryGroup':
+            group_filter = f" AND (UPPER(TRIM(\"Product country\")) IN (SELECT country_code FROM custom_country_groups WHERE group_name = '{clean_group}') OR \"CountryGroup\" = '{clean_group}')"
+        else:
+            group_filter = f" AND \"{dimension}\" = '{clean_group}'"
         
     if mode == 'all':
         curr_filter = f"WHERE 1=1 {extra_filters} {group_filter}"
