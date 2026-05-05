@@ -67,7 +67,7 @@ export default function Dashboard() {
     }
 
     return params.toString();
-  }, [filters, dateFilter]);
+  }, [filters, dateFilter, groupByClient]);
 
   const metricParam = encodeURIComponent(METRIC_DB_MAP[activeMetric] || 'Amount_USD');
   const kpiUrl = `${API_BASE}/api/kpi?${filterParams}`;
