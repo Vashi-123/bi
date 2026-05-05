@@ -24,17 +24,17 @@ def extract_column_filters(filters: dict) -> dict:
     """Separates column filters from date filter parameters."""
     return {k: v for k, v in filters.items() if k not in DATE_FILTER_KEYS}
 
-def get_dimension_expr(dimension):
+def get_dimension_expr(dimension, raw_table):
     """Returns the SQL expression for a dimension, mapping custom groups if necessary."""
     if dimension == 'Groupclient':
-        return """COALESCE(
-            (SELECT group_name FROM custom_groups cg WHERE cg.counterparty = LOWER(TRIM("counterparty")) LIMIT 1),
+        return f"""COALESCE(
+            (SELECT group_name FROM custom_groups cg WHERE cg.counterparty = LOWER(TRIM({raw_table}."counterparty")) LIMIT 1),
             "Groupclient", 
             "counterparty"
         )"""
     elif dimension == 'CountryGroup':
-        return """COALESCE(
-            (SELECT group_name FROM custom_country_groups ccg WHERE ccg.country_code = UPPER(TRIM("Product country")) LIMIT 1),
+        return f"""COALESCE(
+            (SELECT group_name FROM custom_country_groups ccg WHERE ccg.country_code = UPPER(TRIM({raw_table}."Product country")) LIMIT 1),
             "CountryGroup",
             'Other'
         )"""
@@ -117,6 +117,9 @@ def refresh_groups_table():
     if cp_flattened:
         df_cp = pandas.DataFrame(cp_flattened)
         conn.execute("INSERT INTO custom_groups SELECT * FROM df_cp")
+    
+    logger.info(f"Loaded {len(cp_groups)} counterparty groups and {len(country_groups)} country groups.")
+
 
     # 2. Country Groups
     country_groups = data.get('countries', {})
@@ -257,6 +260,13 @@ def save_groups(data):
     except Exception as e:
         logger.error(f"Error saving groups: {e}")
         return False
+    finally:
+        # Clear filter options cache to reflect new groups immediately
+        with _CACHE_LOCK:
+            keys_to_del = [k for k in _CACHE if k.startswith("filter_options_")]
+            for k in keys_to_del:
+                del _CACHE[k]
+
 
 # --- Stock Settings Management ---
 
@@ -705,29 +715,42 @@ def get_filter_options(dimension, search=None, table_name='sales'):
     cursor = get_cursor()
     
     # Handle custom group dimensions
-    if dimension == 'Groupclient':
-        raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
-        query = "SELECT DISTINCT group_name FROM custom_groups"
-        if search:
-            s_val = str(search).replace("'", "''")
-            query += f" WHERE group_name ILIKE '%{s_val}%'"
-        
-        query += f" UNION SELECT DISTINCT Groupclient FROM {raw_table} WHERE Groupclient IS NOT NULL"
-        if search:
-            s_val = str(search).replace("'", "''")
-            query += f" AND Groupclient ILIKE '%{s_val}%'"
+    if dimension in ['Groupclient', 'CountryGroup']:
+        try:
+            raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
+            group_table = "custom_groups" if dimension == 'Groupclient' else "custom_country_groups"
+            column_name = "Groupclient" if dimension == 'Groupclient' else "CountryGroup"
+            
+            # 1. Get from custom groups mapping
+            q1 = f"SELECT DISTINCT group_name FROM {group_table}"
+            if search:
+                s_val = str(search).replace("'", "''")
+                q1 += f" WHERE group_name ILIKE '%{s_val}%'"
+            
+            res1 = cursor.execute(q1).fetchall()
+            options = {row[0] for row in res1 if row[0]}
+            
+            # 2. Get from raw table (actual groups in data)
+            q2 = f"SELECT DISTINCT \"{column_name}\" FROM {raw_table} WHERE \"{column_name}\" IS NOT NULL"
+            if search:
+                s_val = str(search).replace("'", "''")
+                q2 += f" AND \"{column_name}\" ILIKE '%{s_val}%'"
+            
+            try:
+                res2 = cursor.execute(q2).fetchall()
+                for row in res2:
+                    if row[0]: options.add(row[0])
+            except:
+                # Table might not exist yet or column missing
+                pass
+                
+            out = sorted(list(options))
+            set_cached_data(cache_key, out)
+            return out
+        except Exception as e:
+            logger.error(f"Error getting group filter options for {dimension}: {e}")
+            return []
 
-    elif dimension == 'CountryGroup':
-        raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
-        query = "SELECT DISTINCT group_name FROM custom_country_groups"
-        if search:
-            s_val = str(search).replace("'", "''")
-            query += f" WHERE group_name ILIKE '%{s_val}%'"
-        
-        query += f" UNION SELECT DISTINCT CountryGroup FROM {raw_table} WHERE CountryGroup IS NOT NULL"
-        if search:
-            s_val = str(search).replace("'", "''")
-            query += f" AND CountryGroup ILIKE '%{s_val}%'"
     else:
         where_clause = f"WHERE \"{dimension}\" IS NOT NULL"
         if search:
@@ -742,6 +765,8 @@ def get_filter_options(dimension, search=None, table_name='sales'):
         return out
     except Exception as e:
         logger.error(f"Error getting filter options for {dimension}: {e}")
+        return []
+
 _OVERALL_DATE_RANGE = None
 
 def get_overall_date_range(table_name='sales'):
@@ -788,7 +813,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
         # Fallback to current window window if no filter (already restricted by START/END above)
         filter_clause = f"WHERE CAST(date AS DATE) >= '{start_date}' AND CAST(date AS DATE) <= '{end_date}' {extra_filters}"
 
-    dim_col = get_dimension_expr(dimension)
+    dim_col = get_dimension_expr(dimension, raw_table)
     
     # 1. Find Top N categories
     top_n_query = f"SELECT {dim_col} FROM {raw_table} {filter_clause} AND {dim_col} IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
@@ -883,7 +908,7 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
         s, e = get_current_window(filters, table_name=table_name)
         filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
 
-    dim_col = get_dimension_expr(dimension)
+    dim_col = get_dimension_expr(dimension, raw_table)
     top_n_query = f"SELECT {dim_col} FROM {raw_table} {filter_clause} AND {dim_col} IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
     try:
         top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
@@ -939,7 +964,7 @@ def get_master_table(dimension='Category', filters=None, table_name='sales'):
     margin_col = "\"Margin_%\"" if ('margin_%' in existing_cols and not is_purchase) else "0"
     qty_col = "Qty" if 'qty' in existing_cols else "0"
 
-    dim_col = get_dimension_expr(dimension)
+    dim_col = get_dimension_expr(dimension, raw_table)
 
     query = f"""
     WITH curr AS (
