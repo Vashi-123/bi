@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import useSWR, { mutate } from 'swr';
 import { API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
-import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Users, Globe, UserIcon, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Users, Globe, UserIcon, Pencil, ShieldCheck, Package, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 type GroupType = 'counterparties' | 'countries';
@@ -94,22 +94,43 @@ export default function GroupsPage() {
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Configure custom mappings for clients and regions</p>
                     </div>
                     
-                    {/* Tab Switcher */}
-                    <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
-                        <button 
-                            onClick={() => { setActiveType('counterparties'); setSelectedItems([]); }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
-                                ${activeType === 'counterparties' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
-                        >
-                            <Users className="w-4 h-4" /> Clients
-                        </button>
-                        <button 
-                            onClick={() => { setActiveType('countries'); setSelectedItems([]); }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
-                                ${activeType === 'countries' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
-                        >
-                            <Globe className="w-4 h-4" /> Countries
-                        </button>
+                    <div className="flex flex-col items-end gap-3">
+                        <div className="flex gap-2 bg-white/50 p-1.5 rounded-2xl border border-slate-100 shadow-sm">
+                            <Link href="/access" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                <ShieldCheck className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                Access
+                            </Link>
+                            <Link href="/stock_settings" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                <Package className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                Stock
+                            </Link>
+                            <Link href="/daily_report" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                <Zap className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                Reports
+                            </Link>
+                            <Link href="/groups" className="flex items-center gap-2 px-4 py-2 bg-[#0C0C0C] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg group">
+                                <Users className="w-3.5 h-3.5 text-[#DDFF55]" />
+                                Groups
+                            </Link>
+                        </div>
+
+                        {/* Tab Switcher */}
+                        <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
+                            <button 
+                                onClick={() => { setActiveType('counterparties'); setSelectedItems([]); }}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
+                                    ${activeType === 'counterparties' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
+                            >
+                                <Users className="w-4 h-4" /> Clients
+                            </button>
+                            <button 
+                                onClick={() => { setActiveType('countries'); setSelectedItems([]); }}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
+                                    ${activeType === 'countries' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
+                            >
+                                <Globe className="w-4 h-4" /> Countries
+                            </button>
+                        </div>
                     </div>
                 </Flex>
 

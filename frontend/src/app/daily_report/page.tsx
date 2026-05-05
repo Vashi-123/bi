@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { API_BASE, SETTINGS_API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
-import { ArrowLeft, Plus, Trash2, Send, ShieldCheck, UserCircle, Edit3, XCircle, Package, Zap, BellRing } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Send, ShieldCheck, UserCircle, Edit3, XCircle, Package, Zap, BellRing, Users } from 'lucide-react';
 import Link from 'next/link';
 
 type SettingCategory = 'report_recipients';
@@ -113,6 +113,10 @@ export default function DailyReportPage() {
                             <Link href="/daily_report" className="flex items-center gap-2 px-4 py-2 bg-[#0C0C0C] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg group">
                                 <Zap className="w-3.5 h-3.5 text-[#DDFF55]" />
                                 Reports
+                            </Link>
+                            <Link href="/groups" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                <Users className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                Groups
                             </Link>
                         </div>
                     </div>
