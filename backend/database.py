@@ -664,7 +664,7 @@ def build_filter_clause(filters, prefix="WHERE", dimension=None):
         return ""
     
     combined = " ".join(clauses)
-    if combined.startswith("AND"):
+    if combined.strip().startswith("AND"):
         return f"{prefix} 1=1 {combined}"
     return f"{prefix} {combined}"
 
