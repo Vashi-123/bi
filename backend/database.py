@@ -24,18 +24,23 @@ def extract_column_filters(filters: dict) -> dict:
     """Separates column filters from date filter parameters."""
     return {k: v for k, v in filters.items() if k not in DATE_FILTER_KEYS}
 
-def get_dimension_expr(dimension, raw_table):
+def get_dimension_expr(dimension, raw_table, available_columns=None):
     """Returns the SQL expression for a dimension, mapping custom groups if necessary."""
+    if available_columns is not None:
+        available_columns = [c.lower() for c in available_columns]
+        
     if dimension == 'Groupclient':
+        groupclient_col = '"Groupclient"' if (available_columns is None or 'groupclient' in available_columns) else 'NULL'
         return f"""COALESCE(
             (SELECT group_name FROM custom_groups cg WHERE cg.counterparty = LOWER(TRIM({raw_table}."counterparty")) LIMIT 1),
-            "Groupclient", 
+            {groupclient_col}, 
             "counterparty"
         )"""
     elif dimension == 'CountryGroup':
+        countrygroup_col = '"CountryGroup"' if (available_columns is None or 'countrygroup' in available_columns) else 'NULL'
         return f"""COALESCE(
             (SELECT group_name FROM custom_country_groups ccg WHERE ccg.country_code = UPPER(TRIM({raw_table}."Product country")) LIMIT 1),
-            "CountryGroup",
+            {countrygroup_col},
             'Other'
         )"""
     return f'"{dimension}"'
@@ -829,7 +834,7 @@ def get_trends(metric='revenue', dimension='Category', top_n=5, interval='day', 
         # Fallback to current window window if no filter (already restricted by START/END above)
         filter_clause = f"WHERE CAST(date AS DATE) >= '{start_date}' AND CAST(date AS DATE) <= '{end_date}' {extra_filters}"
 
-    dim_col = get_dimension_expr(dimension, raw_table)
+    dim_col = get_dimension_expr(dimension, raw_table, available_columns=existing_cols)
     
     # 1. Find Top N categories
     top_n_query = f"SELECT {dim_col} FROM {raw_table} {filter_clause} AND {dim_col} IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
@@ -924,7 +929,7 @@ def get_distribution(metric='revenue', dimension='Category', top_n=5, filters=No
         s, e = get_current_window(filters, table_name=table_name)
         filter_clause = f"WHERE CAST(date AS DATE) >= '{s}' AND CAST(date AS DATE) <= '{e}' {extra_filters}"
 
-    dim_col = get_dimension_expr(dimension, raw_table)
+    dim_col = get_dimension_expr(dimension, raw_table, available_columns=existing_cols)
     top_n_query = f"SELECT {dim_col} FROM {raw_table} {filter_clause} AND {dim_col} IS NOT NULL GROUP BY 1 ORDER BY SUM({col}) DESC LIMIT {top_n}"
     try:
         top_dims = [row[0] for row in cursor.execute(top_n_query).fetchall()]
@@ -982,7 +987,7 @@ def get_master_table(dimension='Category', filters=None, table_name='sales'):
     margin_col = "\"Margin_%\"" if ('margin_%' in existing_cols and not is_purchase) else "0"
     qty_col = "Qty" if 'qty' in existing_cols else "0"
 
-    dim_col = get_dimension_expr(dimension, raw_table)
+    dim_col = get_dimension_expr(dimension, raw_table, available_columns=existing_cols)
 
     query = f"""
     WITH curr AS (
