@@ -1112,13 +1112,16 @@ def get_period_ai_payload(start_a: str, end_a: str, start_b: str, end_b: str, ta
     metrics_query = f"""
         WITH period_data AS (
             SELECT 
-                counterparty,
-                "Product name" as product,
-                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN Amount_USD ELSE 0 END) as rev_a,
-                SUM(CASE WHEN CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN Amount_USD ELSE 0 END) as rev_b
-            FROM {table_name}
-            WHERE (CAST(date AS DATE) BETWEEN '{start_a}' AND '{end_a}')
-               OR (CAST(date AS DATE) BETWEEN '{start_b}' AND '{end_b}')
+                COALESCE(
+                    (SELECT group_name FROM custom_groups cg WHERE cg.counterparty = LOWER(TRIM(t."counterparty")) LIMIT 1),
+                    t."counterparty"
+                ) as counterparty,
+                t."Product name" as product,
+                SUM(CASE WHEN CAST(t.date AS DATE) BETWEEN '{start_a}' AND '{end_a}' THEN t.Amount_USD ELSE 0 END) as rev_a,
+                SUM(CASE WHEN CAST(t.date AS DATE) BETWEEN '{start_b}' AND '{end_b}' THEN t.Amount_USD ELSE 0 END) as rev_b
+            FROM {table_name} t
+            WHERE (CAST(t.date AS DATE) BETWEEN '{start_a}' AND '{end_a}')
+               OR (CAST(t.date AS DATE) BETWEEN '{start_b}' AND '{end_b}')
             GROUP BY 1, 2
         ),
         client_deltas AS (
