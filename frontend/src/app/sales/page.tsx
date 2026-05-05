@@ -437,10 +437,6 @@ export default function Dashboard() {
           </button>
           <div className="h-10 w-[1px] bg-slate-100 mx-2" />
           <div className="flex items-center gap-3">
-              <div className="text-right hidden sm:block">
-                  <p className="text-xs font-bold text-slate-800">Usman Ganaev</p>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Administrator</p>
-              </div>
               <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200"><UserIcon className="w-5 h-5 text-slate-400" /></div>
           </div>
         </Flex>
