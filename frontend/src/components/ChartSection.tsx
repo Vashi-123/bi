@@ -27,6 +27,29 @@ export function ChartSection({
 }: any) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [pinnedPoint, setPinnedPoint] = useState<any>(null);
+    const [chartHeight, setChartHeight] = useState(450);
+    const [isResizing, setIsResizing] = useState(false);
+    
+    const startResize = (e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+        const startY = e.clientY;
+        const startHeight = chartHeight;
+
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            const deltaY = moveEvent.clientY - startY;
+            setChartHeight(Math.max(200, startHeight + deltaY));
+        };
+
+        const onMouseUp = () => {
+            setIsResizing(false);
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
     
     const isStatusFiltered = activeFilters.status && activeFilters.status.length > 0 && activeFilters.status[0] !== '';
     const canFilterByStatus = ['Product name', 'Item name', 'counterparty'].includes(legendDimension);
@@ -113,14 +136,24 @@ export function ChartSection({
                 )}
             </Flex>
 
-            <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/30 p-10 border border-slate-50 relative overflow-hidden group transition-all">
+            <div className={`bg-white rounded-3xl shadow-xl shadow-slate-200/30 p-10 pb-12 border border-slate-50 relative overflow-hidden group ${isResizing ? '' : 'transition-all'}`}>
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div ref={containerRef} className="h-[450px] overflow-y-auto overflow-x-auto scrollbar-hide relative">
+                
+                {/* Resizer Handle */}
+                <div 
+                    className="absolute bottom-0 left-0 w-full h-3 cursor-row-resize hover:bg-slate-200 active:bg-slate-300 transition-colors z-50 flex items-center justify-center group/resizer"
+                    onMouseDown={startResize}
+                    title="Drag to resize"
+                >
+                    <div className="w-12 h-1 bg-slate-300 rounded-full group-hover/resizer:bg-slate-500 transition-colors" />
+                </div>
+
+                <div ref={containerRef} className="overflow-y-auto overflow-x-auto scrollbar-hide relative" style={{ height: view === 'combined' ? `${chartHeight}px` : 'auto' }}>
                     {view === 'combined' ? (
                         Array.isArray(data) && data.length > 0 && (
                             <div className="flex min-h-full w-max min-w-full">
                                 {/* Sticky Y-Axis */}
-                                <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[12px_0_20px_-10px_rgba(0,0,0,0.03)] flex-shrink-0 h-[450px]" style={{ width: '85px' }}>
+                                <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[12px_0_20px_-10px_rgba(0,0,0,0.03)] flex-shrink-0" style={{ width: '85px', height: `${chartHeight}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={data} margin={{ top: 30, right: 0, left: 5, bottom: 40 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -139,7 +172,7 @@ export function ChartSection({
                                 </div>
 
                                 {/* Scrollable Chart Content */}
-                                <div style={{ minWidth: `${Math.max(800, data.length * minColWidth)}px` }} className="flex-1 h-[450px]">
+                                <div style={{ minWidth: `${Math.max(800, data.length * minColWidth)}px`, height: `${chartHeight}px` }} className="flex-1">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart 
                                             data={data} 
@@ -278,7 +311,7 @@ export function ChartSection({
                                             {category}
                                         </h3>
                                     </div>
-                                    <div className="flex w-max min-w-full h-[150px]">
+                                    <div className="flex w-max min-w-full" style={{ height: `${Math.max(150, chartHeight / 2)}px` }}>
                                         {/* Sticky Y-Axis */}
                                         <div className="sticky left-0 z-20 bg-white/95 backdrop-blur-md pr-2 border-r border-slate-100/50 shadow-[8px_0_12px_-6px_rgba(0,0,0,0.03)] flex-shrink-0 h-full" style={{ width: '80px' }}>
                                             <ResponsiveContainer width="100%" height="100%">
