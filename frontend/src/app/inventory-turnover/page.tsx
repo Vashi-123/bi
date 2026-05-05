@@ -36,8 +36,7 @@ const CustomTooltip = ({ payload, active }: any) => {
   // In a multi-category chart, find the payload item that has a value
   const activePayload = payload.find((p: any) => p.value !== undefined && p.value !== null) || payload[0];
   const data = activePayload.payload;
-  const colors_palette = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#000000'];
-  const bar_color = colors_palette[data.index % colors_palette.length];
+  const bar_color = getColor(data.index, 1);
 
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-2xl min-w-[200px]">
@@ -303,8 +302,7 @@ export default function InventoryTurnoverPage() {
               ) : skuLeaderboard.map((item, idx) => {
                 const maxValue = skuLeaderboard[0].stock_value_usd || 1;
                 const percentage = ((item.stock_value_usd || 0) / maxValue) * 100;
-                const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A'];
-                const color = colors[idx % colors.length];
+                const color = getColor(idx, skuLeaderboard.length);
 
                 return (
                   <div key={item.item_id} className="space-y-2">
@@ -345,12 +343,12 @@ export default function InventoryTurnoverPage() {
             <div className="flex-1 min-h-0 w-full mt-4 flex flex-col overflow-hidden">
               <div className="flex-1 distribution-chart-container relative">
                 <style>{`
-                  .distribution-chart-container .recharts-bar:nth-child(1) path { fill: #8F3F48 !important; }
-                  .distribution-chart-container .recharts-bar:nth-child(2) path { fill: #638994 !important; }
-                  .distribution-chart-container .recharts-bar:nth-child(3) path { fill: #FF843B !important; }
-                  .distribution-chart-container .recharts-bar:nth-child(4) path { fill: #79783F !important; }
-                  .distribution-chart-container .recharts-bar:nth-child(5) path { fill: #A68B7A !important; }
-                  .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #000000 !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(1) path { fill: #111111 !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(2) path { fill: #A18B7D !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(3) path { fill: #7B8147 !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(4) path { fill: #FA823A !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(5) path { fill: #658D9C !important; }
+                  .distribution-chart-container .recharts-bar:nth-child(6) path { fill: #8C3E4A !important; }
                 `}</style>
                 <BarChart
                   className="h-full"
@@ -368,8 +366,7 @@ export default function InventoryTurnoverPage() {
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2 shrink-0">
                 {distributionData.slice(0, 3).map((item, idx) => {
-                  const colors = ['#8F3F48', '#638994', '#FF843B', '#79783F', '#A68B7A', '#000000'];
-                  const color = colors[idx % colors.length];
+                  const color = getColor(idx, 6);
                   return (
                     <div key={item.range} className="p-3 rounded-2xl bg-slate-50 border border-slate-100/50 space-y-2">
                       <Flex justifyContent="between" alignItems="center" className="border-b border-slate-100 pb-1">

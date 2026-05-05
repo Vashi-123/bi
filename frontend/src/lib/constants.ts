@@ -3,7 +3,18 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:800
 export const SETTINGS_API_BASE = process.env.NEXT_PUBLIC_SETTINGS_API_URL || (typeof window !== 'undefined' ? `http://${window.location.hostname}:8081` : 'http://localhost:8081');
 
 // --- Color Palette (Rank-based) ---
-export const RANK_COLORS = ["#8F3F48", "#638994", "#FF843B", "#79783F", "#A68B7A"];
+export const RANK_COLORS = [
+    "#111111", // Черный
+    "#A18B7D", // Тауп
+    "#7B8147", // Оливковый
+    "#FA823A", // Апельсиновый
+    "#658D9C", // Приглушенный бирюзовый
+    "#8C3E4A", // Бордовый
+    "#E6E2D8", // Грейдж (Подложки)
+    "#FDE1D3", // Нежно-персиковый
+    "#C3CCAF", // Светло-шалфейный
+    "#1E2C3A"  // Глубокий синий
+];
 export const MIN_COLOR = "#0C0C0C";
 
 export const getColor = (index: number, total: number): string => {
