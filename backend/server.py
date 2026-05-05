@@ -119,6 +119,32 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"error": "Internal server error", "detail": str(exc)}
     )
 
+# --- Authentication ---
+
+@app.post("/api/auth/login")
+async def login(request: Request):
+    try:
+        data = await request.json()
+        username = data.get("username")
+        password = data.get("password")
+        
+        admin_user = os.getenv("ADMIN_USER", "admin")
+        admin_pass = os.getenv("ADMIN_PASS", "admin")
+        
+        if username == admin_user and password == admin_pass:
+            # In a real app, this would be a JWT or session cookie
+            return {"status": "success", "token": "authenticated_session_token_2024"}
+        
+        return JSONResponse(
+            status_code=401, 
+            content={"status": "error", "message": "Invalid username or password"}
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=400,
+            content={"status": "error", "message": "Invalid request format"}
+        )
+
 
 # --- Filter Parsing ---
 

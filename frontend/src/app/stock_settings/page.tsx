@@ -6,6 +6,7 @@ import { SETTINGS_API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, TextInput } from '@tremor/react';
 import { ArrowLeft, Plus, Search, Trash2, Package, ShieldCheck, BellRing, UserCircle, Edit3, XCircle, Zap, ChevronDown, ChevronRight, Check, X, CheckCircle, Users } from 'lucide-react';
 import Link from 'next/link';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 type SettingCategory = 'monitored_skus' | 'notification_recipients';
 
@@ -167,215 +168,217 @@ export default function StockSettingsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] text-[#0C0C0C] font-sans selection:bg-blue-100 p-8 md:p-12">
-            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#E1E7EC] via-[#F8FAFC] to-[#FFF9F5] opacity-100" />
-            </div>
+        <ProtectedRoute>
+            <div className="min-h-screen bg-[#F8FAFC] text-[#0C0C0C] font-sans selection:bg-blue-100 p-8 md:p-12">
+                <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#E1E7EC] via-[#F8FAFC] to-[#FFF9F5] opacity-100" />
+                </div>
 
-            <main className="relative z-10 max-w-6xl mx-auto space-y-10">
-                {/* Header */}
-                <Flex justifyContent="between" className="items-center">
-                    <div className="space-y-1">
-                        <Link href="/" className="flex items-center gap-2 text-slate-400 hover:text-[#0C0C0C] transition-colors mb-4 group">
-                            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                            <span className="text-xs font-bold uppercase tracking-widest">Back to Dashboard</span>
-                        </Link>
-                        <h1 className="text-4xl font-black text-[#0C0C0C] tracking-tighter">Stock Controls</h1>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Configure Monitored Products</p>
-                    </div>
-                    
-                    <div className="flex flex-col items-end gap-3">
-                        <div className="flex gap-2 bg-white/50 p-1.5 rounded-2xl border border-slate-100 shadow-sm">
-                            <Link href="/access" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
-                                <ShieldCheck className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
-                                Access
+                <main className="relative z-10 max-w-6xl mx-auto space-y-10">
+                    {/* Header */}
+                    <Flex justifyContent="between" className="items-center">
+                        <div className="space-y-1">
+                            <Link href="/" className="flex items-center gap-2 text-slate-400 hover:text-[#0C0C0C] transition-colors mb-4 group">
+                                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                                <span className="text-xs font-bold uppercase tracking-widest">Back to Dashboard</span>
                             </Link>
-                            <Link href="/stock_settings" className="flex items-center gap-2 px-4 py-2 bg-[#0C0C0C] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg group">
-                                <Package className="w-3.5 h-3.5 text-[#DDFF55]" />
-                                Stock
-                            </Link>
-                            <Link href="/daily_report" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
-                                <Zap className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
-                                Reports
-                            </Link>
-                            <Link href="/groups" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
-                                <Users className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
-                                Groups
-                            </Link>
+                            <h1 className="text-4xl font-black text-[#0C0C0C] tracking-tighter">Stock Controls</h1>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Configure Monitored Products</p>
                         </div>
-                        <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
-                            <button onClick={() => { setActiveCategory('monitored_skus'); cancelEditing(); }} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === 'monitored_skus' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-black'}`}><Package className="w-4 h-4" /> SKUs</button>
-                            <button onClick={() => { setActiveCategory('notification_recipients'); cancelEditing(); }} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === 'notification_recipients' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-black'}`}><BellRing className="w-4 h-4" /> Notify</button>
+                        
+                        <div className="flex flex-col items-end gap-3">
+                            <div className="flex gap-2 bg-white/50 p-1.5 rounded-2xl border border-slate-100 shadow-sm">
+                                <Link href="/access" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                    Access
+                                </Link>
+                                <Link href="/stock_settings" className="flex items-center gap-2 px-4 py-2 bg-[#0C0C0C] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg group">
+                                    <Package className="w-3.5 h-3.5 text-[#DDFF55]" />
+                                    Stock
+                                </Link>
+                                <Link href="/daily_report" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                    <Zap className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                    Reports
+                                </Link>
+                                <Link href="/groups" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                    <Users className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                    Groups
+                                </Link>
+                            </div>
+                            <div className="bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100 flex gap-1">
+                                <button onClick={() => { setActiveCategory('monitored_skus'); cancelEditing(); }} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === 'monitored_skus' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-black'}`}><Package className="w-4 h-4" /> SKUs</button>
+                                <button onClick={() => { setActiveCategory('notification_recipients'); cancelEditing(); }} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeCategory === 'notification_recipients' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-black'}`}><BellRing className="w-4 h-4" /> Notify</button>
+                            </div>
                         </div>
-                    </div>
-                </Flex>
+                    </Flex>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    {/* Left Panel: Catalog Search & Config */}
-                    <div className="lg:col-span-1 space-y-8">
-                        <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-hidden z-50 flex flex-col h-[550px] relative">
-                            <Title className="text-xl font-bold mb-6 text-[#0C0C0C] shrink-0">{editingId ? 'Edit Entry' : 'Configuration'}</Title>
-                            
-                            {/* Fixed Inputs Header */}
-                            <div className="space-y-4 shrink-0 pb-4 border-b border-slate-50 mb-4">
-                                {activeCategory === 'monitored_skus' ? (
-                                    <>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Group Name</label>
-                                            <input 
-                                                type="text" 
-                                                placeholder="e.g. USDT, Gift Cards..." 
-                                                value={newItemGroup} 
-                                                onChange={e => setNewItemGroup(e.target.value)} 
-                                                className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" 
-                                            />
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                        {/* Left Panel: Catalog Search & Config */}
+                        <div className="lg:col-span-1 space-y-8">
+                            <Card className="rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-hidden z-50 flex flex-col h-[550px] relative">
+                                <Title className="text-xl font-bold mb-6 text-[#0C0C0C] shrink-0">{editingId ? 'Edit Entry' : 'Configuration'}</Title>
+                                
+                                {/* Fixed Inputs Header */}
+                                <div className="space-y-4 shrink-0 pb-4 border-b border-slate-50 mb-4">
+                                    {activeCategory === 'monitored_skus' ? (
+                                        <>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Group Name</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="e.g. USDT, Gift Cards..." 
+                                                    value={newItemGroup} 
+                                                    onChange={e => setNewItemGroup(e.target.value)} 
+                                                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" 
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Quick Search</label>
+                                                <TextInput 
+                                                    icon={isSearching ? undefined : Search} 
+                                                    placeholder="Search products..."
+                                                    value={catalogSearch}
+                                                    onChange={e => setCatalogSearch(e.target.value)}
+                                                    className="rounded-xl border-none bg-slate-50 font-bold"
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Contact Name</label>
+                                                <input type="text" placeholder="e.g. John Doe" value={manualName} onChange={e => setManualName(e.target.value)} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Telegram ID</label>
+                                                <input type="text" placeholder="e.g. 123456789" value={manualId} onChange={e => setManualId(e.target.value)} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" />
+                                            </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Quick Search</label>
-                                            <TextInput 
-                                                icon={isSearching ? undefined : Search} 
-                                                placeholder="Search products..."
-                                                value={catalogSearch}
-                                                onChange={e => setCatalogSearch(e.target.value)}
-                                                className="rounded-xl border-none bg-slate-50 font-bold"
-                                            />
+                                    )}
+                                </div>
+
+                                {/* Flexible List Body - This scrolls! */}
+                                <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                                    {activeCategory === 'monitored_skus' && (
+                                        <div className="space-y-1">
+                                            {catalogResults.map(item => {
+                                                const isSelected = selectedItems.some(i => i.sku_id === item.sku_id);
+                                                const isAlreadyMonitored = monitoredIds.has(item.sku_id);
+                                                return (
+                                                    <button 
+                                                        key={item.sku_id}
+                                                        onClick={() => toggleSelectItem(item)}
+                                                        className={`w-full flex items-center justify-between p-3 rounded-xl transition-all border border-transparent mb-1 ${isSelected ? 'bg-blue-50/50 border-blue-100 shadow-sm' : 'hover:bg-slate-50'}`}
+                                                    >
+                                                        <div className="text-left flex-1 min-w-0 mr-3">
+                                                            <div className={`text-[13px] font-black truncate ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{item.name}</div>
+                                                            <div className="text-[9px] text-slate-400 font-mono tracking-tighter">ID: {item.sku_id}</div>
+                                                        </div>
+                                                        <div className="shrink-0">
+                                                            {isSelected ? <CheckCircle className="w-5 h-5 text-blue-500" /> : isAlreadyMonitored ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4 text-slate-300" />}
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                            {catalogResults.length === 0 && !isSearching && (
+                                                <div className="py-10 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">No products found</div>
+                                            )}
                                         </div>
-                                    </>
+                                    )}
+                                    {activeCategory === 'notification_recipients' && (
+                                        <div className="py-10 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">Enter details above to add recipient</div>
+                                    )}
+                                </div>
+
+                                {/* Fixed Footer with Summary and Action Button */}
+                                <div className="shrink-0 mt-4 pt-4 border-t border-slate-100 bg-white">
+                                    {selectedItems.length > 0 && activeCategory === 'monitored_skus' && (
+                                        <div className="mb-4 flex items-center justify-between px-2">
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Selected: {selectedItems.length}</div>
+                                            {editingId && <button onClick={cancelEditing} className="text-[9px] font-bold text-rose-500 hover:underline uppercase">Cancel Edit</button>}
+                                        </div>
+                                    )}
+                                    <button 
+                                        onClick={handleSaveBatch} 
+                                        disabled={isSaving || (activeCategory === 'monitored_skus' ? selectedItems.length === 0 : (!manualName || !manualId))} 
+                                        className="w-full py-4 bg-[#0C0C0C] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-30"
+                                    >
+                                        {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+                                        {editingId ? 'Update Entry' : activeCategory === 'monitored_skus' ? (selectedItems.length > 0 ? `Add ${selectedItems.length} items` : 'Select Items Above') : 'Add Recipient'}
+                                    </button>
+                                </div>
+                            </Card>
+                        </div>
+
+                        {/* Right Panel: Active List */}
+                        <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white flex flex-col h-[550px]">
+                            <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">{activeCategory === 'monitored_skus' ? 'Active Monitoring' : 'Notification List'}</Title>
+                            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                                {settingsLoading ? (
+                                    <div className="py-20 text-center animate-pulse text-slate-300 font-bold text-xs uppercase tracking-widest">Loading...</div>
+                                ) : activeCategory === 'monitored_skus' ? (
+                                    Object.entries(groupedSKUs || {}).map(([group, skus]) => (
+                                        <div key={group} className="mb-4 border border-slate-50 rounded-2xl overflow-hidden shadow-sm bg-white">
+                                            <button onClick={() => toggleGroup(group)} className="w-full flex items-center justify-between p-4 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <Badge color="slate" size="xs" className="text-[9px] uppercase font-bold px-2.5 py-1 rounded-lg">{group}</Badge>
+                                                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{skus.length} items</span>
+                                                </div>
+                                                {expandedGroups[group] ? <ChevronDown className="w-4 h-4 text-slate-300" /> : <ChevronRight className="w-4 h-4 text-slate-300" />}
+                                            </button>
+                                            {!expandedGroups[group] && (
+                                                <div className="p-2 space-y-1">
+                                                    {skus.map(sku => (
+                                                        <div key={sku.sku_id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-all group/item">
+                                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                <div className="w-8 h-8 shrink-0 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 group-hover/item:bg-black group-hover/item:text-white transition-all shadow-sm">
+                                                                    {sku.sku_id.slice(-2)}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <div className="text-sm font-black text-[#0C0C0C] truncate">{sku.name}</div>
+                                                                    <div className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">ID: {sku.sku_id}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity pl-2">
+                                                                <button onClick={() => startEditing(sku)} className="p-2 hover:bg-white text-slate-300 hover:text-black rounded-lg transition-all shadow-sm"><Edit3 className="w-3.5 h-3.5" /></button>
+                                                                <button onClick={() => handleDeleteSetting(sku.sku_id)} className="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-all shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
                                 ) : (
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Contact Name</label>
-                                            <input type="text" placeholder="e.g. John Doe" value={manualName} onChange={e => setManualName(e.target.value)} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Telegram ID</label>
-                                            <input type="text" placeholder="e.g. 123456789" value={manualId} onChange={e => setManualId(e.target.value)} className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-black/5" />
-                                        </div>
-                                    </div>
+                                    <Table>
+                                        <TableHead className="bg-white sticky top-0 z-10 shadow-sm border-b border-slate-100">
+                                            <TableRow>
+                                                <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">User Details</TableHeaderCell>
+                                                <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {currentSettings.map((item: any) => (
+                                                <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
+                                                    <TableCell className="py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover/row:bg-black group-hover/row:text-white transition-all shadow-sm"><UserCircle className="w-6 h-6" /></div><div><div className="text-sm font-black text-[#0C0C0C]">{item.name}</div><div className="text-[10px] text-slate-400 font-mono uppercase">ID: {item.telegram_id || item.id}</div></div></div></TableCell>
+                                                    <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => startEditing(item)} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all shadow-sm"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all shadow-sm"><Trash2 className="w-4 h-4" /></button></div></TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 )}
-                            </div>
-
-                            {/* Flexible List Body - This scrolls! */}
-                            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                                {activeCategory === 'monitored_skus' && (
-                                    <div className="space-y-1">
-                                        {catalogResults.map(item => {
-                                            const isSelected = selectedItems.some(i => i.sku_id === item.sku_id);
-                                            const isAlreadyMonitored = monitoredIds.has(item.sku_id);
-                                            return (
-                                                <button 
-                                                    key={item.sku_id}
-                                                    onClick={() => toggleSelectItem(item)}
-                                                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all border border-transparent mb-1 ${isSelected ? 'bg-blue-50/50 border-blue-100 shadow-sm' : 'hover:bg-slate-50'}`}
-                                                >
-                                                    <div className="text-left flex-1 min-w-0 mr-3">
-                                                        <div className={`text-[13px] font-black truncate ${isSelected ? 'text-blue-600' : 'text-slate-900'}`}>{item.name}</div>
-                                                        <div className="text-[9px] text-slate-400 font-mono tracking-tighter">ID: {item.sku_id}</div>
-                                                    </div>
-                                                    <div className="shrink-0">
-                                                        {isSelected ? <CheckCircle className="w-5 h-5 text-blue-500" /> : isAlreadyMonitored ? <Check className="w-4 h-4 text-emerald-500" /> : <Plus className="w-4 h-4 text-slate-300" />}
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                        {catalogResults.length === 0 && !isSearching && (
-                                            <div className="py-10 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">No products found</div>
-                                        )}
-                                    </div>
-                                )}
-                                {activeCategory === 'notification_recipients' && (
-                                    <div className="py-10 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">Enter details above to add recipient</div>
-                                )}
-                            </div>
-
-                            {/* Fixed Footer with Summary and Action Button */}
-                            <div className="shrink-0 mt-4 pt-4 border-t border-slate-100 bg-white">
-                                {selectedItems.length > 0 && activeCategory === 'monitored_skus' && (
-                                    <div className="mb-4 flex items-center justify-between px-2">
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Selected: {selectedItems.length}</div>
-                                        {editingId && <button onClick={cancelEditing} className="text-[9px] font-bold text-rose-500 hover:underline uppercase">Cancel Edit</button>}
-                                    </div>
-                                )}
-                                <button 
-                                    onClick={handleSaveBatch} 
-                                    disabled={isSaving || (activeCategory === 'monitored_skus' ? selectedItems.length === 0 : (!manualName || !manualId))} 
-                                    className="w-full py-4 bg-[#0C0C0C] text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2 disabled:opacity-30"
-                                >
-                                    {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
-                                    {editingId ? 'Update Entry' : activeCategory === 'monitored_skus' ? (selectedItems.length > 0 ? `Add ${selectedItems.length} items` : 'Select Items Above') : 'Add Recipient'}
-                                </button>
                             </div>
                         </Card>
                     </div>
-
-                    {/* Right Panel: Active List */}
-                    <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white flex flex-col h-[550px]">
-                        <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">{activeCategory === 'monitored_skus' ? 'Active Monitoring' : 'Notification List'}</Title>
-                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                            {settingsLoading ? (
-                                <div className="py-20 text-center animate-pulse text-slate-300 font-bold text-xs uppercase tracking-widest">Loading...</div>
-                            ) : activeCategory === 'monitored_skus' ? (
-                                Object.entries(groupedSKUs || {}).map(([group, skus]) => (
-                                    <div key={group} className="mb-4 border border-slate-50 rounded-2xl overflow-hidden shadow-sm bg-white">
-                                        <button onClick={() => toggleGroup(group)} className="w-full flex items-center justify-between p-4 bg-slate-50/50 hover:bg-slate-50 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <Badge color="slate" size="xs" className="text-[9px] uppercase font-bold px-2.5 py-1 rounded-lg">{group}</Badge>
-                                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{skus.length} items</span>
-                                            </div>
-                                            {expandedGroups[group] ? <ChevronDown className="w-4 h-4 text-slate-300" /> : <ChevronRight className="w-4 h-4 text-slate-300" />}
-                                        </button>
-                                        {!expandedGroups[group] && (
-                                            <div className="p-2 space-y-1">
-                                                {skus.map(sku => (
-                                                    <div key={sku.sku_id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-all group/item">
-                                                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                            <div className="w-8 h-8 shrink-0 rounded-lg bg-white border border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 group-hover/item:bg-black group-hover/item:text-white transition-all shadow-sm">
-                                                                {sku.sku_id.slice(-2)}
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <div className="text-sm font-black text-[#0C0C0C] truncate">{sku.name}</div>
-                                                                <div className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">ID: {sku.sku_id}</div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity pl-2">
-                                                            <button onClick={() => startEditing(sku)} className="p-2 hover:bg-white text-slate-300 hover:text-black rounded-lg transition-all shadow-sm"><Edit3 className="w-3.5 h-3.5" /></button>
-                                                            <button onClick={() => handleDeleteSetting(sku.sku_id)} className="p-2 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-lg transition-all shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
-                            ) : (
-                                <Table>
-                                    <TableHead className="bg-white sticky top-0 z-10 shadow-sm border-b border-slate-100">
-                                        <TableRow>
-                                            <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">User Details</TableHeaderCell>
-                                            <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {currentSettings.map((item: any) => (
-                                            <TableRow key={item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
-                                                <TableCell className="py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover/row:bg-black group-hover/row:text-white transition-all shadow-sm"><UserCircle className="w-6 h-6" /></div><div><div className="text-sm font-black text-[#0C0C0C]">{item.name}</div><div className="text-[10px] text-slate-400 font-mono uppercase">ID: {item.telegram_id || item.id}</div></div></div></TableCell>
-                                                <TableCell className="text-right"><div className="flex justify-end gap-1"><button onClick={() => startEditing(item)} className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all shadow-sm"><Edit3 className="w-4 h-4" /></button><button onClick={() => handleDeleteSetting(item.id)} className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all shadow-sm"><Trash2 className="w-4 h-4" /></button></div></TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            )}
-                        </div>
-                    </Card>
-                </div>
-            </main>
-            
-            <style jsx>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-            `}</style>
-        </div>
+                </main>
+                
+                <style jsx>{`
+                    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+                    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+                `}</style>
+            </div>
+        </ProtectedRoute>
     );
 }

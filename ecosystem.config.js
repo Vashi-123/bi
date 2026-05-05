@@ -6,7 +6,9 @@ module.exports = {
       args: '-m uvicorn server:app --host 0.0.0.0 --port 8000',
       cwd: './backend',
       env: {
-        DATA_PATH: '/home/usman/project_data/processed/final_df/**/*.parquet'
+        DATA_PATH: '/home/usman/project_data/processed/final_df/**/*.parquet',
+        ADMIN_USER: 'admin',
+        ADMIN_PASS: 'giftery2024'
       }
     },
     {

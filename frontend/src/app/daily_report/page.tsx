@@ -6,6 +6,7 @@ import { API_BASE, SETTINGS_API_BASE, fetcher } from '@/lib/constants';
 import { Card, Title, Flex, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@tremor/react';
 import { ArrowLeft, Plus, Trash2, Send, ShieldCheck, UserCircle, Edit3, XCircle, Package, Zap, BellRing, Users } from 'lucide-react';
 import Link from 'next/link';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 type SettingCategory = 'report_recipients';
 
@@ -83,161 +84,163 @@ export default function DailyReportPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] text-[#0C0C0C] font-sans selection:bg-blue-100 p-8 md:p-12">
-            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#E8ECEF] via-[#F8FAFC] to-[#FDEBD0] opacity-100" />
-            </div>
-
-            <main className="relative z-10 max-w-6xl mx-auto space-y-10">
-                {/* Header */}
-                <Flex justifyContent="between" className="items-center">
-                    <div className="space-y-1">
-                        <Link href="/" className="flex items-center gap-2 text-slate-400 hover:text-[#0C0C0C] transition-colors mb-4 group">
-                            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                            <span className="text-xs font-bold uppercase tracking-widest">Back to Dashboard</span>
-                        </Link>
-                        <h1 className="text-4xl font-black text-[#0C0C0C] tracking-tighter">Report Controls</h1>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Manage Distribution List</p>
-                    </div>
-                    
-                    <div className="flex flex-col items-end gap-3">
-                        <div className="flex gap-2 bg-white/50 p-1.5 rounded-2xl border border-slate-100 shadow-sm">
-                            <Link href="/access" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
-                                <ShieldCheck className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
-                                Access
-                            </Link>
-                            <Link href="/stock_settings" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
-                                <Package className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
-                                Stock
-                            </Link>
-                            <Link href="/daily_report" className="flex items-center gap-2 px-4 py-2 bg-[#0C0C0C] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg group">
-                                <Zap className="w-3.5 h-3.5 text-[#DDFF55]" />
-                                Reports
-                            </Link>
-                            <Link href="/groups" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
-                                <Users className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
-                                Groups
-                            </Link>
-                        </div>
-                    </div>
-                </Flex>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Create Form */}
-                    <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-[550px] relative flex flex-col">
-                        {editingId && (
-                            <button onClick={cancelEditing} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors z-10">
-                                <XCircle className="w-5 h-5" />
-                            </button>
-                        )}
-                        <Title className="text-xl font-bold mb-6 text-[#0C0C0C] shrink-0">
-                            {editingId ? 'Edit Entry' : 'Add Recipient'}
-                        </Title>
-                        
-                        <div className="space-y-6 flex-1 overflow-y-auto pr-1 custom-scrollbar pb-4">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</label>
-                                <input 
-                                    type="text" 
-                                    value={newItemName}
-                                    onChange={e => setNewItemName(e.target.value)}
-                                    placeholder="e.g. Usman G."
-                                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Telegram ID</label>
-                                <input 
-                                    type="text" 
-                                    value={newItemId}
-                                    disabled={!!editingId}
-                                    onChange={e => setNewItemId(e.target.value)}
-                                    placeholder="e.g. 198799905"
-                                    className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5 disabled:opacity-50"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="mt-6 pt-4 border-t border-slate-50 shrink-0">
-                            <button 
-                                onClick={handleSaveSingle}
-                                disabled={isSaving || !newItemId || !newItemName}
-                                className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                            >
-                                {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingId ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
-                                {editingId ? 'Update Entry' : 'Add to Distribution'}
-                            </button>
-                        </div>
-                    </Card>
-
-                    {/* Entries List */}
-                    <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white flex flex-col h-[550px]">
-                        <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">
-                            Notification List
-                        </Title>
-                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                            <Table>
-                                <TableHead className="bg-white sticky top-0 z-10 shadow-sm border-b border-slate-100">
-                                    <TableRow>
-                                        <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">User Details</TableHeaderCell>
-                                        <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {settingsLoading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={2} className="py-20 text-center text-slate-300 font-bold text-xs animate-pulse">Loading settings...</TableCell>
-                                        </TableRow>
-                                    ) : currentSettings.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={2} className="py-20 text-center text-slate-400 font-bold text-xs uppercase tracking-widest italic">No entries yet</TableCell>
-                                        </TableRow>
-                                    ) : currentSettings.map((item: any) => (
-                                        <TableRow key={item.telegram_id || item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
-                                            <TableCell className="py-5">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover/row:bg-black group-hover/row:text-white transition-all">
-                                                        <UserCircle className="w-6 h-6" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-sm font-black text-[#0C0C0C]">{item.name}</div>
-                                                        <div className="text-[10px] text-slate-400 font-mono uppercase">ID: {item.telegram_id || item.id}</div>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    <button 
-                                                        onClick={() => startEditing(item)}
-                                                        className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"
-                                                        title="Edit"
-                                                    >
-                                                        <Edit3 className="w-4 h-4" />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleDeleteSetting(item.telegram_id || item.id)}
-                                                        className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"
-                                                        title="Remove"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </Card>
+        <ProtectedRoute>
+            <div className="min-h-screen bg-[#F8FAFC] text-[#0C0C0C] font-sans selection:bg-blue-100 p-8 md:p-12">
+                <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#E8ECEF] via-[#F8FAFC] to-[#FDEBD0] opacity-100" />
                 </div>
-            </main>
 
-            <style jsx>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-            `}</style>
-        </div>
+                <main className="relative z-10 max-w-6xl mx-auto space-y-10">
+                    {/* Header */}
+                    <Flex justifyContent="between" className="items-center">
+                        <div className="space-y-1">
+                            <Link href="/" className="flex items-center gap-2 text-slate-400 hover:text-[#0C0C0C] transition-colors mb-4 group">
+                                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                                <span className="text-xs font-bold uppercase tracking-widest">Back to Dashboard</span>
+                            </Link>
+                            <h1 className="text-4xl font-black text-[#0C0C0C] tracking-tighter">Report Controls</h1>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">Manage Distribution List</p>
+                        </div>
+                        
+                        <div className="flex flex-col items-end gap-3">
+                            <div className="flex gap-2 bg-white/50 p-1.5 rounded-2xl border border-slate-100 shadow-sm">
+                                <Link href="/access" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                    Access
+                                </Link>
+                                <Link href="/stock_settings" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                    <Package className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                    Stock
+                                </Link>
+                                <Link href="/daily_report" className="flex items-center gap-2 px-4 py-2 bg-[#0C0C0C] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg group">
+                                    <Zap className="w-3.5 h-3.5 text-[#DDFF55]" />
+                                    Reports
+                                </Link>
+                                <Link href="/groups" className="flex items-center gap-2 px-4 py-2 hover:bg-white border border-transparent hover:border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group">
+                                    <Users className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0C0C0C]" />
+                                    Groups
+                                </Link>
+                            </div>
+                        </div>
+                    </Flex>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Create Form */}
+                        <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-[550px] relative flex flex-col">
+                            {editingId && (
+                                <button onClick={cancelEditing} className="absolute top-8 right-8 text-slate-300 hover:text-rose-500 transition-colors z-10">
+                                    <XCircle className="w-5 h-5" />
+                                </button>
+                            )}
+                            <Title className="text-xl font-bold mb-6 text-[#0C0C0C] shrink-0">
+                                {editingId ? 'Edit Entry' : 'Add Recipient'}
+                            </Title>
+                            
+                            <div className="space-y-6 flex-1 overflow-y-auto pr-1 custom-scrollbar pb-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</label>
+                                    <input 
+                                        type="text" 
+                                        value={newItemName}
+                                        onChange={e => setNewItemName(e.target.value)}
+                                        placeholder="e.g. Usman G."
+                                        className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Telegram ID</label>
+                                    <input 
+                                        type="text" 
+                                        value={newItemId}
+                                        disabled={!!editingId}
+                                        onChange={e => setNewItemId(e.target.value)}
+                                        placeholder="e.g. 198799905"
+                                        className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5 disabled:opacity-50"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-slate-50 shrink-0">
+                                <button 
+                                    onClick={handleSaveSingle}
+                                    disabled={isSaving || !newItemId || !newItemName}
+                                    className="w-full py-4 bg-[#0C0C0C] text-white rounded-2xl text-xs font-bold uppercase tracking-widest shadow-xl shadow-black/10 hover:bg-black disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (editingId ? <Edit3 className="w-4 h-4" /> : <Plus className="w-4 h-4" />)}
+                                    {editingId ? 'Update Entry' : 'Add to Distribution'}
+                                </button>
+                            </div>
+                        </Card>
+
+                        {/* Entries List */}
+                        <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white flex flex-col h-[550px]">
+                            <Title className="text-xl font-bold mb-8 text-[#0C0C0C] shrink-0">
+                                Notification List
+                            </Title>
+                            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                                <Table>
+                                    <TableHead className="bg-white sticky top-0 z-10 shadow-sm border-b border-slate-100">
+                                        <TableRow>
+                                            <TableHeaderCell className="text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">User Details</TableHeaderCell>
+                                            <TableHeaderCell className="text-right text-[10px] font-bold !text-slate-500 uppercase tracking-widest py-4">Action</TableHeaderCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {settingsLoading ? (
+                                            <TableRow>
+                                                <TableCell colSpan={2} className="py-20 text-center text-slate-300 font-bold text-xs animate-pulse">Loading settings...</TableCell>
+                                            </TableRow>
+                                        ) : currentSettings.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={2} className="py-20 text-center text-slate-400 font-bold text-xs uppercase tracking-widest italic">No entries yet</TableCell>
+                                            </TableRow>
+                                        ) : currentSettings.map((item: any) => (
+                                            <TableRow key={item.telegram_id || item.id} className="hover:bg-slate-50/30 transition-all border-b border-slate-100/50 group/row">
+                                                <TableCell className="py-5">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover/row:bg-black group-hover/row:text-white transition-all">
+                                                            <UserCircle className="w-6 h-6" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm font-black text-[#0C0C0C]">{item.name}</div>
+                                                            <div className="text-[10px] text-slate-400 font-mono uppercase">ID: {item.telegram_id || item.id}</div>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-1">
+                                                        <button 
+                                                            onClick={() => startEditing(item)}
+                                                            className="p-2.5 hover:bg-slate-100 text-slate-300 hover:text-slate-600 rounded-xl transition-all"
+                                                            title="Edit"
+                                                        >
+                                                            <Edit3 className="w-4 h-4" />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteSetting(item.telegram_id || item.id)}
+                                                            className="p-2.5 hover:bg-rose-50 text-slate-300 hover:text-rose-500 rounded-xl transition-all"
+                                                            title="Remove"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </Card>
+                    </div>
+                </main>
+
+                <style jsx>{`
+                    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+                    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+                `}</style>
+            </div>
+        </ProtectedRoute>
     );
 }
