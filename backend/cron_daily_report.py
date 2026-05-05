@@ -50,8 +50,9 @@ def generate_daily_report():
 
         logger.info(f"Generating report for {start_b} (B) vs {start_a} (A)")
 
-        # 3. Calculate Payload using existing database logic
-        payload = database.get_period_ai_payload(start_a, end_a, start_b, end_b)
+        # 3. Calculate Payload using existing database logic but querying parquet directly!
+        parquet_table = f"read_parquet('{database.DATA_PATH}')"
+        payload = database.get_period_ai_payload(start_a, end_a, start_b, end_b, table_name=parquet_table)
         
         if "error" in payload:
             logger.error(f"Payload calculation failed: {payload['error']}")
