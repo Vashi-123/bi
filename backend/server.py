@@ -67,7 +67,7 @@ except ImportError:
 # --- Validation ---
 
 ALLOWED_DIMENSIONS = {
-    'type', 'Category', 'Currency', 'counterparty', 'Groupclient',
+    'type', 'Category', 'Currency', 'counterparty', 'Groupclient', 'ClientCountryGroup',
     'Product country', 'CountryGroup', 'Product name', 'Item name'
 }
 
