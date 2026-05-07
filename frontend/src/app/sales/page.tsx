@@ -584,8 +584,11 @@ export default function Dashboard() {
                         <option value="Category">Category</option>
                         <option value="Product name">Product</option>
                         <option value="Item name">SKU</option>
-                        <option value="Product country">Country</option>
+                        <option value="Product country">Product Country</option>
+                        <option value="CountryGroup">Product Region</option>
                         <option value="counterparty">Client</option>
+                        <option value="Groupclient">Client Group</option>
+                        <option value="ClientCountryGroup">Client Region</option>
                         <option value="type">Sales Type</option>
                     </select>
                 </div>

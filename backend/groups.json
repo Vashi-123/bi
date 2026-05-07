@@ -54,7 +54,9 @@
     "Brolexy": [
       "BROLEXY GROUP LTD. | USDT",
       "Brolexy UAB | Bank"
-    ],
+    ]
+  },
+  "client_countries": {
     "Russian": [
       "Anton Krivakov | API", "Astronium | API", "FIOG LLC | API", "Nihat Nasirov | API", 
       "QIWI | API", "Solo Online | API", "Steamstar | API", "Vladimir Shabanov | API", 

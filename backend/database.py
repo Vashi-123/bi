@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # Input validation
 DATE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 DATE_FILTER_KEYS = {'dateMode', 'startDate', 'endDate', 'relativeValue', 'relativeUnit'}
-ALLOWED_COLUMNS = {'type', 'Category', 'Currency', 'counterparty', 'Groupclient', 'Product country', 'CountryGroup', 'Product name'}
+ALLOWED_COLUMNS = {'type', 'Category', 'Currency', 'counterparty', 'Groupclient', 'ClientCountryGroup', 'Product country', 'CountryGroup', 'Product name'}
 
 def validate_date(date_str: str) -> bool:
     """Returns True if date_str matches YYYY-MM-DD format."""
@@ -42,6 +42,13 @@ def get_dimension_expr(dimension, raw_table, available_columns=None):
             (SELECT group_name FROM custom_country_groups ccg WHERE ccg.country_code = UPPER(TRIM({raw_table}."Product country")) LIMIT 1),
             {countrygroup_col},
             'Other'
+        )"""
+    elif dimension == 'ClientCountryGroup':
+        clientcountrygroup_col = '"ClientCountryGroup"' if (available_columns is None or 'clientcountrygroup' in available_columns) else 'NULL'
+        return f"""COALESCE(
+            (SELECT group_name FROM custom_client_country_groups cccg WHERE cccg.counterparty = LOWER(TRIM({raw_table}."counterparty")) LIMIT 1),
+            {clientcountrygroup_col},
+            {raw_table}."counterparty"
         )"""
     return f'"{dimension}"'
 
@@ -136,7 +143,20 @@ def refresh_groups_table():
         df_c = pandas.DataFrame(country_flattened)
         conn.execute("INSERT INTO custom_country_groups SELECT * FROM df_c")
         
-    logger.info(f"Loaded {len(cp_groups)} counterparty groups and {len(country_groups)} country groups.")
+    # 3. Client Country Groups (Counterparty Country)
+    client_country_groups = data.get('client_countries', {})
+    cl_flattened = []
+    for gname, counterparties in client_country_groups.items():
+        for cp in counterparties:
+            cl_flattened.append({'counterparty': cp.strip().lower(), 'group_name': gname})
+    
+    conn.execute("CREATE TABLE IF NOT EXISTS custom_client_country_groups (counterparty VARCHAR, group_name VARCHAR)")
+    conn.execute("DELETE FROM custom_client_country_groups")
+    if cl_flattened:
+        df_cl = pandas.DataFrame(cl_flattened)
+        conn.execute("INSERT INTO custom_client_country_groups SELECT * FROM df_cl")
+        
+    logger.info(f"Loaded {len(cp_groups)} counterparty groups, {len(country_groups)} country groups, and {len(client_country_groups)} client country groups.")
     
     # 3. Create Enriched Views dynamically
     for table_type in ['sales', 'purchase']:
@@ -170,7 +190,7 @@ def refresh_groups_table():
         base_cols = []
         for c in existing_cols:
             cl = c.lower()
-            if cl not in ['groupclient', 'countrygroup']:
+            if cl not in ['groupclient', 'countrygroup', 'clientcountrygroup']:
                 # Quote all columns to be safe with spaces/keywords
                 base_cols.append(f'"{c}"')
         
@@ -179,14 +199,29 @@ def refresh_groups_table():
         # Sources for new columns
         gc_source = f'"{gc_col}"' if gc_col else "NULL"
         cg_source = f'"{cg_col}"' if cg_col else "NULL"
+        cc_col = next((c for c in existing_cols if c.lower() == 'clientcountrygroup'), None)
+        cc_source = f'"{cc_col}"' if cc_col else "NULL"
         cp_ref = f'"{cp_col}"' if cp_col else "NULL"
         
         query = f"""
             CREATE VIEW {table_type} AS 
             SELECT 
                 {select_list},
-                COALESCE({gc_source}, {cp_ref}) as Groupclient,
-                COALESCE({cg_source}, 'Other') as CountryGroup
+                COALESCE(
+                    (SELECT group_name FROM custom_groups cg WHERE cg.counterparty = LOWER(TRIM("{raw_name}"."counterparty")) LIMIT 1),
+                    {gc_source}, 
+                    {cp_ref}
+                ) as Groupclient,
+                COALESCE(
+                    (SELECT group_name FROM custom_country_groups ccg WHERE ccg.country_code = UPPER(TRIM("{raw_name}"."Product country")) LIMIT 1),
+                    {cg_source},
+                    'Other'
+                ) as CountryGroup,
+                COALESCE(
+                    (SELECT group_name FROM custom_client_country_groups cccg WHERE cccg.counterparty = LOWER(TRIM("{raw_name}"."counterparty")) LIMIT 1),
+                    {cc_source},
+                    {cp_ref}
+                ) as ClientCountryGroup
             FROM {raw_name}
         """
         try:

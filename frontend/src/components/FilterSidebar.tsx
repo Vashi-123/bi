@@ -201,6 +201,7 @@ export function FilterSidebar({ isOpen, onClose, source = 'sales' }: { isOpen?: 
                     <>
                         <FilterGroup title="Sales Type" column="type" current={filters['type']} onChange={vals => setFilter('type', vals)} source={source} />
                         <FilterGroup title="Client Group" column="Groupclient" current={filters['Groupclient']} onChange={vals => setFilter('Groupclient', vals)} source={source} />
+                        <FilterGroup title="Client Region" column="ClientCountryGroup" current={filters['ClientCountryGroup']} onChange={vals => setFilter('ClientCountryGroup', vals)} source={source} />
                         <FilterGroup title="Country Group" column="CountryGroup" current={filters['CountryGroup']} onChange={vals => setFilter('CountryGroup', vals)} source={source} />
                         
                         <div className="h-px bg-slate-50 mx-[-32px]" />

@@ -8,7 +8,7 @@ import { ArrowLeft, Plus, Search, Trash2, CheckCircle, Users, Globe, UserIcon, P
 import Link from 'next/link';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
-type GroupType = 'counterparties' | 'countries';
+type GroupType = 'counterparties' | 'countries' | 'client_countries';
 
 export default function GroupsPage() {
     const [activeType, setActiveType] = useState<GroupType>('counterparties');
@@ -27,7 +27,11 @@ export default function GroupsPage() {
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
 
-    const allItems = (activeType === 'counterparties' ? itemsData?.counterparties : itemsData?.countries) || [];
+    const allItems = (
+        activeType === 'counterparties' ? itemsData?.counterparties : 
+        activeType === 'client_countries' ? itemsData?.client_countries : 
+        itemsData?.countries
+    ) || [];
     const allGroups = groupsData?.[activeType] || {};
 
     const filteredItems = useMemo(() => {
@@ -130,7 +134,14 @@ export default function GroupsPage() {
                                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
                                         ${activeType === 'countries' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
                                 >
-                                    <Globe className="w-4 h-4" /> Countries
+                                    <Globe className="w-4 h-4" /> Product Regions
+                                </button>
+                                <button 
+                                    onClick={() => { setActiveType('client_countries'); setSelectedItems([]); }}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
+                                        ${activeType === 'client_countries' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
+                                >
+                                    <UserIcon className="w-4 h-4 text-blue-400" /> Client Regions
                                 </button>
                             </div>
                         </div>
@@ -140,7 +151,10 @@ export default function GroupsPage() {
                         {/* Create Form */}
                         <Card className="lg:col-span-1 rounded-3xl border-slate-100 shadow-xl p-8 bg-white h-fit">
                             <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">
-                                Create {activeType === 'counterparties' ? 'Client' : 'Country'} Group
+                                Create {
+                                    activeType === 'counterparties' ? 'Client' : 
+                                    activeType === 'client_countries' ? 'Client Region' : 'Product Region'
+                                } Group
                             </Title>
                             <div className="space-y-6">
                                 <div className="space-y-2">
@@ -149,7 +163,10 @@ export default function GroupsPage() {
                                         type="text" 
                                         value={newGroupName}
                                         onChange={e => setNewGroupName(e.target.value)}
-                                        placeholder={activeType === 'counterparties' ? "e.g. Major Retailers" : "e.g. Western Europe"}
+                                        placeholder={
+                                            activeType === 'counterparties' ? "e.g. Major Retailers" : 
+                                            activeType === 'client_countries' ? "e.g. Russia & CIS" : "e.g. Western Europe"
+                                        }
                                         className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-bold placeholder:text-slate-300 focus:ring-2 focus:ring-black/5"
                                     />
                                 </div>
@@ -202,7 +219,10 @@ export default function GroupsPage() {
                         {/* Groups List */}
                         <Card className="lg:col-span-2 rounded-3xl border-slate-100 shadow-xl p-8 bg-white overflow-hidden">
                             <Title className="text-xl font-bold mb-8 text-[#0C0C0C]">
-                                {activeType === 'counterparties' ? 'Client' : 'Country'} Mappings
+                                {
+                                    activeType === 'counterparties' ? 'Client' : 
+                                    activeType === 'client_countries' ? 'Client Region' : 'Product Region'
+                                } Mappings
                             </Title>
                             <div className="max-h-[450px] overflow-y-auto pr-2">
                                 <Table>

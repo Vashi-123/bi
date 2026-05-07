@@ -272,6 +272,11 @@ def get_group_countries(source: str = 'sales'):
     """Returns unique countries for group creation."""
     return {"countries": database.get_unique_countries(table_name=source)}
 
+@app.get("/api/groups/client_countries")
+def get_group_client_countries(source: str = 'sales'):
+    """Returns unique counterparties for client country group creation."""
+    return {"client_countries": database.get_unique_counterparties(table_name=source)}
+
 @app.get("/api/groups")
 def get_groups():
     """Returns all custom groups."""

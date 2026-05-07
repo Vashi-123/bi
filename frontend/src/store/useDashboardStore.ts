@@ -3,7 +3,7 @@ import { create } from 'zustand';
 // --- Types ---
 
 type Metric = 'revenue' | 'profit' | 'margin' | 'qty' | 'stock';
-type Dimension = 'type' | 'Category' | 'Currency' | 'counterparty' | 'Groupclient' | 'Product country' | 'CountryGroup' | 'Item name' | 'Product name';
+type Dimension = 'type' | 'Category' | 'Currency' | 'counterparty' | 'Groupclient' | 'ClientCountryGroup' | 'Product country' | 'CountryGroup' | 'Item name' | 'Product name';
 
 interface DateFilter {
   mode: 'all' | 'between' | 'relative' | 'before' | 'after';
