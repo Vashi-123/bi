@@ -561,6 +561,7 @@ export default function PurchaseDashboard() {
                         >
                             <option value="Category">Category</option>
                             <option value="Product name">Product</option>
+                            <option value="CountryGroup">Product Country Group</option>
                             <option value="Item name">SKU</option>
                             <option value="counterparty">Supplier</option>
                             <option value="ClientCountryGroup">Client Region</option>

@@ -134,7 +134,7 @@ export default function GroupsPage() {
                                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all
                                         ${activeType === 'countries' ? 'bg-[#0C0C0C] text-white shadow-lg' : 'text-slate-400 hover:text-[#0C0C0C]'}`}
                                 >
-                                    <Globe className="w-4 h-4" /> Product Regions
+                                    <Globe className="w-4 h-4" /> Product Countries
                                 </button>
                                 <button 
                                     onClick={() => { setActiveType('client_countries'); setSelectedItems([]); }}
@@ -153,7 +153,7 @@ export default function GroupsPage() {
                             <Title className="text-xl font-bold mb-6 text-[#0C0C0C]">
                                 Create {
                                     activeType === 'counterparties' ? 'Client' : 
-                                    activeType === 'client_countries' ? 'Client Region' : 'Product Region'
+                                    activeType === 'client_countries' ? 'Client Region' : 'Product Country Group'
                                 } Group
                             </Title>
                             <div className="space-y-6">

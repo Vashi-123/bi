@@ -583,9 +583,9 @@ export default function Dashboard() {
                     <select className="bg-transparent border-none text-sm font-bold text-[#0C0C0C] focus:ring-0 cursor-pointer" value={legendDimension} onChange={e => setLegendDimension(e.target.value as any)}>
                         <option value="Category">Category</option>
                         <option value="Product name">Product</option>
+                        <option value="CountryGroup">Product Country Group</option>
                         <option value="Item name">SKU</option>
                         <option value="Product country">Product Country</option>
-                        <option value="CountryGroup">Product Region</option>
                         <option value="counterparty">Client</option>
                         <option value="Groupclient">Client Group</option>
                         <option value="ClientCountryGroup">Client Region</option>
