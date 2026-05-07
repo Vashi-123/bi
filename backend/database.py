@@ -771,11 +771,17 @@ def get_filter_options(dimension, search=None, table_name='sales'):
     cursor = get_cursor()
     
     # Handle custom group dimensions
-    if dimension in ['Groupclient', 'CountryGroup']:
+    if dimension in ['Groupclient', 'CountryGroup', 'ClientCountryGroup']:
         try:
             raw_table = f"{table_name}_raw" if table_name in ['sales', 'purchase'] else table_name
-            group_table = "custom_groups" if dimension == 'Groupclient' else "custom_country_groups"
-            column_name = "Groupclient" if dimension == 'Groupclient' else "CountryGroup"
+            if dimension == 'Groupclient':
+                group_table = "custom_groups"
+            elif dimension == 'CountryGroup':
+                group_table = "custom_country_groups"
+            else:
+                group_table = "custom_client_country_groups"
+            
+            column_name = dimension
             
             # 1. Get from custom groups mapping
             q1 = f"SELECT DISTINCT group_name FROM {group_table}"
@@ -786,8 +792,9 @@ def get_filter_options(dimension, search=None, table_name='sales'):
             res1 = cursor.execute(q1).fetchall()
             options = {row[0] for row in res1 if row[0]}
             
-            # 2. Get from raw table (actual groups in data)
-            q2 = f"SELECT DISTINCT \"{column_name}\" FROM {raw_table} WHERE \"{column_name}\" IS NOT NULL"
+            # 2. Get from the view (actual groups + ungrouped names in data)
+            # Use table_name (the view) instead of raw_table to get calculated columns
+            q2 = f"SELECT DISTINCT \"{column_name}\" FROM {table_name} WHERE \"{column_name}\" IS NOT NULL"
             if search:
                 s_val = str(search).replace("'", "''")
                 q2 += f" AND \"{column_name}\" ILIKE '%{s_val}%'"
@@ -797,7 +804,7 @@ def get_filter_options(dimension, search=None, table_name='sales'):
                 for row in res2:
                     if row[0]: options.add(row[0])
             except:
-                # Table might not exist yet or column missing
+                # View might not exist yet or column missing
                 pass
                 
             out = sorted(list(options))
